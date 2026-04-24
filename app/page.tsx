@@ -1,65 +1,133 @@
-import Image from "next/image";
+"use client";
+
+import React, { FormEvent, useState } from "react";
+import { supabase } from "./supabase";
 
 export default function Home() {
+  const [view, setView] = useState<"home" | "dogForm">("home");
+  const [dogName, setDogName] = useState("");
+  const [breed, setBreed] = useState("");
+  const [birthday, setBirthday] = useState("");
+  const [flashMessage, setFlashMessage] = useState("");
+  const [isFlashVisible, setIsFlashVisible] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const showFlash = (message: string, onComplete?: () => void) => {
+    setFlashMessage(message);
+    setIsFlashVisible(true);
+    window.setTimeout(() => setIsFlashVisible(false), 1400);
+    if (onComplete) {
+      window.setTimeout(() => onComplete(), 1700);
+    }
+  };
+
+  const handleDogRegister = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsSaving(true);
+
+    try {
+      // Supabaseの'dogs'テーブルにデータを挿入
+      const { error } = await supabase
+        .from('dogs')
+        .insert([{ 
+          name: dogName, 
+          breed: breed, 
+          birthday: birthday 
+        }]);
+
+      if (error) throw error;
+
+      showFlash("登録しました！", () => {
+        setDogName("");
+        setBreed("");
+        setBirthday("");
+        setView("home");
+      });
+    } catch (error) {
+      console.error("Error saving dog:", error);
+      alert("保存に失敗しました。Supabaseの設定やテーブル名を確認してください。");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="relative flex min-h-screen flex-col bg-[#ddeee8] text-[#111827]">
+      <main className="relative z-10 mx-auto flex w-full max-w-2xl flex-1 flex-col px-6 pb-16 pt-14">
+        <header>
+          <p className="text-center text-[2.1rem] font-semibold tracking-[0.12em] text-[#008661]">
+            BarKnow
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+        </header>
+
+        <section className="mt-14 flex flex-1 flex-col justify-center">
+          {view === "home" ? (
+            <div className="mx-auto flex w-full max-w-xl flex-col gap-4">
+              <button
+                onClick={() => setView("dogForm")}
+                className="h-24 w-full rounded-3xl bg-[#008661] text-lg font-semibold text-white shadow-lg active:scale-95 transition-transform"
+              >
+                愛犬の健康管理（App） ＋
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleDogRegister} className="rounded-3xl bg-white p-8 shadow-xl">
+              <p className="mb-8 text-xl font-semibold text-[#008661]">愛犬の登録</p>
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col border-b border-gray-100 pb-2">
+                  <label className="text-xs text-gray-400">名前</label>
+                  <input 
+                    value={dogName} 
+                    onChange={(e) => setDogName(e.target.value)} 
+                    placeholder="例：チョコ" 
+                    required 
+                    className="h-10 outline-none text-lg" 
+                  />
+                </div>
+                <div className="flex flex-col border-b border-gray-100 pb-2">
+                  <label className="text-xs text-gray-400">犬種</label>
+                  <input 
+                    value={breed} 
+                    onChange={(e) => setBreed(e.target.value)} 
+                    placeholder="例：トイプードル" 
+                    required 
+                    className="h-10 outline-none text-lg" 
+                  />
+                </div>
+                <div className="flex flex-col border-b border-gray-100 pb-2">
+                  <label className="text-xs text-gray-400">誕生日</label>
+                  <input 
+                    value={birthday} 
+                    onChange={(e) => setBirthday(e.target.value)} 
+                    type="date" 
+                    required 
+                    className="h-10 outline-none text-lg" 
+                  />
+                </div>
+                <button 
+                  type="submit" 
+                  disabled={isSaving} 
+                  className="mt-6 h-14 rounded-3xl bg-[#008661] text-white font-bold text-lg shadow-md active:scale-95 transition-all disabled:bg-gray-300"
+                >
+                  {isSaving ? "保存中..." : "登録する"}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setView("home")} 
+                  className="text-gray-400 text-sm mt-2"
+                >
+                  キャンセル
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
       </main>
+      
+      {/* 通知用フラッシュメッセージ */}
+      <div className={`fixed top-12 left-1/2 -translate-x-1/2 bg-[#008661] text-white px-8 py-4 rounded-2xl shadow-2xl transition-all duration-300 z-50 ${isFlashVisible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 pointer-events-none"}`}>
+        {flashMessage}
+      </div>
     </div>
   );
-}
+}     
