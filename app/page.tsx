@@ -432,7 +432,7 @@ export default function Home() {
         <div>
           <p className="eyebrow">TODAY WITH {dogName.toUpperCase()}</p>
           <h1>{profile.name ? `${profile.name}ちゃん、今日も一緒に。` : "今日から、少しずつ。"}</h1>
-          <p className="welcome-copy">小さな変化と、できたこと。毎日の記録がコーチとの会話につながります。</p>
+          <p className="welcome-copy">小さな変化と、今日もかわいかった瞬間。毎日の記録がコーチとの会話につながります。</p>
         </div>
         <button className="avatar" onClick={() => setView("profile")} aria-label="愛犬プロフィールを開く">
           {profile.name ? profile.name.slice(0, 1) : "＋"}
@@ -451,11 +451,11 @@ export default function Home() {
         <div className="checkin-top">
           <div>
             <p className="card-label">今日のチェックイン</p>
-            <h2>{todaysRecord ? "今日の記録ができました" : "1分で、今日を残そう"}</h2>
+            <h2>{todaysRecord ? "今日の記録ができました" : "今日のかわいいを、ひとつ。"}</h2>
           </div>
-          <div className={`record-mark ${todaysRecord ? "is-done" : ""}`}>{todaysRecord ? "✓" : "01"}</div>
+          <div className={`record-mark ${todaysRecord ? "is-done" : ""}`}>{todaysRecord ? "✓" : <span className="paw-mark" aria-hidden="true"><i></i><i></i><i></i><b></b></span>}</div>
         </div>
-        <p>{todaysRecord ? "あとから何度でも書き直せます。" : "食欲・元気・様子を選ぶだけ。短いメモでも大丈夫です。"}</p>
+        <p>{todaysRecord ? "あとから何度でも書き直せます。" : "気になったことも、できたことも。1分で残せます。"}</p>
         <button className="primary-button" onClick={() => setView("record")}>
           {todaysRecord ? "今日の記録を見直す" : "今日の記録をつける"}<span>→</span>
         </button>
@@ -530,7 +530,7 @@ export default function Home() {
   const recordView = !selectedCategory ? (
     <section className="topic-screen">
       <SectionTitle eyebrow="DAILY NOTE" title="何を残しますか？" />
-      <p className="lead">全部を書かなくて大丈夫。今、気になっていることをひとつ選んでください。</p>
+      <p className="lead">今日の「気になる」も「かわいい」も。残したいことをひとつ選んでください。</p>
       <div className="topic-grid">
         {RECORD_CATEGORIES.map((category) => (
           <button key={category.id} onClick={() => setRecordCategory(category.id)}>
