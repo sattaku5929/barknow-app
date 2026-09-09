@@ -209,7 +209,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .topic-grid > button:nth-child(4) { background: var(--soft-lilac); }
 .topic-grid > button:hover { border-color: rgba(0,134,97,.35); box-shadow: 0 10px 26px rgba(42,74,61,.08); transform: translateY(-2px); }
 .topic-grid > button > span:last-child { display: none; }
-.topic-mark { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid rgba(0,134,97,.1); border-radius: 50%; background: rgba(255,255,255,.78); color: var(--green-dark); font-family: var(--font-sans); font-size: 13px; font-weight: 500; }
+.topic-mark { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid rgba(0,134,97,.1); border-radius: 50%; background: rgba(255,255,255,.78); color: var(--green-dark); }
+.topic-mark svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.55; stroke-linecap: round; stroke-linejoin: round; }
 .topic-grid strong, .topic-grid small { display: block; }
 .topic-grid strong { font-size: 13px; }
 .topic-grid small { margin-top: 4px; color: var(--muted); font-size: 9px; line-height: 1.45; }

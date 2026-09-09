@@ -41,18 +41,27 @@ const MESSAGES_KEY = "wan-tone-messages-v1";
 
 const initialProfile: DogProfile = { name: "", breed: "", birthday: "" };
 
-const RECORD_CATEGORIES = [
-  { id: "meal", label: "食事", mark: "食", description: "食欲・食べ方", noteLabel: "食事で気づいたこと", placeholder: "食べ始めるまでの時間、残した量、いつもとの違いなど" },
-  { id: "barking", label: "吠え", mark: "声", description: "場面・きっかけ", noteLabel: "吠えた場面と、その前後", placeholder: "誰に、何に、いつ、どのくらい吠えたかなど" },
-  { id: "toilet", label: "トイレ", mark: "整", description: "回数・状態", noteLabel: "トイレで気づいたこと", placeholder: "回数、場所、便の状態、失敗した場面など" },
-  { id: "walk", label: "お散歩", mark: "歩", description: "歩き方・反応", noteLabel: "散歩中の様子", placeholder: "引っ張り、立ち止まり、犬や人への反応など" },
-  { id: "sleep", label: "睡眠", mark: "眠", description: "眠り・休息", noteLabel: "睡眠で気づいたこと", placeholder: "寝つき、夜中の様子、昼寝の長さなど" },
-  { id: "win", label: "できた", mark: "✓", description: "小さな成長", noteLabel: "今日できたこと", placeholder: "待てができた、落ち着いて挨拶できたなど" },
-] as const;
+type CategoryInfo = {
+  readonly id: RecordCategory;
+  readonly label: string;
+  readonly icon: RecordCategory;
+  readonly description: string;
+  readonly noteLabel: string;
+  readonly placeholder: string;
+};
 
-function categoryInfo(category: RecordCategory | undefined) {
+const RECORD_CATEGORIES = [
+  { id: "meal", label: "食事", icon: "meal", description: "食欲・食べ方", noteLabel: "食事で気づいたこと", placeholder: "食べ始めるまでの時間、残した量、いつもとの違いなど" },
+  { id: "barking", label: "吠え", icon: "barking", description: "場面・きっかけ", noteLabel: "吠えた場面と、その前後", placeholder: "誰に、何に、いつ、どのくらい吠えたかなど" },
+  { id: "toilet", label: "トイレ", icon: "toilet", description: "回数・状態", noteLabel: "トイレで気づいたこと", placeholder: "回数、場所、便の状態、失敗した場面など" },
+  { id: "walk", label: "お散歩", icon: "walk", description: "歩き方・反応", noteLabel: "散歩中の様子", placeholder: "引っ張り、立ち止まり、犬や人への反応など" },
+  { id: "sleep", label: "睡眠", icon: "sleep", description: "眠り・休息", noteLabel: "睡眠で気づいたこと", placeholder: "寝つき、夜中の様子、昼寝の長さなど" },
+  { id: "win", label: "できた", icon: "win", description: "小さな成長", noteLabel: "今日できたこと", placeholder: "待てができた、落ち着いて挨拶できたなど" },
+] as const satisfies readonly CategoryInfo[];
+
+function categoryInfo(category: RecordCategory | undefined): CategoryInfo {
   if (!category || category === "daily") {
-    return { id: "daily", label: "まとめ", mark: "日", description: "一日の記録", noteLabel: "気づいたこと", placeholder: "今日の様子" };
+    return { id: "daily", label: "まとめ", icon: "daily", description: "一日の記録", noteLabel: "気づいたこと", placeholder: "今日の様子" };
   }
   return RECORD_CATEGORIES.find((item) => item.id === category) ?? RECORD_CATEGORIES[0];
 }
@@ -92,6 +101,24 @@ function calculateStreak(records: DailyRecord[]) {
 
 function Icon({ children }: { children: ReactNode }) {
   return <span className="nav-icon" aria-hidden="true">{children}</span>;
+}
+
+function TopicIcon({ name }: { name: RecordCategory }) {
+  const paths: Record<RecordCategory, ReactNode> = {
+    daily: <><rect x="4" y="5" width="16" height="15" rx="3" /><path d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h6" /></>,
+    meal: <><path d="M4 11h16c-.6 5.2-3.2 8-8 8s-7.4-2.8-8-8Z" /><path d="M7 8c1.2-1.3 2.9-2 5-2s3.8.7 5 2M9 4c.8-.7 1.8-1 3-1s2.2.3 3 1" /></>,
+    barking: <><path d="m5 9-2-3v7c0 4 3 7 7 7s7-3 7-7V6l-2 3" /><circle cx="8" cy="12" r=".7" fill="currentColor" stroke="none" /><circle cx="13" cy="12" r=".7" fill="currentColor" stroke="none" /><path d="M8 16c1.3 1 2.7 1 4 0M20 9c1 1 1 3 0 4" /></>,
+    toilet: <><path d="M12 3c-2.8 4-5 6.8-5 10a5 5 0 0 0 10 0c0-3.2-2.2-6-5-10Z" /><path d="M10 15c.7.7 1.3 1 2 1s1.3-.3 2-1" /></>,
+    walk: <><circle cx="5" cy="19" r="2" /><circle cx="19" cy="5" r="2" /><path d="M7 18c4-1 2.5-5.5 6-6.5S15 7 17 6" /></>,
+    sleep: <path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z" />,
+    win: <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" />,
+  };
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      {paths[name]}
+    </svg>
+  );
 }
 
 function SectionTitle({ eyebrow, title }: { eyebrow: string; title: string }) {
@@ -534,7 +561,7 @@ export default function Home() {
       <div className="topic-grid">
         {RECORD_CATEGORIES.map((category) => (
           <button key={category.id} onClick={() => setRecordCategory(category.id)}>
-            <span className="topic-mark">{category.mark}</span>
+            <span className="topic-mark"><TopicIcon name={category.icon} /></span>
             <span><strong>{category.label}</strong><small>{category.description}</small></span>
             <span aria-hidden="true">→</span>
           </button>
@@ -546,7 +573,7 @@ export default function Home() {
     <form className="screen-form" onSubmit={saveRecord}>
       <button type="button" className="topic-back" onClick={() => setRecordCategory(null)}>← テーマを選び直す</button>
       <div className="selected-topic">
-        <span className="topic-mark">{selectedCategory.mark}</span>
+        <span className="topic-mark"><TopicIcon name={selectedCategory.icon} /></span>
         <div><p>今日のテーマ</p><h2>{selectedCategory.label}</h2></div>
       </div>
       <p className="lead">うまく書こうとしなくて大丈夫。今日の{dogName}を、そのまま残してください。</p>
