@@ -135,6 +135,24 @@ export default function Home() {
   const streak = useMemo(() => calculateStreak(records), [records]);
   const todaysRecord = records.find((record) => record.recordedOn === today());
   const dogName = profile.name || "愛犬";
+  const recentDays = useMemo(() => {
+    const base = new Date(`${today()}T00:00:00+09:00`);
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(base);
+      date.setDate(base.getDate() - (6 - index));
+      const value = date.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+      return {
+        value,
+        label: new Intl.DateTimeFormat("ja-JP", { weekday: "short", timeZone: "Asia/Tokyo" }).format(date),
+        record: records.find((item) => item.recordedOn === value),
+      };
+    });
+  }, [records]);
+  const recentRecords = recentDays.flatMap((day) => (day.record ? [day.record] : []));
+  const recentConcernCount = recentRecords.filter((record) =>
+    [record.appetite, record.activity, record.toilet, record.sleep].includes("気になる"),
+  ).length;
+  const recentGoodCount = recentRecords.filter((record) => record.goodMoment.trim()).length;
 
   useEffect(() => {
     const localProfile = readLocal(PROFILE_KEY, initialProfile);
@@ -391,6 +409,14 @@ export default function Home() {
         </button>
       </section>
 
+      {!profile.name && (
+        <button className="profile-nudge" onClick={() => setView("profile")}>
+          <span className="profile-nudge-mark">01</span>
+          <span><strong>まずは、愛犬の名前を教えてください</strong><small>記録とコーチの助言が、その子の物語になります。</small></span>
+          <span aria-hidden="true">→</span>
+        </button>
+      )}
+
       <section className="checkin-card">
         <div className="checkin-top">
           <div>
@@ -407,7 +433,39 @@ export default function Home() {
 
       <section className="streak-strip" aria-label="継続状況">
         <div><strong>{streak}</strong><span>日</span></div>
-        <p>{streak > 0 ? "記録が続いています。完璧より、続けることを大切に。" : "最初の記録を残すと、ここに継続日数が表示されます。"}</p>
+        <p>{streak > 0 ? "記録が続いています。空いた日があっても、今日からまた続きです。" : "最初の記録を残すと、ここに継続日数が表示されます。"}</p>
+      </section>
+
+      <section className="rhythm-card" aria-labelledby="rhythm-title">
+        <div className="rhythm-heading">
+          <div>
+            <p className="card-label">7 DAYS WITH {dogName.toUpperCase()}</p>
+            <h2 id="rhythm-title">この7日間</h2>
+          </div>
+          <strong>{recentRecords.length}<span>/ 7日</span></strong>
+        </div>
+        <div className="week-dots">
+          {recentDays.map((day) => (
+            <div key={day.value} className={`week-day ${day.record ? "is-recorded" : ""} ${day.value === today() ? "is-today" : ""}`}>
+              <span>{day.label}</span>
+              <i aria-label={day.record ? `${day.value} 記録済み` : `${day.value} 未記録`}>{day.record ? "✓" : ""}</i>
+            </div>
+          ))}
+        </div>
+        <div className="weekly-insight">
+          <p>
+            {recentRecords.length === 0
+              ? "まずは今日だけ。1分の記録から始めましょう。"
+              : recentConcernCount > 0
+                ? `気になる記録が${recentConcernCount}日あります。コーチに共有しておくと安心です。`
+                : recentGoodCount > 0
+                  ? `「できた」が${recentGoodCount}日分たまりました。小さな変化が見えています。`
+                  : "記録が少しずつつながっています。短いメモでも十分です。"}
+          </p>
+          <button onClick={() => setView(recentConcernCount > 0 ? "coach" : "record")}>
+            {recentConcernCount > 0 ? "コーチに相談する" : todaysRecord ? "記録を見直す" : "今日を記録する"} →
+          </button>
+        </div>
       </section>
 
       <section className="content-section">

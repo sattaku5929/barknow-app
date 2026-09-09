@@ -77,6 +77,27 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 }
 .avatar { cursor: pointer; }
 
+.profile-nudge {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 38px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255,255,255,.72);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+.profile-nudge-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; background: var(--mint); color: var(--green); font-family: Georgia, serif; font-size: 11px; }
+.profile-nudge strong, .profile-nudge small { display: block; }
+.profile-nudge strong { font-size: 12px; line-height: 1.5; }
+.profile-nudge small { margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.profile-nudge > span:last-child { color: var(--green); font-size: 18px; }
+
 .checkin-card {
   position: relative;
   overflow: hidden;
@@ -125,6 +146,23 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .streak-strip strong { font-family: Georgia, serif; font-size: 34px; font-weight: 500; }
 .streak-strip span { margin-left: 4px; font-size: 12px; font-weight: 800; }
 .streak-strip p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+
+.rhythm-card { margin: 0 0 42px; padding: 22px; border: 1px solid rgba(0,134,97,.1); border-radius: 24px; background: white; box-shadow: 0 14px 38px rgba(42,74,61,.07); }
+.rhythm-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.rhythm-heading .card-label { margin-bottom: 7px; }
+.rhythm-heading h2 { margin: 0; font-family: Georgia, "Yu Mincho", serif; font-size: 21px; font-weight: 500; }
+.rhythm-heading > strong { color: var(--green); font-family: Georgia, serif; font-size: 29px; font-weight: 500; white-space: nowrap; }
+.rhythm-heading > strong span { margin-left: 3px; color: var(--muted); font-family: Arial, sans-serif; font-size: 10px; font-weight: 700; }
+.week-dots { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; margin-top: 20px; }
+.week-day { display: flex; min-width: 0; flex-direction: column; align-items: center; gap: 7px; color: #929a95; font-size: 9px; font-weight: 700; }
+.week-day i { display: grid; width: 100%; max-width: 37px; aspect-ratio: 1; place-items: center; border: 1px solid rgba(37,40,37,.1); border-radius: 50%; background: #f5f4f0; color: white; font-size: 11px; font-style: normal; }
+.week-day.is-recorded { color: var(--green-dark); }
+.week-day.is-recorded i { border-color: var(--green); background: var(--green); box-shadow: 0 5px 12px rgba(0,134,97,.16); }
+.week-day.is-today i { outline: 2px solid rgba(0,134,97,.16); outline-offset: 3px; }
+.weekly-insight { margin-top: 20px; padding-top: 17px; border-top: 1px solid var(--line); }
+.weekly-insight p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.75; }
+.weekly-insight button { min-height: 40px; margin-top: 7px; padding: 0; border: 0; background: none; color: var(--green); cursor: pointer; font-size: 11px; font-weight: 800; }
+
 .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
 .section-title > span { flex: 0 0 auto; }
 .section-title > span::after { display: inline-block; width: 32px; height: 1px; margin: 0 0 3px 10px; background: rgba(0,134,97,.34); content: ""; }
