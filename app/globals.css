@@ -179,7 +179,36 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .coach-preview p { margin: 9px 0; color: var(--muted); font-size: 13px; line-height: 1.8; }
 .text-button { min-height: 44px; padding: 0; border: 0; background: none; color: var(--green); cursor: pointer; font-size: 12px; font-weight: 800; }
 
-.screen-form, .coach-screen { max-width: 520px; margin: 0 auto; }
+.screen-form, .coach-screen, .topic-screen { max-width: 520px; margin: 0 auto; }
+.topic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 26px; }
+.topic-grid > button {
+  display: grid;
+  min-height: 96px;
+  grid-template-columns: 40px 1fr;
+  align-items: center;
+  gap: 11px;
+  padding: 15px;
+  border: 1px solid rgba(0,134,97,.1);
+  border-radius: 19px;
+  background: white;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+.topic-grid > button:hover { border-color: rgba(0,134,97,.35); box-shadow: 0 10px 26px rgba(42,74,61,.08); transform: translateY(-2px); }
+.topic-grid > button > span:last-child { display: none; }
+.topic-mark { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 14px; background: var(--mint); color: var(--green-dark); font-family: Georgia, "Yu Mincho", serif; font-size: 13px; font-weight: 700; }
+.topic-grid strong, .topic-grid small { display: block; }
+.topic-grid strong { font-size: 13px; }
+.topic-grid small { margin-top: 4px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.topic-hint { margin: 18px 0 0; color: var(--muted); font-size: 10px; text-align: center; }
+.topic-back { min-height: 40px; margin: -10px 0 14px; padding: 0; border: 0; background: none; color: var(--green); cursor: pointer; font-size: 11px; font-weight: 800; }
+.selected-topic { display: flex; align-items: center; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 20px; background: white; }
+.selected-topic p { margin: 0 0 3px; color: var(--green); font-size: 9px; font-weight: 800; letter-spacing: .12em; }
+.selected-topic h2 { margin: 0; font-family: Georgia, "Yu Mincho", serif; font-size: 22px; font-weight: 500; }
+.topic-status { grid-template-columns: 1fr; margin-bottom: 0; }
+.record-summary b { color: var(--green-dark); font-size: 10px; }
 .screen-form .lead, .coach-screen .lead { margin-bottom: 28px; }
 .field-label { display: flex; flex-direction: column; gap: 9px; margin-top: 18px; color: #4a514d; font-size: 12px; font-weight: 800; letter-spacing: .04em; }
 .field-label input, .field-label textarea, .message-form textarea {
