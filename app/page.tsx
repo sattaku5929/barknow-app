@@ -6,6 +6,7 @@ import { supabase } from "./supabase";
 type View = "home" | "record" | "coach" | "profile";
 type Connection = "checking" | "online" | "local";
 type Status = "良い" | "ふつう" | "気になる";
+type RecordCategory = "daily" | "meal" | "barking" | "toilet" | "walk" | "sleep" | "win";
 
 type DogProfile = {
   id?: string;
@@ -16,6 +17,7 @@ type DogProfile = {
 
 type DailyRecord = {
   id: string;
+  category: RecordCategory;
   recordedOn: string;
   mood: number;
   appetite: Status;
@@ -38,6 +40,23 @@ const RECORDS_KEY = "wan-tone-records-v1";
 const MESSAGES_KEY = "wan-tone-messages-v1";
 
 const initialProfile: DogProfile = { name: "", breed: "", birthday: "" };
+
+const RECORD_CATEGORIES = [
+  { id: "meal", label: "食事", mark: "食", description: "食欲・食べ方", noteLabel: "食事で気づいたこと", placeholder: "食べ始めるまでの時間、残した量、いつもとの違いなど" },
+  { id: "barking", label: "吠え", mark: "声", description: "場面・きっかけ", noteLabel: "吠えた場面と、その前後", placeholder: "誰に、何に、いつ、どのくらい吠えたかなど" },
+  { id: "toilet", label: "トイレ", mark: "整", description: "回数・状態", noteLabel: "トイレで気づいたこと", placeholder: "回数、場所、便の状態、失敗した場面など" },
+  { id: "walk", label: "お散歩", mark: "歩", description: "歩き方・反応", noteLabel: "散歩中の様子", placeholder: "引っ張り、立ち止まり、犬や人への反応など" },
+  { id: "sleep", label: "睡眠", mark: "眠", description: "眠り・休息", noteLabel: "睡眠で気づいたこと", placeholder: "寝つき、夜中の様子、昼寝の長さなど" },
+  { id: "win", label: "できた", mark: "✓", description: "小さな成長", noteLabel: "今日できたこと", placeholder: "待てができた、落ち着いて挨拶できたなど" },
+] as const;
+
+function categoryInfo(category: RecordCategory | undefined) {
+  if (!category || category === "daily") {
+    return { id: "daily", label: "まとめ", mark: "日", description: "一日の記録", noteLabel: "気づいたこと", placeholder: "今日の様子" };
+  }
+  return RECORD_CATEGORIES.find((item) => item.id === category) ?? RECORD_CATEGORIES[0];
+}
+
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
 
 function readLocal<T>(key: string, fallback: T): T {
@@ -123,6 +142,7 @@ export default function Home() {
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const [recordDate, setRecordDate] = useState(today());
+  const [recordCategory, setRecordCategory] = useState<RecordCategory | null>(null);
   const [mood, setMood] = useState(3);
   const [appetite, setAppetite] = useState<Status>("ふつう");
   const [activity, setActivity] = useState<Status>("ふつう");
@@ -144,11 +164,11 @@ export default function Home() {
       return {
         value,
         label: new Intl.DateTimeFormat("ja-JP", { weekday: "short", timeZone: "Asia/Tokyo" }).format(date),
-        record: records.find((item) => item.recordedOn === value),
+        entries: records.filter((item) => item.recordedOn === value),
       };
     });
   }, [records]);
-  const recentRecords = recentDays.flatMap((day) => (day.record ? [day.record] : []));
+  const recentRecords = recentDays.flatMap((day) => day.entries);
   const recentConcernCount = recentRecords.filter((record) =>
     [record.appetite, record.activity, record.toilet, record.sleep].includes("気になる"),
   ).length;
@@ -156,7 +176,10 @@ export default function Home() {
 
   useEffect(() => {
     const localProfile = readLocal(PROFILE_KEY, initialProfile);
-    const localRecords = readLocal<DailyRecord[]>(RECORDS_KEY, []);
+    const localRecords = readLocal<DailyRecord[]>(RECORDS_KEY, []).map((record) => ({
+      ...record,
+      category: record.category ?? "daily",
+    }));
     const localMessages = readLocal<CoachMessage[]>(MESSAGES_KEY, []);
     setProfile(localProfile);
     setRecords(localRecords);
@@ -177,7 +200,7 @@ export default function Home() {
           supabase.from("wt_dogs").select("id,name,breed,birthday").eq("owner_id", userId).maybeSingle(),
           supabase
             .from("wt_daily_records")
-            .select("id,recorded_on,mood,appetite,activity,toilet,sleep,behavior_note,good_moment")
+            .select("id,category,recorded_on,mood,appetite,activity,toilet,sleep,behavior_note,good_moment")
             .eq("owner_id", userId)
             .order("recorded_on", { ascending: false })
             .limit(30),
@@ -203,6 +226,7 @@ export default function Home() {
         if (recordResult.data) {
           const remoteRecords = recordResult.data.map((item) => ({
             id: item.id,
+            category: (item.category as RecordCategory) ?? "daily",
             recordedOn: item.recorded_on,
             mood: item.mood,
             appetite: item.appetite as Status,
@@ -305,6 +329,7 @@ export default function Home() {
     setSaving(true);
     const nextRecord: DailyRecord = {
       id: crypto.randomUUID(),
+      category: recordCategory ?? "daily",
       recordedOn: recordDate,
       mood,
       appetite,
@@ -314,7 +339,10 @@ export default function Home() {
       behaviorNote,
       goodMoment,
     };
-    let nextRecords = [nextRecord, ...records.filter((item) => item.recordedOn !== recordDate)];
+    let nextRecords = [
+      nextRecord,
+      ...records.filter((item) => !(item.recordedOn === recordDate && item.category === nextRecord.category)),
+    ];
 
     try {
       if (connection === "online") {
@@ -327,6 +355,7 @@ export default function Home() {
             {
               owner_id: userId,
               dog_id: dogId,
+              category: recordCategory ?? "daily",
               recorded_on: recordDate,
               mood,
               appetite,
@@ -336,7 +365,7 @@ export default function Home() {
               behavior_note: behaviorNote || null,
               good_moment: goodMoment || null,
             },
-            { onConflict: "dog_id,recorded_on" },
+            { onConflict: "dog_id,recorded_on,category" },
           )
           .select("id")
           .single();
@@ -353,6 +382,7 @@ export default function Home() {
       setRecords(nextRecords);
       writeLocal(RECORDS_KEY, nextRecords);
       setSaving(false);
+      setRecordCategory(null);
       setView("home");
     }
   }
@@ -442,13 +472,13 @@ export default function Home() {
             <p className="card-label">7 DAYS WITH {dogName.toUpperCase()}</p>
             <h2 id="rhythm-title">この7日間</h2>
           </div>
-          <strong>{recentRecords.length}<span>/ 7日</span></strong>
+          <strong>{recentDays.filter((day) => day.entries.length).length}<span>/ 7日</span></strong>
         </div>
         <div className="week-dots">
           {recentDays.map((day) => (
-            <div key={day.value} className={`week-day ${day.record ? "is-recorded" : ""} ${day.value === today() ? "is-today" : ""}`}>
+            <div key={day.value} className={`week-day ${day.entries.length ? "is-recorded" : ""} ${day.value === today() ? "is-today" : ""}`}>
               <span>{day.label}</span>
-              <i aria-label={day.record ? `${day.value} 記録済み` : `${day.value} 未記録`}>{day.record ? "✓" : ""}</i>
+              <i aria-label={day.entries.length ? `${day.value} ${day.entries.length}件記録済み` : `${day.value} 未記録`}>{day.entries.length ? (day.entries.length > 1 ? day.entries.length : "✓") : ""}</i>
             </div>
           ))}
         </div>
@@ -457,7 +487,7 @@ export default function Home() {
             {recentRecords.length === 0
               ? "まずは今日だけ。1分の記録から始めましょう。"
               : recentConcernCount > 0
-                ? `気になる記録が${recentConcernCount}日あります。コーチに共有しておくと安心です。`
+                ? `気になる記録が${recentConcernCount}件あります。コーチに共有しておくと安心です。`
                 : recentGoodCount > 0
                   ? `「できた」が${recentGoodCount}日分たまりました。小さな変化が見えています。`
                   : "記録が少しずつつながっています。短いメモでも十分です。"}
@@ -473,9 +503,9 @@ export default function Home() {
         {records.length ? (
           <div className="record-list">
             {records.slice(0, 3).map((record) => (
-              <button key={record.id} onClick={() => { setRecordDate(record.recordedOn); setMood(record.mood); setAppetite(record.appetite); setActivity(record.activity); setToilet(record.toilet); setSleep(record.sleep); setBehaviorNote(record.behaviorNote); setGoodMoment(record.goodMoment); setView("record"); }}>
+              <button key={record.id} onClick={() => { setRecordCategory(record.category ?? "daily"); setRecordDate(record.recordedOn); setMood(record.mood); setAppetite(record.appetite); setActivity(record.activity); setToilet(record.toilet); setSleep(record.sleep); setBehaviorNote(record.behaviorNote); setGoodMoment(record.goodMoment); setView("record"); }}>
                 <span className="record-date">{formatDate(record.recordedOn)}</span>
-                <span className="record-summary">気分 {record.mood}/5 · 食欲 {record.appetite}</span>
+                <span className="record-summary"><b>{categoryInfo(record.category).label}</b> · 気分 {record.mood}/5</span>
                 <span aria-hidden="true">›</span>
               </button>
             ))}
@@ -495,26 +525,49 @@ export default function Home() {
     </>
   );
 
-  const recordView = (
+  const selectedCategory = recordCategory ? categoryInfo(recordCategory) : null;
+
+  const recordView = !selectedCategory ? (
+    <section className="topic-screen">
+      <SectionTitle eyebrow="DAILY NOTE" title="何を残しますか？" />
+      <p className="lead">全部を書かなくて大丈夫。今、気になっていることをひとつ選んでください。</p>
+      <div className="topic-grid">
+        {RECORD_CATEGORIES.map((category) => (
+          <button key={category.id} onClick={() => setRecordCategory(category.id)}>
+            <span className="topic-mark">{category.mark}</span>
+            <span><strong>{category.label}</strong><small>{category.description}</small></span>
+            <span aria-hidden="true">→</span>
+          </button>
+        ))}
+      </div>
+      <p className="topic-hint">同じ日に、違うテーマを何度でも記録できます。</p>
+    </section>
+  ) : (
     <form className="screen-form" onSubmit={saveRecord}>
-      <SectionTitle eyebrow="DAILY NOTE" title="今日の記録" />
+      <button type="button" className="topic-back" onClick={() => setRecordCategory(null)}>← テーマを選び直す</button>
+      <div className="selected-topic">
+        <span className="topic-mark">{selectedCategory.mark}</span>
+        <div><p>今日のテーマ</p><h2>{selectedCategory.label}</h2></div>
+      </div>
       <p className="lead">うまく書こうとしなくて大丈夫。今日の{dogName}を、そのまま残してください。</p>
       <label className="field-label">記録日<input type="date" value={recordDate} onChange={(event) => setRecordDate(event.target.value)} required /></label>
       <fieldset className="mood-field">
-        <legend>今日の気分</legend>
+        <legend>{dogName}の今日の様子</legend>
         <div>
           {[1, 2, 3, 4, 5].map((value) => <button type="button" key={value} onClick={() => setMood(value)} className={mood === value ? "is-selected" : ""} aria-label={`気分 ${value}`} aria-pressed={mood === value}>{["しょんぼり", "いまいち", "ふつう", "ごきげん", "最高"][value - 1]}</button>)}
         </div>
       </fieldset>
-      <div className="status-grid">
-        <StatusSelector label="食欲" value={appetite} onChange={setAppetite} />
-        <StatusSelector label="元気" value={activity} onChange={setActivity} />
-        <StatusSelector label="トイレ" value={toilet} onChange={setToilet} />
-        <StatusSelector label="睡眠" value={sleep} onChange={setSleep} />
+      <div className="status-grid topic-status">
+        {recordCategory === "meal" && <StatusSelector label="食欲" value={appetite} onChange={setAppetite} />}
+        {recordCategory === "walk" && <StatusSelector label="散歩後の元気" value={activity} onChange={setActivity} />}
+        {recordCategory === "toilet" && <StatusSelector label="トイレの様子" value={toilet} onChange={setToilet} />}
+        {recordCategory === "sleep" && <StatusSelector label="眠りの様子" value={sleep} onChange={setSleep} />}
       </div>
-      <label className="field-label">気になった様子<textarea value={behaviorNote} onChange={(event) => setBehaviorNote(event.target.value)} placeholder="吠えた場面、落ち着かなかった時間など" rows={3} /></label>
-      <label className="field-label good-field">今日の「できた」<textarea value={goodMoment} onChange={(event) => setGoodMoment(event.target.value)} placeholder="待てができた、一緒にゆっくり歩けた など" rows={3} /></label>
-      <button className="primary-button" type="submit" disabled={saving}>{saving ? "保存中…" : "この記録を保存する"}<span>→</span></button>
+      {recordCategory !== "win" && (
+        <label className="field-label">{selectedCategory.noteLabel}<textarea value={behaviorNote} onChange={(event) => setBehaviorNote(event.target.value)} placeholder={selectedCategory.placeholder} rows={3} /></label>
+      )}
+      <label className="field-label good-field">{recordCategory === "win" ? "今日できたこと" : "小さな「できた」（任意）"}<textarea value={goodMoment} onChange={(event) => setGoodMoment(event.target.value)} placeholder={recordCategory === "win" ? selectedCategory.placeholder : "少し落ち着けた、昨日より食べられた など"} rows={3} required={recordCategory === "win"} /></label>
+      <button className="primary-button" type="submit" disabled={saving}>{saving ? "保存中…" : `「${selectedCategory.label}」を記録する`}<span>→</span></button>
     </form>
   );
 
@@ -570,7 +623,7 @@ export default function Home() {
         </main>
         <nav className="bottom-nav" aria-label="メインメニュー">
           <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}><Icon>⌂</Icon><span>ホーム</span></button>
-          <button className={view === "record" ? "active" : ""} onClick={() => { setRecordDate(today()); setView("record"); }}><Icon>＋</Icon><span>記録</span></button>
+          <button className={view === "record" ? "active" : ""} onClick={() => { setRecordCategory(null); setRecordDate(today()); setView("record"); }}><Icon>＋</Icon><span>記録</span></button>
           <button className={view === "coach" ? "active" : ""} onClick={() => setView("coach")}><Icon>◌</Icon><span>コーチ</span></button>
           <button className={view === "profile" ? "active" : ""} onClick={() => setView("profile")}><Icon>○</Icon><span>プロフィール</span></button>
         </nav>
