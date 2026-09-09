@@ -1,10 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Josefin_Sans, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 
-const geist = Geist({
+const notoSansJP = Noto_Sans_JP({
   subsets: ["latin"],
-  variable: "--font-geist",
+  weight: ["300", "400", "500", "600"],
+  variable: "--font-noto-jp",
+  display: "swap",
+});
+
+const josefinSans = Josefin_Sans({
+  subsets: ["latin"],
+  weight: ["300", "400", "600"],
+  variable: "--font-josefin",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -21,7 +30,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ja">
-      <body className={geist.variable}>{children}</body>
+      <body className={`${notoSansJP.variable} ${josefinSans.variable}`}>{children}</body>
     </html>
   );
 }
