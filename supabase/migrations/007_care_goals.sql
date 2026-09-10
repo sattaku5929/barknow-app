@@ -6,9 +6,13 @@ create table if not exists public.wt_care_goals (
   goal_type text not null check (goal_type in ('brush','teeth','paws','bath','nails','ears','training','custom')),
   target_count smallint not null check (target_count between 1 and 31),
   period text not null check (period in ('day','week','month')),
+  reminder_time time,
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+alter table public.wt_care_goals
+  add column if not exists reminder_time time;
 
 create table if not exists public.wt_care_goal_completions (
   id uuid primary key default gen_random_uuid(),
