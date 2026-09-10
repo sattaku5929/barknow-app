@@ -3,11 +3,13 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
 
-type View = "home" | "record" | "report" | "coach" | "profile";
+type View = "home" | "goals" | "record" | "report" | "coach" | "profile";
 type Connection = "checking" | "online" | "local";
 type Status = "良い" | "ふつう" | "気になる";
 type RecordCategory = "daily" | "meal" | "barking" | "toilet" | "walk" | "sleep" | "win";
 type BehaviorType = "barking" | "nipping" | "toilet_accident" | "jumping" | "pulling" | "other";
+type GoalPeriod = "day" | "week" | "month";
+type CareGoalType = "brush" | "teeth" | "paws" | "bath" | "nails" | "ears" | "training" | "custom";
 
 type DogProfile = {
   id?: string;
@@ -42,10 +44,28 @@ type CoachMessage = {
   createdAt: string;
 };
 
+type CareGoal = {
+  id: string;
+  title: string;
+  goalType: CareGoalType;
+  targetCount: number;
+  period: GoalPeriod;
+  createdAt: string;
+};
+
+type GoalCompletion = {
+  id: string;
+  goalId: string;
+  completedOn: string;
+  completedAt: string;
+};
+
 const PROFILE_KEY = "wan-tone-profile-v1";
 const RECORDS_KEY = "wan-tone-records-v1";
 const MESSAGES_KEY = "wan-tone-messages-v1";
 const CUSTOM_BEHAVIORS_KEY = "wan-tone-custom-behaviors-v1";
+const CARE_GOALS_KEY = "wan-tone-care-goals-v1";
+const GOAL_COMPLETIONS_KEY = "wan-tone-goal-completions-v1";
 
 const initialProfile: DogProfile = { name: "", breed: "", birthday: "" };
 
@@ -63,9 +83,18 @@ const RECORD_CATEGORIES = [
   { id: "barking", label: "困りごと", icon: "barking", description: "吠え・甘噛みなど", noteLabel: "起きた場面と、その前後", placeholder: "直前にしていたこと、相手、場所、続いた時間など" },
   { id: "toilet", label: "トイレ", icon: "toilet", description: "回数・状態", noteLabel: "トイレで気づいたこと", placeholder: "回数、場所、便の状態、失敗した場面など" },
   { id: "walk", label: "お散歩", icon: "walk", description: "歩き方・反応", noteLabel: "散歩中の様子", placeholder: "引っ張り、立ち止まり、犬や人への反応など" },
-  { id: "sleep", label: "睡眠", icon: "sleep", description: "眠り・休息", noteLabel: "睡眠で気づいたこと", placeholder: "寝つき、夜中の様子、昼寝の長さなど" },
   { id: "win", label: "できた", icon: "win", description: "小さな成長", noteLabel: "今日できたこと", placeholder: "待てができた、落ち着いて挨拶できたなど" },
 ] as const satisfies readonly CategoryInfo[];
+
+const CARE_GOAL_TEMPLATES: Omit<CareGoal, "id" | "createdAt">[] = [
+  { title: "ブラッシング", goalType: "brush", targetCount: 1, period: "day" },
+  { title: "歯磨き", goalType: "teeth", targetCount: 2, period: "week" },
+  { title: "肉球チェック・ケア", goalType: "paws", targetCount: 1, period: "week" },
+  { title: "シャンプー", goalType: "bath", targetCount: 1, period: "month" },
+  { title: "爪の長さをチェック", goalType: "nails", targetCount: 1, period: "month" },
+  { title: "耳の状態をチェック", goalType: "ears", targetCount: 1, period: "week" },
+  { title: "5分トレーニング", goalType: "training", targetCount: 3, period: "week" },
+];
 
 const BEHAVIOR_TYPES = [
   { id: "barking", label: "吠え", description: "来客・物音・要求など" },
@@ -84,7 +113,26 @@ function categoryInfo(category: RecordCategory | undefined): CategoryInfo {
   if (!category || category === "daily") {
     return { id: "daily", label: "まとめ", icon: "daily", description: "一日の記録", noteLabel: "気づいたこと", placeholder: "今日の様子" };
   }
+  if (category === "sleep") {
+    return { id: "sleep", label: "睡眠（過去の記録）", icon: "sleep", description: "眠り・休息", noteLabel: "睡眠で気づいたこと", placeholder: "過去の睡眠記録" };
+  }
   return RECORD_CATEGORIES.find((item) => item.id === category) ?? RECORD_CATEGORIES[0];
+}
+
+function goalFrequency(goal: Pick<CareGoal, "targetCount" | "period">) {
+  const unit = goal.period === "day" ? "毎日" : goal.period === "week" ? "週" : "月";
+  return goal.period === "day" && goal.targetCount === 1 ? unit : `${unit}${goal.targetCount}回`;
+}
+
+function goalPeriodStart(period: GoalPeriod) {
+  const value = new Date(`${today()}T00:00:00+09:00`);
+  if (period === "week") {
+    const day = value.getDay();
+    value.setDate(value.getDate() - (day === 0 ? 6 : day - 1));
+  } else if (period === "month") {
+    value.setDate(1);
+  }
+  return value.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
 }
 
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
@@ -150,15 +198,30 @@ function Icon({ children }: { children: ReactNode }) {
   return <span className="nav-icon" aria-hidden="true">{children}</span>;
 }
 
-function NavGlyph({ name }: { name: "home" | "report" | "record" | "coach" | "profile" }) {
+function NavGlyph({ name }: { name: "home" | "goals" | "report" | "record" | "coach" | "profile" }) {
   const paths: Record<typeof name, ReactNode> = {
     home: <><path d="m4 11 8-7 8 7" /><path d="M6.5 10v9h11v-9M10 19v-5h4v5" /></>,
+    goals: <><rect x="4" y="4" width="16" height="16" rx="3" /><path d="m8 10 2 2 4-4M8 16h8" /></>,
     report: <><path d="M5 19V9M12 19V5M19 19v-7" /><path d="M3 19h18" /></>,
     record: <><path d="M12 5v14M5 12h14" /></>,
     coach: <><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-4.5 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" /><path d="M8 10h8M8 13h5" /></>,
     profile: <><circle cx="12" cy="8" r="3.2" /><path d="M5.5 20c.7-4 2.8-6 6.5-6s5.8 2 6.5 6" /></>,
   };
   return <svg viewBox="0 0 24 24">{paths[name]}</svg>;
+}
+
+function CareIcon({ name }: { name: CareGoalType }) {
+  const paths: Record<CareGoalType, ReactNode> = {
+    brush: <><path d="M5 4h10v5H5zM7 9v11M10 9v11M13 9v11" /><path d="M15 5h4v3h-4" /></>,
+    teeth: <path d="M8 3c-3 0-4 2.5-3 5 1 2.5 1 4.5 1.5 8 .4 2.7 2.7 5 3.5 1l.5-3c.2-1 2.8-1 3 0l.5 3c.8 4 3.1 1.7 3.5-1 .5-3.5.5-5.5 1.5-8 1-2.5 0-5-3-5-1.5 0-2.5 1-4 1s-2.5-1-4-1Z" />,
+    paws: <><ellipse cx="12" cy="15.5" rx="4.7" ry="4" /><ellipse cx="6.8" cy="10" rx="2" ry="2.6" transform="rotate(-25 6.8 10)" /><ellipse cx="11" cy="7.5" rx="2" ry="2.6" /><ellipse cx="16" cy="9" rx="2" ry="2.6" transform="rotate(25 16 9)" /></>,
+    bath: <><path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6v-3Z" /><path d="M7 11V7a3 3 0 0 1 6 0M3 11h18M7 20v1M17 20v1" /></>,
+    nails: <><path d="M8 4c2 2 3 4 2 7l-2 7M16 4c-2 2-3 4-2 7l2 7" /><path d="M6 18h4M14 18h4" /></>,
+    ears: <><path d="M12 5c-5-4-8 0-6 5 1 3 3 5 6 7 3-2 5-4 6-7 2-5-1-9-6-5Z" /><path d="M9 8c2 1 4 1 6 0" /></>,
+    training: <><circle cx="12" cy="12" r="8" /><path d="m8.5 12 2.2 2.2 4.8-5" /></>,
+    custom: <><circle cx="12" cy="12" r="8" /><path d="M12 8v8M8 12h8" /></>,
+  };
+  return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
 }
 
 function TopicIcon({ name }: { name: RecordCategory }) {
@@ -248,10 +311,20 @@ export default function Home() {
   const [calendarMode, setCalendarMode] = useState<"week" | "month">("week");
   const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(today());
+  const [careGoals, setCareGoals] = useState<CareGoal[]>([]);
+  const [goalCompletions, setGoalCompletions] = useState<GoalCompletion[]>([]);
+  const [customGoalTitle, setCustomGoalTitle] = useState("");
+  const [customGoalCount, setCustomGoalCount] = useState(1);
+  const [customGoalPeriod, setCustomGoalPeriod] = useState<GoalPeriod>("week");
 
   const streak = useMemo(() => calculateStreak(records), [records]);
   const todaysRecord = records.find((record) => record.recordedOn === today());
   const dogName = profile.name || "愛犬";
+  const goalProgress = (goal: CareGoal) => goalCompletions.filter(
+    (completion) => completion.goalId === goal.id && completion.completedOn >= goalPeriodStart(goal.period),
+  ).length;
+  const completedGoalCount = careGoals.filter((goal) => goalProgress(goal) >= goal.targetCount).length;
+  const nextCareGoals = careGoals.filter((goal) => goalProgress(goal) < goal.targetCount);
   const recentDays = useMemo(() => {
     const base = new Date(`${today()}T00:00:00+09:00`);
     return Array.from({ length: 7 }, (_, index) => {
@@ -413,6 +486,8 @@ export default function Home() {
       behaviorIntensity: record.behaviorIntensity ?? null,
     }));
     const localMessages = readLocal<CoachMessage[]>(MESSAGES_KEY, []);
+    const localCareGoals = readLocal<CareGoal[]>(CARE_GOALS_KEY, []);
+    const localGoalCompletions = readLocal<GoalCompletion[]>(GOAL_COMPLETIONS_KEY, []);
     const savedCustomBehaviors = readLocal<string[]>(CUSTOM_BEHAVIORS_KEY, []);
     const localCustomBehaviors = localRecords
       .flatMap((record) => record.behaviorCustomTexts ?? [])
@@ -422,6 +497,8 @@ export default function Home() {
     setProfile(localProfile);
     setRecords(localRecords);
     setMessages(localMessages);
+    setCareGoals(localCareGoals);
+    setGoalCompletions(localGoalCompletions);
     setCustomBehaviorOptions(initialCustomBehaviors);
     writeLocal(CUSTOM_BEHAVIORS_KEY, initialCustomBehaviors);
 
@@ -506,6 +583,42 @@ export default function Home() {
           }));
           setMessages(remoteMessages);
           writeLocal(MESSAGES_KEY, remoteMessages);
+        }
+        const [goalResult, completionResult] = await Promise.all([
+          supabase
+            .from("wt_care_goals")
+            .select("id,title,goal_type,target_count,period,created_at")
+            .eq("owner_id", userId)
+            .eq("active", true)
+            .order("created_at", { ascending: true }),
+          supabase
+            .from("wt_care_goal_completions")
+            .select("id,goal_id,completed_on,completed_at")
+            .eq("owner_id", userId)
+            .gte("completed_on", new Date(Date.now() - 1000 * 60 * 60 * 24 * 62).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }))
+            .order("completed_at", { ascending: false }),
+        ]);
+        if (!goalResult.error && goalResult.data) {
+          const remoteGoals: CareGoal[] = goalResult.data.map((item) => ({
+            id: item.id,
+            title: item.title,
+            goalType: item.goal_type as CareGoalType,
+            targetCount: item.target_count,
+            period: item.period as GoalPeriod,
+            createdAt: item.created_at,
+          }));
+          setCareGoals(remoteGoals);
+          writeLocal(CARE_GOALS_KEY, remoteGoals);
+        }
+        if (!completionResult.error && completionResult.data) {
+          const remoteCompletions: GoalCompletion[] = completionResult.data.map((item) => ({
+            id: item.id,
+            goalId: item.goal_id,
+            completedOn: item.completed_on,
+            completedAt: item.completed_at,
+          }));
+          setGoalCompletions(remoteCompletions);
+          writeLocal(GOAL_COMPLETIONS_KEY, remoteCompletions);
         }
         setConnection("online");
       } catch {
@@ -774,13 +887,97 @@ export default function Home() {
     }
   }
 
+  async function addCareGoal(template: Omit<CareGoal, "id" | "createdAt">) {
+    if (careGoals.some((goal) => goal.title === template.title)) {
+      showNotice("この習慣はすでに追加されています");
+      return;
+    }
+    const nextGoal: CareGoal = { ...template, id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+    const nextGoals = [...careGoals, nextGoal];
+    setCareGoals(nextGoals);
+    writeLocal(CARE_GOALS_KEY, nextGoals);
+    showNotice(`「${nextGoal.title}」を習慣に追加しました`);
+    if (connection !== "online") return;
+    try {
+      const userId = await getUserId();
+      if (!userId) return;
+      const dogId = await ensureRemoteDog(userId);
+      const { error } = await supabase.from("wt_care_goals").insert({
+        id: nextGoal.id,
+        owner_id: userId,
+        dog_id: dogId,
+        title: nextGoal.title,
+        goal_type: nextGoal.goalType,
+        target_count: nextGoal.targetCount,
+        period: nextGoal.period,
+      });
+      if (error) throw error;
+    } catch {
+      showNotice("端末に保存しました。DB設定後にオンライン同期できます");
+    }
+  }
+
+  async function completeCareGoal(goal: CareGoal) {
+    if (goalProgress(goal) >= goal.targetCount) {
+      showNotice("今の期間の目標は達成済みです");
+      return;
+    }
+    const completion: GoalCompletion = {
+      id: crypto.randomUUID(),
+      goalId: goal.id,
+      completedOn: today(),
+      completedAt: new Date().toISOString(),
+    };
+    const nextCompletions = [completion, ...goalCompletions];
+    setGoalCompletions(nextCompletions);
+    writeLocal(GOAL_COMPLETIONS_KEY, nextCompletions);
+    const willComplete = goalProgress(goal) + 1 >= goal.targetCount;
+    showNotice(willComplete ? `「${goal.title}」目標達成！` : `「${goal.title}」を1回できました`);
+    if (connection !== "online") return;
+    try {
+      const userId = await getUserId();
+      if (!userId) return;
+      const dogId = await ensureRemoteDog(userId);
+      const { error } = await supabase.from("wt_care_goal_completions").insert({
+        id: completion.id,
+        goal_id: goal.id,
+        owner_id: userId,
+        dog_id: dogId,
+        completed_on: completion.completedOn,
+        completed_at: completion.completedAt,
+      });
+      if (error) throw error;
+    } catch {
+      showNotice("実行記録はこの端末に保存しました");
+    }
+  }
+
+  async function removeCareGoal(goal: CareGoal) {
+    const nextGoals = careGoals.filter((item) => item.id !== goal.id);
+    setCareGoals(nextGoals);
+    writeLocal(CARE_GOALS_KEY, nextGoals);
+    if (connection === "online") {
+      await supabase.from("wt_care_goals").update({ active: false }).eq("id", goal.id);
+    }
+    showNotice(`「${goal.title}」を習慣から外しました`);
+  }
+
+  function addCustomCareGoal(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const title = customGoalTitle.trim();
+    if (!title) return;
+    void addCareGoal({ title, goalType: "custom", targetCount: Math.max(1, Math.min(31, customGoalCount)), period: customGoalPeriod });
+    setCustomGoalTitle("");
+    setCustomGoalCount(1);
+  }
+
   const homeView = (
     <>
       <section className="welcome">
         <div>
           <p className="eyebrow">TODAY WITH {dogName.toUpperCase()}</p><p className="today-date">{todayLabel}</p>
           <h1>{profile.name ? `${profile.name}ちゃん、今日も一緒に。` : "今日から、少しずつ。"}</h1>
-          <p className="welcome-copy">今日の様子を、迷わず、すぐに。</p>
+          <p className="welcome-copy">やろうと思っていたケアを、今日ひとつ。</p>
         </div>
         <button className="avatar" onClick={() => setView("profile")} aria-label="愛犬プロフィールを開く">
           {profile.name ? profile.name.slice(0, 1) : "＋"}
@@ -794,6 +991,35 @@ export default function Home() {
           <span aria-hidden="true">→</span>
         </button>
       )}
+
+      <section className="care-today care-goals-card" aria-labelledby="care-today-title">
+        <div className="care-today-head">
+          <div><p className="card-label">TODAY'S CARE</p><h2 id="care-today-title">今日やること</h2></div>
+          {careGoals.length > 0 && <span><b>{completedGoalCount}</b> / {careGoals.length} 達成</span>}
+        </div>
+        {careGoals.length === 0 ? (
+          <button className="care-empty" onClick={() => setView("goals")}>
+            <span className="care-empty-icon"><CareIcon name="paws" /></span>
+            <span><strong>うちの子の習慣を決める</strong><small>歯磨き、ブラッシングなどから無理なく始められます。</small></span>
+            <b aria-hidden="true">→</b>
+          </button>
+        ) : (
+          <div className="care-today-list">
+            {careGoals.slice(0, 4).map((goal) => {
+              const progress = goalProgress(goal);
+              const done = progress >= goal.targetCount;
+              return (
+                <div className={`care-today-item ${done ? "is-done" : ""}`} key={goal.id}>
+                  <span className={`care-icon care-${goal.goalType}`}><CareIcon name={goal.goalType} /></span>
+                  <span><strong>{goal.title}</strong><small>{goalFrequency(goal)} · {Math.min(progress, goal.targetCount)}/{goal.targetCount}</small></span>
+                  <button onClick={() => void completeCareGoal(goal)} disabled={done} aria-label={`${goal.title}をできたにする`}>{done ? "✓" : "できた"}</button>
+                </div>
+              );
+            })}
+            <button className="care-manage" onClick={() => setView("goals")}>{nextCareGoals.length ? `あと${nextCareGoals.length}個の習慣を見る` : "達成状況を見る"} →</button>
+          </div>
+        )}
+      </section>
 
       <section className="today-rhythm" aria-labelledby="today-rhythm-title">
         <div className="today-rhythm-heading">
@@ -1059,6 +1285,73 @@ export default function Home() {
     </form>
   );
 
+  const goalsView = (
+    <section className="goals-screen care-goals-card">
+      <SectionTitle eyebrow="CARE ROUTINE" title="うちの子の習慣" />
+      <p className="lead">やった方がいいを、できたに変える。犬ごとの暮らしに合わせて、無理のない目標を決めましょう。</p>
+
+      <section className="goal-overview">
+        <div><strong>{careGoals.length}</strong><span>取り組み中</span></div>
+        <div><strong>{completedGoalCount}</strong><span>今の期間に達成</span></div>
+        <p>{careGoals.length === 0 ? "まずは1つだけ選ぶのがおすすめです。" : completedGoalCount === careGoals.length ? "今の目標をすべて達成しました。よく続けられています！" : "全部できなくても大丈夫。できた日を積み重ねましょう。"}</p>
+      </section>
+
+      {careGoals.length > 0 && (
+        <section className="active-goals">
+          <div className="goal-section-head"><div><p className="card-label">MY ROUTINE</p><h2>決めた習慣</h2></div></div>
+          <div className="active-goal-list">
+            {careGoals.map((goal) => {
+              const progress = goalProgress(goal);
+              const done = progress >= goal.targetCount;
+              const percent = Math.min(100, (progress / goal.targetCount) * 100);
+              return (
+                <article className={`active-goal ${done ? "is-done" : ""}`} key={goal.id}>
+                  <div className="active-goal-main">
+                    <span className={`care-icon care-${goal.goalType}`}><CareIcon name={goal.goalType} /></span>
+                    <div><h3>{goal.title}</h3><p>{goalFrequency(goal)}の目標</p></div>
+                    <strong>{Math.min(progress, goal.targetCount)}<small>/{goal.targetCount}</small></strong>
+                  </div>
+                  <div className="goal-progress"><i style={{ width: `${percent}%` }}></i></div>
+                  <div className="goal-actions">
+                    <button className="goal-remove" onClick={() => void removeCareGoal(goal)}>習慣から外す</button>
+                    <button className="goal-done" onClick={() => void completeCareGoal(goal)} disabled={done}>{done ? "目標達成 ✓" : "できたを追加"}</button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <section className="goal-suggestions">
+        <div className="goal-section-head"><div><p className="card-label">SUGGESTIONS</p><h2>おすすめから選ぶ</h2></div><span>まずは1〜3個</span></div>
+        <div className="goal-template-grid">
+          {CARE_GOAL_TEMPLATES.map((template) => {
+            const added = careGoals.some((goal) => goal.title === template.title);
+            return (
+              <button key={template.title} className={added ? "is-added" : ""} onClick={() => void addCareGoal(template)} disabled={added}>
+                <span className={`care-icon care-${template.goalType}`}><CareIcon name={template.goalType} /></span>
+                <span><strong>{template.title}</strong><small>{goalFrequency(template)}</small></span>
+                <b>{added ? "✓" : "＋"}</b>
+              </button>
+            );
+          })}
+        </div>
+        <p className="goal-guidance">ケアの頻度は、犬種・被毛・皮膚・年齢・生活環境で変わります。ここで示す頻度は開始例です。必要に応じて獣医師やトリマーと相談してください。</p>
+      </section>
+
+      <form className="custom-goal-form" onSubmit={addCustomCareGoal}>
+        <div className="goal-section-head"><div><p className="card-label">CREATE YOUR OWN</p><h2>自分で目標を作る</h2></div></div>
+        <label className="field-label">やること<input value={customGoalTitle} onChange={(event) => setCustomGoalTitle(event.target.value)} placeholder="例：散歩後に足を拭く" maxLength={40} required /></label>
+        <div className="goal-frequency-input">
+          <label>頻度<select value={customGoalPeriod} onChange={(event) => setCustomGoalPeriod(event.target.value as GoalPeriod)}><option value="day">毎日</option><option value="week">毎週</option><option value="month">毎月</option></select></label>
+          <label>目標回数<input type="number" min="1" max="31" value={customGoalCount} onChange={(event) => setCustomGoalCount(Number(event.target.value))} /><span>回</span></label>
+        </div>
+        <button className="primary-button" type="submit">この目標を追加する<span>→</span></button>
+      </form>
+    </section>
+  );
+
   const reportView = (
     <section className="report-screen">
       <SectionTitle eyebrow="PROGRESS REPORT" title="変化レポート" />
@@ -1161,6 +1454,7 @@ export default function Home() {
         </header>
         <main className="app-main">
           {view === "home" && homeView}
+          {view === "goals" && goalsView}
           {view === "record" && recordView}
           {view === "report" && reportView}
           {view === "coach" && coachView}
@@ -1168,7 +1462,7 @@ export default function Home() {
         </main>
         <nav className="bottom-nav" aria-label="メインメニュー">
           <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}><Icon><NavGlyph name="home" /></Icon><span>ホーム</span></button>
-          <button className={view === "report" ? "active" : ""} onClick={() => setView("report")}><Icon><NavGlyph name="report" /></Icon><span>レポート</span></button>
+          <button className={view === "goals" ? "active" : ""} onClick={() => setView("goals")}><Icon><NavGlyph name="goals" /></Icon><span>習慣</span></button>
           <button className={view === "record" ? "active" : ""} onClick={() => openNewRecord()}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>
           <button className={view === "coach" ? "active" : ""} onClick={() => setView("coach")}><Icon><NavGlyph name="coach" /></Icon><span>コーチ</span></button>
           <button className={view === "profile" ? "active" : ""} onClick={() => setView("profile")}><Icon><NavGlyph name="profile" /></Icon><span>設定</span></button>
