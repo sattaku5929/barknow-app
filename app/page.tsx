@@ -19,6 +19,8 @@ type DailyRecord = {
   id: string;
   category: RecordCategory;
   recordedOn: string;
+  recordedTime: string;
+  durationMinutes: number | null;
   mood: number;
   appetite: Status;
   activity: Status;
@@ -67,6 +69,13 @@ function categoryInfo(category: RecordCategory | undefined): CategoryInfo {
 }
 
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+const currentTime = () =>
+  new Date().toLocaleTimeString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Tokyo",
+  });
 
 function readLocal<T>(key: string, fallback: T): T {
   try {
@@ -109,7 +118,7 @@ function TopicIcon({ name }: { name: RecordCategory }) {
     meal: <><path d="M4 11h16c-.6 5.2-3.2 8-8 8s-7.4-2.8-8-8Z" /><path d="M7 8c1.2-1.3 2.9-2 5-2s3.8.7 5 2M9 4c.8-.7 1.8-1 3-1s2.2.3 3 1" /></>,
     barking: <><path d="m5 9-2-3v7c0 4 3 7 7 7s7-3 7-7V6l-2 3" /><circle cx="8" cy="12" r=".7" fill="currentColor" stroke="none" /><circle cx="13" cy="12" r=".7" fill="currentColor" stroke="none" /><path d="M8 16c1.3 1 2.7 1 4 0M20 9c1 1 1 3 0 4" /></>,
     toilet: <><path d="M12 3c-2.8 4-5 6.8-5 10a5 5 0 0 0 10 0c0-3.2-2.2-6-5-10Z" /><path d="M10 15c.7.7 1.3 1 2 1s1.3-.3 2-1" /></>,
-    walk: <><circle cx="5" cy="19" r="2" /><circle cx="19" cy="5" r="2" /><path d="M7 18c4-1 2.5-5.5 6-6.5S15 7 17 6" /></>,
+    walk: <><ellipse cx="12" cy="15.5" rx="4.7" ry="4" /><ellipse cx="6.8" cy="10" rx="2" ry="2.6" transform="rotate(-25 6.8 10)" /><ellipse cx="11" cy="7.5" rx="2" ry="2.6" /><ellipse cx="16" cy="9" rx="2" ry="2.6" transform="rotate(25 16 9)" /></>,
     sleep: <path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z" />,
     win: <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" />,
   };
@@ -169,7 +178,10 @@ export default function Home() {
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
   const [recordDate, setRecordDate] = useState(today());
+  const [recordTime, setRecordTime] = useState(currentTime());
   const [recordCategory, setRecordCategory] = useState<RecordCategory | null>(null);
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [durationMinutes, setDurationMinutes] = useState(20);
   const [mood, setMood] = useState(3);
   const [appetite, setAppetite] = useState<Status>("ふつう");
   const [activity, setActivity] = useState<Status>("ふつう");
@@ -200,12 +212,40 @@ export default function Home() {
     [record.appetite, record.activity, record.toilet, record.sleep].includes("気になる"),
   ).length;
   const recentGoodCount = recentRecords.filter((record) => record.goodMoment.trim()).length;
+  const todaysEntries = records.filter((record) => record.recordedOn === today());
+  const walkEntries = recentRecords.filter((record) => record.category === "walk");
+  const walkMinutes = walkEntries.reduce((total, record) => total + (record.durationMinutes ?? 0), 0);
+  const walkByPeriod = {
+    morning: walkEntries.filter((record) => Number(record.recordedTime.slice(0, 2)) < 11).length,
+    daytime: walkEntries.filter((record) => {
+      const hour = Number(record.recordedTime.slice(0, 2));
+      return hour >= 11 && hour < 17;
+    }).length,
+    evening: walkEntries.filter((record) => Number(record.recordedTime.slice(0, 2)) >= 17).length,
+  };
+  const appetiteConcernWithoutWalk = recentDays.filter((day) => {
+    const hasWalk = day.entries.some((record) => record.category === "walk");
+    const hasAppetiteConcern = day.entries.some(
+      (record) => record.category === "meal" && record.appetite === "気になる",
+    );
+    return !hasWalk && hasAppetiteConcern;
+  }).length;
+  const diaryInsight =
+    recentDays.filter((day) => day.entries.length).length < 3
+      ? "あと少し記録がたまると、散歩や食事のリズムを見比べられます。"
+      : appetiteConcernWithoutWalk > 0
+        ? `散歩の記録がない日に、食欲の「気になる」が${appetiteConcernWithoutWalk}日ありました。関係があるか、もう少し見てみましょう。`
+        : walkEntries.length > 0
+          ? `この7日でお散歩は${walkEntries.length}回${walkMinutes ? `・合計${walkMinutes}分` : ""}。積み重ねが見えています。`
+          : "今週のお散歩はまだ未記録です。短いお散歩も、残すと暮らしのリズムが見えてきます。";
 
   useEffect(() => {
     const localProfile = readLocal(PROFILE_KEY, initialProfile);
     const localRecords = readLocal<DailyRecord[]>(RECORDS_KEY, []).map((record) => ({
       ...record,
       category: record.category ?? "daily",
+      recordedTime: record.recordedTime ?? "12:00",
+      durationMinutes: record.durationMinutes ?? null,
     }));
     const localMessages = readLocal<CoachMessage[]>(MESSAGES_KEY, []);
     setProfile(localProfile);
@@ -227,10 +267,11 @@ export default function Home() {
           supabase.from("wt_dogs").select("id,name,breed,birthday").eq("owner_id", userId).maybeSingle(),
           supabase
             .from("wt_daily_records")
-            .select("id,category,recorded_on,mood,appetite,activity,toilet,sleep,behavior_note,good_moment")
+            .select("id,category,recorded_on,recorded_time,duration_minutes,mood,appetite,activity,toilet,sleep,behavior_note,good_moment")
             .eq("owner_id", userId)
             .order("recorded_on", { ascending: false })
-            .limit(30),
+            .order("recorded_time", { ascending: false })
+            .limit(100),
           supabase
             .from("wt_coach_messages")
             .select("id,sender,body,created_at")
@@ -255,6 +296,8 @@ export default function Home() {
             id: item.id,
             category: (item.category as RecordCategory) ?? "daily",
             recordedOn: item.recorded_on,
+            recordedTime: item.recorded_time?.slice(0, 5) ?? "12:00",
+            durationMinutes: item.duration_minutes ?? null,
             mood: item.mood,
             appetite: item.appetite as Status,
             activity: item.activity as Status,
@@ -288,6 +331,22 @@ export default function Home() {
   function showNotice(message: string) {
     setNotice(message);
     window.setTimeout(() => setNotice(""), 3200);
+  }
+
+  function openNewRecord(category: RecordCategory | null = null) {
+    setEditingRecordId(null);
+    setRecordCategory(category);
+    setRecordDate(today());
+    setRecordTime(currentTime());
+    setDurationMinutes(20);
+    setMood(3);
+    setAppetite("ふつう");
+    setActivity("ふつう");
+    setToilet("ふつう");
+    setSleep("ふつう");
+    setBehaviorNote("");
+    setGoodMoment("");
+    setView("record");
   }
 
   async function getUserId() {
@@ -355,9 +414,11 @@ export default function Home() {
     event.preventDefault();
     setSaving(true);
     const nextRecord: DailyRecord = {
-      id: crypto.randomUUID(),
+      id: editingRecordId ?? crypto.randomUUID(),
       category: recordCategory ?? "daily",
       recordedOn: recordDate,
+      recordedTime: recordTime,
+      durationMinutes: recordCategory === "walk" ? durationMinutes : null,
       mood,
       appetite,
       activity,
@@ -366,10 +427,9 @@ export default function Home() {
       behaviorNote,
       goodMoment,
     };
-    let nextRecords = [
-      nextRecord,
-      ...records.filter((item) => !(item.recordedOn === recordDate && item.category === nextRecord.category)),
-    ];
+    let nextRecords = [nextRecord, ...records.filter((item) => item.id !== nextRecord.id)].sort((a, b) =>
+      `${b.recordedOn}T${b.recordedTime}`.localeCompare(`${a.recordedOn}T${a.recordedTime}`),
+    );
 
     try {
       if (connection === "online") {
@@ -380,10 +440,13 @@ export default function Home() {
           .from("wt_daily_records")
           .upsert(
             {
+              id: nextRecord.id,
               owner_id: userId,
               dog_id: dogId,
               category: recordCategory ?? "daily",
               recorded_on: recordDate,
+              recorded_time: recordTime,
+              duration_minutes: recordCategory === "walk" ? durationMinutes : null,
               mood,
               appetite,
               activity,
@@ -392,7 +455,7 @@ export default function Home() {
               behavior_note: behaviorNote || null,
               good_moment: goodMoment || null,
             },
-            { onConflict: "dog_id,recorded_on,category" },
+            { onConflict: "id" },
           )
           .select("id")
           .single();
@@ -410,6 +473,7 @@ export default function Home() {
       writeLocal(RECORDS_KEY, nextRecords);
       setSaving(false);
       setRecordCategory(null);
+      setEditingRecordId(null);
       setView("home");
     }
   }
@@ -483,9 +547,28 @@ export default function Home() {
           <div className={`record-mark ${todaysRecord ? "is-done" : ""}`}>{todaysRecord ? "✓" : <span className="paw-mark" aria-hidden="true"><i></i><i></i><i></i><b></b></span>}</div>
         </div>
         <p>{todaysRecord ? "あとから何度でも書き直せます。" : "気になったことも、できたことも。1分で残せます。"}</p>
-        <button className="primary-button" onClick={() => setView("record")}>
+        <button className="primary-button" onClick={() => openNewRecord()}>
           {todaysRecord ? "今日の記録を見直す" : "今日の記録をつける"}<span>→</span>
         </button>
+      </section>
+
+      <section className="today-rhythm" aria-labelledby="today-rhythm-title">
+        <div className="today-rhythm-heading">
+          <div><p className="card-label">TODAY'S RHYTHM</p><h2 id="today-rhythm-title">今日のリズム</h2></div>
+          <span>{todaysEntries.length}件</span>
+        </div>
+        <div className="today-topic-grid">
+          {RECORD_CATEGORIES.map((category) => {
+            const count = todaysEntries.filter((record) => record.category === category.id).length;
+            return (
+              <button key={category.id} onClick={() => openNewRecord(category.id)} aria-label={`${category.label}を追加。今日${count}件`}>
+                <span className="topic-mark"><TopicIcon name={category.icon} /></span>
+                {count > 0 && <b>{count}</b>}
+                <small>{category.label}</small>
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       <section className="streak-strip" aria-label="継続状況">
@@ -519,20 +602,36 @@ export default function Home() {
                   ? `「できた」が${recentGoodCount}日分たまりました。小さな変化が見えています。`
                   : "記録が少しずつつながっています。短いメモでも十分です。"}
           </p>
-          <button onClick={() => setView(recentConcernCount > 0 ? "coach" : "record")}>
+          <button onClick={() => recentConcernCount > 0 ? setView("coach") : openNewRecord()}>
             {recentConcernCount > 0 ? "コーチに相談する" : todaysRecord ? "記録を見直す" : "今日を記録する"} →
           </button>
         </div>
       </section>
 
+      <section className="observation-card" aria-labelledby="observation-title">
+        <div className="observation-mark">↗</div>
+        <div>
+          <p className="card-label">A SMALL DISCOVERY</p>
+          <h2 id="observation-title">気づきの種</h2>
+          <p>{diaryInsight}</p>
+          {walkEntries.length > 0 && (
+            <div className="walk-periods" aria-label="散歩した時間帯">
+              <span><b>{walkByPeriod.morning}</b>朝</span>
+              <span><b>{walkByPeriod.daytime}</b>昼</span>
+              <span><b>{walkByPeriod.evening}</b>夕・夜</span>
+            </div>
+          )}
+        </div>
+      </section>
+
       <section className="content-section">
-        <SectionTitle eyebrow="RECENT" title="最近の記録" />
+        <SectionTitle eyebrow="TIMELINE" title="愛犬の一日" />
         {records.length ? (
           <div className="record-list">
-            {records.slice(0, 3).map((record) => (
-              <button key={record.id} onClick={() => { setRecordCategory(record.category ?? "daily"); setRecordDate(record.recordedOn); setMood(record.mood); setAppetite(record.appetite); setActivity(record.activity); setToilet(record.toilet); setSleep(record.sleep); setBehaviorNote(record.behaviorNote); setGoodMoment(record.goodMoment); setView("record"); }}>
-                <span className="record-date">{formatDate(record.recordedOn)}</span>
-                <span className="record-summary"><b>{categoryInfo(record.category).label}</b> · 気分 {record.mood}/5</span>
+            {records.slice(0, 5).map((record) => (
+              <button key={record.id} onClick={() => { setEditingRecordId(record.id); setRecordCategory(record.category ?? "daily"); setRecordDate(record.recordedOn); setRecordTime(record.recordedTime ?? "12:00"); setDurationMinutes(record.durationMinutes ?? 20); setMood(record.mood); setAppetite(record.appetite); setActivity(record.activity); setToilet(record.toilet); setSleep(record.sleep); setBehaviorNote(record.behaviorNote); setGoodMoment(record.goodMoment); setView("record"); }}>
+                <span className="record-date"><strong>{record.recordedTime ?? "12:00"}</strong><small>{formatDate(record.recordedOn)}</small></span>
+                <span className="record-summary"><b>{categoryInfo(record.category).label}</b>{record.category === "walk" && record.durationMinutes ? ` · ${record.durationMinutes}分` : ""} · 気分 {record.mood}/5</span>
                 <span aria-hidden="true">›</span>
               </button>
             ))}
@@ -560,7 +659,7 @@ export default function Home() {
       <p className="lead">今日の「気になる」も「かわいい」も。残したいことをひとつ選んでください。</p>
       <div className="topic-grid">
         {RECORD_CATEGORIES.map((category) => (
-          <button key={category.id} onClick={() => setRecordCategory(category.id)}>
+          <button key={category.id} onClick={() => { setRecordTime(currentTime()); setRecordCategory(category.id); }}>
             <span className="topic-mark"><TopicIcon name={category.icon} /></span>
             <span><strong>{category.label}</strong><small>{category.description}</small></span>
             <span aria-hidden="true">→</span>
@@ -577,7 +676,16 @@ export default function Home() {
         <div><p>今日のテーマ</p><h2>{selectedCategory.label}</h2></div>
       </div>
       <p className="lead">うまく書こうとしなくて大丈夫。今日の{dogName}を、そのまま残してください。</p>
-      <label className="field-label">記録日<input type="date" value={recordDate} onChange={(event) => setRecordDate(event.target.value)} required /></label>
+      <div className="date-time-row">
+        <label className="field-label">日付<input type="date" value={recordDate} onChange={(event) => setRecordDate(event.target.value)} required /></label>
+        <label className="field-label">時間
+          <span className="time-input">
+            <input type="time" value={recordTime} onChange={(event) => setRecordTime(event.target.value)} required />
+            <button type="button" onClick={() => setRecordTime(currentTime())}>いま</button>
+          </span>
+        </label>
+      </div>
+      <p className="time-note">記録を始めた時刻が自動で入っています。</p>
       <fieldset className="mood-field">
         <legend>{dogName}の今日の様子</legend>
         <div>
@@ -586,6 +694,17 @@ export default function Home() {
       </fieldset>
       <div className="status-grid topic-status">
         {recordCategory === "meal" && <StatusSelector label="食欲" value={appetite} onChange={setAppetite} />}
+        {recordCategory === "walk" && (
+          <div className="walk-duration">
+            <span>お散歩の時間</span>
+            <div>
+              {[10, 20, 30, 45].map((minutes) => (
+                <button type="button" key={minutes} className={durationMinutes === minutes ? "is-selected" : ""} onClick={() => setDurationMinutes(minutes)}>{minutes}分</button>
+              ))}
+            </div>
+            <label>その他<input type="number" min="1" max="600" value={durationMinutes} onChange={(event) => setDurationMinutes(Number(event.target.value))} />分</label>
+          </div>
+        )}
         {recordCategory === "walk" && <StatusSelector label="散歩後の元気" value={activity} onChange={setActivity} />}
         {recordCategory === "toilet" && <StatusSelector label="トイレの様子" value={toilet} onChange={setToilet} />}
         {recordCategory === "sleep" && <StatusSelector label="眠りの様子" value={sleep} onChange={setSleep} />}
@@ -650,7 +769,7 @@ export default function Home() {
         </main>
         <nav className="bottom-nav" aria-label="メインメニュー">
           <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}><Icon>⌂</Icon><span>ホーム</span></button>
-          <button className={view === "record" ? "active" : ""} onClick={() => { setRecordCategory(null); setRecordDate(today()); setView("record"); }}><Icon>＋</Icon><span>記録</span></button>
+          <button className={view === "record" ? "active" : ""} onClick={() => openNewRecord()}><Icon>＋</Icon><span>記録</span></button>
           <button className={view === "coach" ? "active" : ""} onClick={() => setView("coach")}><Icon>◌</Icon><span>コーチ</span></button>
           <button className={view === "profile" ? "active" : ""} onClick={() => setView("profile")}><Icon>○</Icon><span>プロフィール</span></button>
         </nav>
