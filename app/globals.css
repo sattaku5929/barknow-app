@@ -662,3 +662,73 @@ body { font-size: 16px; }
   .today-topic-grid { grid-template-columns: repeat(6, 1fr); }
   .today-topic-grid button { min-height: 86px; }
 }
+
+
+/* Monthly history and whole-life condition */
+.condition-card {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 18px;
+  align-items: center;
+  margin: 0 0 16px;
+  padding: 21px 18px;
+  border: 1px solid rgba(0,134,97,.12);
+  border-radius: 24px;
+  background: white;
+  box-shadow: var(--shadow-card);
+}
+.condition-ring { display: grid; width: 92px; height: 92px; place-items: center; border-radius: 50%; }
+.condition-ring > span { display: grid; width: 70px; height: 70px; place-content: center; border-radius: 50%; background: white; text-align: center; }
+.condition-ring strong { color: var(--green-dark); font-family: var(--font-display); font-size: 25px; font-weight: 500; line-height: 1; }
+.condition-ring small { margin-top: 3px; color: var(--muted); font-size: 8px; }
+.condition-content .card-label { margin-bottom: 5px; }
+.condition-content h2 { margin: 0; font-size: 18px; font-weight: 400; line-height: 1.5; }
+.condition-content h2 b { display: block; color: var(--green-dark); font-size: 21px; font-weight: 600; }
+.condition-content > p:not(.card-label) { margin: 8px 0 10px; color: var(--muted); font-size: 12px; line-height: 1.65; }
+.condition-facts { display: flex; flex-wrap: wrap; gap: 6px; }
+.condition-facts span { padding: 5px 8px; border-radius: 10px; background: var(--surface-soft); color: var(--muted); font-size: 9px; }
+.condition-facts b { color: var(--green-dark); font-size: 11px; }
+.condition-content .text-button { min-height: 34px; font-size: 12px; }
+.condition-middle { border-color: rgba(205,154,55,.22); background: #fffcf5; }
+.condition-middle .condition-ring { --green: #c79536; }
+.condition-watch { border-color: rgba(190,103,72,.2); background: #fff9f6; }
+.condition-watch .condition-ring { --green: #b97055; }
+.condition-watch .condition-content h2 b { color: #9a5a43; }
+.condition-collecting .condition-ring { background: #e4ebe7 !important; }
+
+.calendar-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.calendar-head .card-label { margin-bottom: 5px; }
+.calendar-head h2 { margin: 0; font-size: 19px; font-weight: 500; }
+.calendar-switch { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border-radius: 12px; background: #eef1ef; }
+.calendar-switch button { min-width: 42px; min-height: 34px; padding: 0 10px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; font-weight: 700; }
+.calendar-switch button.is-selected { background: white; color: var(--green-dark); box-shadow: 0 3px 9px rgba(26,67,52,.08); }
+
+.month-view { margin-top: 16px; }
+.month-navigation { display: grid; grid-template-columns: 38px 1fr 38px; align-items: center; margin-bottom: 12px; }
+.month-navigation strong { font-size: 14px; font-weight: 600; text-align: center; }
+.month-navigation button { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid rgba(27,61,49,.08); border-radius: 50%; background: white; color: var(--green-dark); cursor: pointer; font-size: 23px; }
+.month-navigation button:disabled { cursor: default; opacity: .25; }
+.month-weekdays, .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.month-weekdays { margin-bottom: 6px; }
+.month-weekdays span { color: #929a95; font-size: 9px; font-weight: 700; text-align: center; }
+.month-weekdays span:first-child { color: #b97055; }
+.month-cell { position: relative; display: grid; min-width: 0; aspect-ratio: 1; place-items: center; border: 1px solid rgba(27,61,49,.06); border-radius: 10px; background: #f5f7f5; color: var(--muted); font-family: var(--font-display); font-size: 10px; }
+.month-cell.is-empty { border-color: transparent; background: transparent; }
+.month-cell.is-recorded { border-color: rgba(0,134,97,.13); background: var(--mint); color: var(--green-dark); font-weight: 700; }
+.month-cell.is-full { background: var(--green); color: white; }
+.month-cell.is-today { outline: 2px solid rgba(0,134,97,.25); outline-offset: 2px; }
+.month-cell b { position: absolute; right: 3px; bottom: 2px; font-size: 7px; font-weight: 700; }
+.month-legend { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin: 10px 0 0; color: var(--muted); font-size: 8px; }
+.month-legend span, .month-legend strong { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.month-legend span { background: var(--mint); }
+.month-legend strong { margin-left: 5px; background: var(--green); }
+
+@media (max-width: 390px) {
+  .condition-card { grid-template-columns: 78px 1fr; gap: 13px; padding: 18px 15px; }
+  .condition-ring { width: 76px; height: 76px; }
+  .condition-ring > span { width: 58px; height: 58px; }
+  .condition-ring strong { font-size: 21px; }
+  .condition-content h2 { font-size: 16px; }
+  .condition-content h2 b { font-size: 18px; }
+  .condition-facts span { padding: 4px 6px; }
+}
