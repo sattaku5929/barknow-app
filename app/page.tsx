@@ -44,6 +44,7 @@ type CoachMessage = {
 const PROFILE_KEY = "wan-tone-profile-v1";
 const RECORDS_KEY = "wan-tone-records-v1";
 const MESSAGES_KEY = "wan-tone-messages-v1";
+const CUSTOM_BEHAVIORS_KEY = "wan-tone-custom-behaviors-v1";
 
 const initialProfile: DogProfile = { name: "", breed: "", birthday: "" };
 
@@ -201,7 +202,8 @@ export default function Home() {
   const [durationMinutes, setDurationMinutes] = useState(20);
   const [behaviorTypes, setBehaviorTypes] = useState<BehaviorType[]>(["barking"]);
   const [behaviorCustomText, setBehaviorCustomText] = useState("");
-  const [behaviorIntensity, setBehaviorIntensity] = useState(2);
+  const [customBehaviorOptions, setCustomBehaviorOptions] = useState<string[]>([]);
+  const [behaviorIntensity, setBehaviorIntensity] = useState(5);
   const [reportBehaviorType, setReportBehaviorType] = useState<BehaviorType>("barking");
   const [mood, setMood] = useState(3);
   const [appetite, setAppetite] = useState<Status>("ふつう");
@@ -233,6 +235,14 @@ export default function Home() {
     [record.appetite, record.activity, record.toilet, record.sleep].includes("気になる"),
   ).length;
   const recentGoodCount = recentRecords.filter((record) => record.goodMoment.trim()).length;
+  const recentDayValues = new Set(recentDays.map((day) => day.value));
+  const latestGoodMoment = records.find((record) => recentDayValues.has(record.recordedOn) && record.goodMoment.trim())?.goodMoment.trim() ?? "";
+  const shortGoodMoment = latestGoodMoment.length > 34 ? `${latestGoodMoment.slice(0, 34)}…` : latestGoodMoment;
+  const growthMessage = latestGoodMoment
+    ? recentGoodCount > 1
+      ? `「${shortGoodMoment}」など、今週は${recentGoodCount}個の「できた」が残っています。できることが増えてきたね！`
+      : `「${shortGoodMoment}」ができたね！大切な一歩が残っています。`
+    : "";
   const todaysEntries = records.filter((record) => record.recordedOn === today());
   const walkEntries = recentRecords.filter((record) => record.category === "walk");
   const walkMinutes = walkEntries.reduce((total, record) => total + (record.durationMinutes ?? 0), 0);
@@ -327,9 +337,16 @@ export default function Home() {
       behaviorIntensity: record.behaviorIntensity ?? null,
     }));
     const localMessages = readLocal<CoachMessage[]>(MESSAGES_KEY, []);
+    const savedCustomBehaviors = readLocal<string[]>(CUSTOM_BEHAVIORS_KEY, []);
+    const localCustomBehaviors = localRecords
+      .filter((record) => record.behaviorTypes.includes("other") && record.behaviorCustomText.trim())
+      .map((record) => record.behaviorCustomText.trim());
+    const initialCustomBehaviors = Array.from(new Set([...savedCustomBehaviors, ...localCustomBehaviors])).slice(0, 12);
     setProfile(localProfile);
     setRecords(localRecords);
     setMessages(localMessages);
+    setCustomBehaviorOptions(initialCustomBehaviors);
+    writeLocal(CUSTOM_BEHAVIORS_KEY, initialCustomBehaviors);
 
     async function connect() {
       try {
@@ -392,6 +409,12 @@ export default function Home() {
           }));
           setRecords(remoteRecords);
           writeLocal(RECORDS_KEY, remoteRecords);
+          const remoteCustomBehaviors = remoteRecords
+            .filter((record) => record.behaviorTypes.includes("other") && record.behaviorCustomText.trim())
+            .map((record) => record.behaviorCustomText.trim());
+          const mergedCustomBehaviors = Array.from(new Set([...readLocal<string[]>(CUSTOM_BEHAVIORS_KEY, []), ...remoteCustomBehaviors])).slice(0, 12);
+          setCustomBehaviorOptions(mergedCustomBehaviors);
+          writeLocal(CUSTOM_BEHAVIORS_KEY, mergedCustomBehaviors);
         }
         if (messageResult.data) {
           const remoteMessages = messageResult.data.map((item) => ({
@@ -425,7 +448,7 @@ export default function Home() {
     setDurationMinutes(20);
     setBehaviorTypes(["barking"]);
     setBehaviorCustomText("");
-    setBehaviorIntensity(2);
+    setBehaviorIntensity(5);
     setMood(3);
     setAppetite("ふつう");
     setActivity("ふつう");
@@ -447,6 +470,15 @@ export default function Home() {
       }
       return [...current, type];
     });
+  }
+
+  function selectCustomBehavior(label: string) {
+    if (!behaviorTypes.includes("other") && behaviorTypes.length >= 3) {
+      showNotice("困りごとは最大3つまで選べます");
+      return;
+    }
+    setBehaviorTypes((current) => current.includes("other") ? current : [...current, "other"]);
+    setBehaviorCustomText(label);
   }
 
   async function getUserId() {
@@ -533,6 +565,11 @@ export default function Home() {
     let nextRecords = [nextRecord, ...records.filter((item) => item.id !== nextRecord.id)].sort((a, b) =>
       `${b.recordedOn}T${b.recordedTime}`.localeCompare(`${a.recordedOn}T${a.recordedTime}`),
     );
+    if (nextRecord.behaviorTypes.includes("other") && nextRecord.behaviorCustomText) {
+      const nextCustomBehaviors = Array.from(new Set([nextRecord.behaviorCustomText, ...customBehaviorOptions])).slice(0, 12);
+      setCustomBehaviorOptions(nextCustomBehaviors);
+      writeLocal(CUSTOM_BEHAVIORS_KEY, nextCustomBehaviors);
+    }
 
     try {
       if (connection === "online") {
@@ -679,6 +716,18 @@ export default function Home() {
         <p className="today-page-message">{todayPageMessage}</p>
       </section>
 
+      {growthMessage && (
+        <section className="growth-card" aria-labelledby="growth-title">
+          <div className="growth-spark" aria-hidden="true">✦</div>
+          <div>
+            <p className="card-label">GROWING TOGETHER</p>
+            <h2 id="growth-title">できること、増えてきたね。</h2>
+            <p>{growthMessage}</p>
+            <button className="text-button" onClick={() => openNewRecord("win")}>もうひとつ「できた」を残す →</button>
+          </div>
+        </section>
+      )}
+
       <section className="streak-strip" aria-label="継続状況">
         <div><strong>{streak}</strong><span>日</span></div>
         <p>{streak > 0 ? "記録が続いています。空いた日があっても、今日からまた続きです。" : "最初の記録を残すと、ここに継続日数が表示されます。"}</p>
@@ -737,10 +786,10 @@ export default function Home() {
         {records.length ? (
           <div className="record-list">
             {records.slice(0, 5).map((record) => (
-              <button key={record.id} onClick={() => { setEditingRecordId(record.id); setRecordCategory(record.category ?? "daily"); setRecordDate(record.recordedOn); setRecordTime(record.recordedTime ?? "12:00"); setDurationMinutes(record.durationMinutes ?? 20); setBehaviorTypes(record.behaviorTypes?.length ? record.behaviorTypes : ["barking"]); setBehaviorCustomText(record.behaviorCustomText ?? ""); setBehaviorIntensity(record.behaviorIntensity ?? 2); setMood(record.mood); setAppetite(record.appetite); setActivity(record.activity); setToilet(record.toilet); setSleep(record.sleep); setBehaviorNote(record.behaviorNote); setGoodMoment(record.goodMoment); setView("record"); }}>
+              <button key={record.id} onClick={() => { setEditingRecordId(record.id); setRecordCategory(record.category ?? "daily"); setRecordDate(record.recordedOn); setRecordTime(record.recordedTime ?? "12:00"); setDurationMinutes(record.durationMinutes ?? 20); setBehaviorTypes(record.behaviorTypes?.length ? record.behaviorTypes : ["barking"]); setBehaviorCustomText(record.behaviorCustomText ?? ""); setBehaviorIntensity(record.behaviorIntensity ?? 5); setMood(record.mood); setAppetite(record.appetite); setActivity(record.activity); setToilet(record.toilet); setSleep(record.sleep); setBehaviorNote(record.behaviorNote); setGoodMoment(record.goodMoment); setView("record"); }}>
                 <span className="record-date"><strong>{record.recordedTime ?? "12:00"}</strong><small>{formatDate(record.recordedOn)}</small></span>
                 <span className="timeline-topic-icon"><TopicIcon name={categoryInfo(record.category).icon} /></span>
-                <span className="record-summary"><b>{record.category === "barking" ? record.behaviorTypes.map((type) => type === "other" && record.behaviorCustomText ? record.behaviorCustomText : behaviorInfo(type).label).join("・") : categoryInfo(record.category).label}</b>{record.category === "walk" && record.durationMinutes ? ` · ${record.durationMinutes}分` : ""}<small>{record.category === "barking" && record.behaviorIntensity ? `程度 ${record.behaviorIntensity}/3 · ` : ""}気分 {record.mood}/5</small></span>
+                <span className="record-summary"><b>{record.category === "barking" ? record.behaviorTypes.map((type) => type === "other" && record.behaviorCustomText ? record.behaviorCustomText : behaviorInfo(type).label).join("・") : categoryInfo(record.category).label}</b>{record.category === "walk" && record.durationMinutes ? ` · ${record.durationMinutes}分` : ""}<small>{record.category === "barking" && record.behaviorIntensity ? `気になり度 ${record.behaviorIntensity}/10 · ` : ""}気分 {record.mood}/5</small></span>
                 <span aria-hidden="true">›</span>
               </button>
             ))}
@@ -812,18 +861,25 @@ export default function Home() {
               </button>
             ))}
           </div>
+          {customBehaviorOptions.length > 0 && (
+            <div className="saved-behaviors">
+              <span>以前追加した項目</span>
+              <div>{customBehaviorOptions.map((label) => (
+                <button type="button" key={label} className={behaviorTypes.includes("other") && behaviorCustomText === label ? "is-selected" : ""} onClick={() => selectCustomBehavior(label)}>{label}</button>
+              ))}</div>
+            </div>
+          )}
           {behaviorTypes.includes("other") && (
             <label className="custom-behavior">その他の困りごと
               <input value={behaviorCustomText} onChange={(event) => setBehaviorCustomText(event.target.value)} placeholder="例：拾い食い、家具をかじる" maxLength={60} required />
+              <small>保存すると、次回から選択項目として表示されます。</small>
             </label>
           )}
-          <fieldset>
+          <fieldset className="intensity-field">
             <legend>どのくらい気になった？</legend>
-            <div>
-              {[{ value: 1, label: "少し" }, { value: 2, label: "気になった" }, { value: 3, label: "強く気になった" }].map((item) => (
-                <button type="button" key={item.value} className={behaviorIntensity === item.value ? "is-selected" : ""} onClick={() => setBehaviorIntensity(item.value)}>{item.label}</button>
-              ))}
-            </div>
+            <div className="intensity-value"><output>{behaviorIntensity}</output><span>{behaviorIntensity <= 3 ? "少し気になった" : behaviorIntensity <= 7 ? "気になった" : "とても気になった"}</span></div>
+            <input aria-label="気になり度" type="range" min="1" max="10" step="1" value={behaviorIntensity} onChange={(event) => setBehaviorIntensity(Number(event.target.value))} />
+            <div className="intensity-labels"><span>1 ほとんど気にならない</span><span>10 とても気になる</span></div>
           </fieldset>
         </section>
       )}
