@@ -188,7 +188,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .coach-preview p { margin: 9px 0; color: var(--muted); font-size: 13px; line-height: 1.8; }
 .text-button { min-height: 44px; padding: 0; border: 0; background: none; color: var(--green); cursor: pointer; font-size: 12px; font-weight: 800; }
 
-.screen-form, .coach-screen, .topic-screen { max-width: 520px; margin: 0 auto; }
+.screen-form, .coach-screen, .topic-screen, .report-screen { max-width: 520px; margin: 0 auto; }
 .topic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 26px; }
 .topic-grid > button {
   display: grid;
@@ -282,7 +282,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   bottom: 0;
   left: 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   padding: 7px 9px calc(7px + env(safe-area-inset-bottom));
   border-top: 1px solid rgba(37,40,37,.08);
   background: rgba(255,255,255,.95);
@@ -394,3 +394,50 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .daily-stamp.has-records, .today-topic-grid button b { animation: none; }
 }
+
+/* Behavior logging */
+.behavior-picker { margin: 24px 0 0; }
+.behavior-picker > p, .behavior-picker legend { margin: 0 0 10px; color: #4a514d; font-size: 12px; font-weight: 800; }
+.behavior-picker > div { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.behavior-picker > div > button { min-height: 68px; padding: 12px; border: 1px solid rgba(37,40,37,.1); border-radius: 15px; background: white; color: var(--ink); cursor: pointer; text-align: left; }
+.behavior-picker > div > button strong, .behavior-picker > div > button small { display: block; }
+.behavior-picker > div > button strong { font-size: 11px; font-weight: 600; }
+.behavior-picker > div > button small { margin-top: 4px; color: var(--muted); font-size: 8px; line-height: 1.45; }
+.behavior-picker button.is-selected { border-color: var(--green); background: var(--mint); color: var(--green-dark); box-shadow: 0 5px 16px rgba(0,134,97,.08); }
+.behavior-picker fieldset { margin: 18px 0 0; padding: 0; border: 0; }
+.behavior-picker fieldset > div { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.behavior-picker fieldset button { min-height: 43px; padding: 6px; border: 1px solid rgba(37,40,37,.1); border-radius: 12px; background: white; color: var(--muted); cursor: pointer; font-size: 9px; }
+
+/* Progress report */
+.report-filter { display: flex; gap: 7px; margin: 24px -20px 0; padding: 0 20px 7px; overflow-x: auto; scrollbar-width: none; }
+.report-filter::-webkit-scrollbar { display: none; }
+.report-filter button { flex: 0 0 auto; min-height: 38px; padding: 0 14px; border: 1px solid rgba(37,40,37,.1); border-radius: 19px; background: white; color: var(--muted); cursor: pointer; font-size: 10px; }
+.report-filter button.is-selected { border-color: var(--green); background: var(--green); color: white; }
+.trend-card { margin-top: 17px; padding: 22px; border: 1px solid rgba(0,134,97,.1); border-radius: 24px; background: white; box-shadow: 0 14px 38px rgba(42,74,61,.07); }
+.trend-summary { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; }
+.trend-summary p { margin: 0 0 5px; color: var(--muted); font-size: 9px; }
+.trend-summary strong { color: var(--green-dark); font-family: var(--font-display); font-size: 38px; font-weight: 400; line-height: 1; }
+.trend-summary strong span { margin-left: 3px; font-family: var(--font-sans); font-size: 10px; }
+.trend-summary > div:last-child { display: flex; flex-direction: column; align-items: flex-end; }
+.trend-summary small { color: var(--muted); font-size: 8px; }
+.trend-summary b { margin-top: 5px; padding: 5px 9px; border-radius: 10px; background: #f0efeb; color: var(--muted); font-size: 10px; }
+.trend-summary .is-improving b { background: var(--mint); color: var(--green-dark); }
+.trend-summary .is-watching b { background: var(--soft-sand); color: #8a672b; }
+.behavior-chart { display: grid; height: 150px; grid-template-columns: repeat(7, 1fr); gap: 8px; align-items: end; margin-top: 25px; padding-top: 10px; border-top: 1px solid var(--line); }
+.behavior-chart > div { display: grid; height: 100%; grid-template-rows: 1fr auto; gap: 7px; align-items: end; text-align: center; }
+.behavior-chart > div > span { display: flex; height: 100%; align-items: flex-end; justify-content: center; }
+.behavior-chart i { position: relative; display: block; width: min(23px, 72%); min-height: 3px; border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, #31a681, var(--green)); transition: height .35s ease; }
+.behavior-chart i b { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); color: var(--green-dark); font-family: var(--font-display); font-size: 9px; font-style: normal; font-weight: 600; }
+.behavior-chart small { color: var(--muted); font-size: 8px; }
+.report-detail { margin-top: 16px; padding: 21px; border-radius: 22px; background: linear-gradient(145deg, #eef7f3, #f7f4ed); }
+.report-detail .card-label { margin-bottom: 5px; }
+.report-detail h2 { margin: 0; font-size: 18px; font-weight: 300; }
+.behavior-periods { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 14px; }
+.behavior-periods span { padding: 10px 5px; border-radius: 12px; background: rgba(255,255,255,.78); color: var(--muted); font-size: 9px; text-align: center; }
+.behavior-periods b { display: block; color: var(--green-dark); font-family: var(--font-display); font-size: 18px; font-weight: 400; }
+.report-observation { margin: 14px 0 0; padding-top: 13px; border-top: 1px solid rgba(0,134,97,.13); color: var(--muted); font-size: 10px; line-height: 1.75; }
+.report-empty { margin-top: 16px; padding: 24px; border: 1px dashed rgba(0,134,97,.22); border-radius: 22px; background: rgba(255,255,255,.68); }
+.report-empty strong { font-size: 12px; }
+.report-empty p { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.7; }
+.report-add { margin-top: 18px; }
+.report-note { margin: 13px 3px 0; color: #8a918d; font-size: 8px; line-height: 1.65; }
