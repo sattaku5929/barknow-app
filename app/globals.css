@@ -732,3 +732,94 @@ body { font-size: 16px; }
   .condition-content h2 b { font-size: 18px; }
   .condition-facts span { padding: 4px 6px; }
 }
+
+
+/* Distinct category language and explicit completion states */
+.category-meal { --category: #d99a2b; --category-soft: #fff6df; }
+.category-barking { --category: #c86755; --category-soft: #fff0ec; }
+.category-toilet { --category: #4d8fa8; --category-soft: #eaf6fa; }
+.category-walk { --category: #258b68; --category-soft: #e8f6f0; }
+.category-sleep { --category: #7772ad; --category-soft: #f0eefb; }
+.category-win { --category: #d47d35; --category-soft: #fff2e7; }
+.category-daily { --category: #68716c; --category-soft: #f0f2f1; }
+
+.today-rhythm { background: linear-gradient(160deg, #ffffff 55%, #edf8f3); }
+.today-topic-grid button { position: relative; overflow: hidden; border-color: color-mix(in srgb, var(--category) 18%, white); background: var(--category-soft) !important; }
+.today-topic-grid button::after { position: absolute; top: 0; right: 0; left: 0; height: 3px; background: var(--category); opacity: .72; content: ""; }
+.today-topic-grid button .topic-mark { color: var(--category); }
+.today-topic-grid button em { color: #8d9590; font-size: 9px; font-style: normal; line-height: 1; }
+.today-topic-grid button.is-recorded { border-color: color-mix(in srgb, var(--category) 44%, white); box-shadow: 0 5px 16px color-mix(in srgb, var(--category) 12%, transparent); }
+.today-topic-grid button.is-recorded em { color: var(--category); font-weight: 800; }
+.today-topic-grid button.is-unrecorded .topic-mark { opacity: .62; }
+.today-topic-grid button.is-unrecorded::after { opacity: .25; }
+
+.condition-card.condition-good { border: 0; background: linear-gradient(140deg, #17483a, #0c6c51); color: white; }
+.condition-good .condition-content .card-label, .condition-good .condition-content h2, .condition-good .condition-content h2 b { color: white; }
+.condition-good .condition-content > p:not(.card-label) { color: rgba(255,255,255,.76); }
+.condition-good .condition-facts span { background: rgba(255,255,255,.12); color: rgba(255,255,255,.78); }
+.condition-good .condition-facts b, .condition-good .text-button { color: white; }
+.condition-good .condition-ring { --green: #75d9b6; }
+.condition-good .condition-ring > span { background: #17483a; }
+.condition-good .condition-ring strong { color: white; }
+.condition-middle { background: #fff8e8; }
+.condition-watch { background: #fff0ec; }
+.condition-collecting { background: #eef5f8; }
+
+.growth-card { border-color: #f0dcae; background: linear-gradient(145deg, #fff9e9, #fff2d4); }
+.compact-week { border-color: rgba(65,83,75,.1); background: #fff; }
+.observation-card { border-color: #dce8ec; background: linear-gradient(145deg, #eef6f8, #f6f3ed); }
+.coach-preview { border-color: #ded9ed; background: #f2eff9; }
+
+.week-day { padding: 0; border: 0; background: transparent; cursor: pointer; }
+.week-day.is-selected i { outline: 2px solid var(--green); outline-offset: 3px; }
+.week-category-dots, .month-category-dots { display: flex; min-height: 7px; align-items: center; justify-content: center; gap: 2px; }
+.category-dot { display: block; width: 5px; height: 5px; border-radius: 50%; background: var(--category); }
+.week-category-dots b { width: 5px; height: 5px; }
+
+.month-cell { padding: 3px; border: 1px solid rgba(27,61,49,.06); cursor: pointer; }
+.month-cell.is-recorded { border-color: rgba(27,61,49,.11); background: white; }
+.month-cell.is-selected { border-color: var(--green); box-shadow: inset 0 0 0 1px var(--green); }
+.month-cell.is-today > span:first-child { display: grid; width: 18px; height: 18px; place-items: center; border-radius: 50%; background: var(--green); color: white; }
+.month-cell b { color: var(--green-dark); }
+.month-category-dots { position: absolute; right: 3px; bottom: 4px; left: 3px; }
+.month-legend { justify-content: center; }
+
+.calendar-day-detail { margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(27,61,49,.09); }
+.calendar-detail-head { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 11px; }
+.calendar-detail-head > div span, .calendar-detail-head > div strong { display: block; }
+.calendar-detail-head > div span { margin-bottom: 3px; color: var(--green); font-family: var(--font-display); font-size: 8px; font-weight: 700; letter-spacing: .16em; }
+.calendar-detail-head > div strong { font-size: 15px; font-weight: 600; }
+.calendar-detail-head > b { color: var(--green-dark); font-family: var(--font-display); font-size: 20px; font-weight: 500; }
+.calendar-category-status { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.calendar-category-status button {
+  display: grid;
+  min-width: 0;
+  min-height: 60px;
+  grid-template-columns: 27px 1fr 18px;
+  align-items: center;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid color-mix(in srgb, var(--category) 18%, white);
+  border-radius: 14px;
+  background: var(--category-soft);
+  cursor: pointer;
+  text-align: left;
+}
+.calendar-category-status svg { width: 22px; height: 22px; fill: none; stroke: var(--category); stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
+.calendar-category-status span { overflow: hidden; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-category-status small { display: block; margin-top: 2px; color: var(--category); font-size: 8px; font-weight: 600; }
+.calendar-category-status button > b { display: grid; width: 18px; height: 18px; place-items: center; border-radius: 50%; background: var(--category); color: white; font-size: 10px; }
+.calendar-category-status .is-missing { border-style: dashed; background: white; opacity: .62; }
+.calendar-category-status .is-missing small { color: var(--muted); }
+.calendar-category-status .is-missing > b { background: #e6eae8; color: var(--muted); }
+
+.topic-grid > button { position: relative; overflow: hidden; border-color: color-mix(in srgb, var(--category) 18%, white); background: var(--category-soft) !important; }
+.topic-grid > button::before { position: absolute; top: 0; bottom: 0; left: 0; width: 4px; background: var(--category); content: ""; }
+.topic-grid > button .topic-mark { color: var(--category); }
+.selected-topic { border-color: color-mix(in srgb, var(--category) 28%, white); background: var(--category-soft); }
+.selected-topic .topic-mark, .selected-topic p { color: var(--category); }
+
+@media (max-width: 359px) {
+  .calendar-category-status { grid-template-columns: 1fr; }
+  .today-topic-grid { grid-template-columns: repeat(2, 1fr); }
+}

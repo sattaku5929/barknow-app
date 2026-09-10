@@ -247,6 +247,7 @@ export default function Home() {
   const [draftMessage, setDraftMessage] = useState("");
   const [calendarMode, setCalendarMode] = useState<"week" | "month">("week");
   const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(today());
 
   const streak = useMemo(() => calculateStreak(records), [records]);
   const todaysRecord = records.find((record) => record.recordedOn === today());
@@ -311,10 +312,12 @@ export default function Home() {
         if (day < 1 || day > daysInMonth) return null;
         const value = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
         const entries = records.filter((record) => record.recordedOn === value);
-        return { day, value, count: entries.length };
+        return { day, value, count: entries.length, categories: Array.from(new Set(entries.map((record) => record.category))) };
       }),
     };
   }, [calendarMonthOffset, records]);
+  const selectedCalendarEntries = records.filter((record) => record.recordedOn === selectedCalendarDate);
+  const selectedCalendarLabel = formatDate(selectedCalendarDate);
   const todaysEntries = records.filter((record) => record.recordedOn === today());
   const walkEntries = recentRecords.filter((record) => record.category === "walk");
   const walkMinutes = walkEntries.reduce((total, record) => total + (record.durationMinutes ?? 0), 0);
@@ -516,6 +519,14 @@ export default function Home() {
   function showNotice(message: string) {
     setNotice(message);
     window.setTimeout(() => setNotice(""), 3200);
+  }
+
+  function moveCalendarMonth(delta: number) {
+    const nextOffset = Math.min(0, calendarMonthOffset + delta);
+    const base = new Date(`${today()}T00:00:00+09:00`);
+    const nextMonth = new Date(base.getFullYear(), base.getMonth() + nextOffset, 1);
+    setCalendarMonthOffset(nextOffset);
+    setSelectedCalendarDate(`${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}-01`);
   }
 
   function openNewRecord(category: RecordCategory | null = null) {
@@ -793,10 +804,11 @@ export default function Home() {
           {RECORD_CATEGORIES.map((category) => {
             const count = todaysEntries.filter((record) => record.category === category.id).length;
             return (
-              <button key={category.id} onClick={() => openNewRecord(category.id)} aria-label={`${category.label}を追加。今日${count}件`}>
+              <button key={category.id} className={`category-${category.id} ${count ? "is-recorded" : "is-unrecorded"}`} onClick={() => openNewRecord(category.id)} aria-label={`${category.label}を追加。今日${count}件`}>
                 <span className="topic-mark"><TopicIcon name={category.icon} /></span>
                 {count > 0 && <b>{count}</b>}
                 <small>{category.label}</small>
+                <em>{count ? `${count}回 記録済み` : "未記録"}</em>
               </button>
             );
           })}
@@ -845,7 +857,7 @@ export default function Home() {
         <div className="calendar-head">
           <div><p className="card-label">{calendarMode === "week" ? "THIS WEEK" : "MONTHLY LOG"}</p><h2 id="rhythm-title">記録カレンダー</h2></div>
           <div className="calendar-switch" aria-label="カレンダー表示">
-            <button className={calendarMode === "week" ? "is-selected" : ""} onClick={() => setCalendarMode("week")}>週</button>
+            <button className={calendarMode === "week" ? "is-selected" : ""} onClick={() => { setCalendarMode("week"); setSelectedCalendarDate(today()); }}>週</button>
             <button className={calendarMode === "month" ? "is-selected" : ""} onClick={() => setCalendarMode("month")}>月</button>
           </div>
         </div>
@@ -853,10 +865,11 @@ export default function Home() {
           <>
             <div className="week-dots">
               {recentDays.map((day) => (
-                <div key={day.value} className={`week-day ${day.entries.length ? "is-recorded" : ""} ${day.value === today() ? "is-today" : ""}`}>
+                <button key={day.value} className={`week-day ${day.entries.length ? "is-recorded" : ""} ${day.value === today() ? "is-today" : ""} ${day.value === selectedCalendarDate ? "is-selected" : ""}`} onClick={() => setSelectedCalendarDate(day.value)}>
                   <span>{day.label}</span>
-                  <i aria-label={day.entries.length ? `${day.value} ${day.entries.length}件記録済み` : `${day.value} 未記録`}>{day.entries.length ? (day.entries.length > 1 ? day.entries.length : "✓") : ""}</i>
-                </div>
+                  <i aria-label={day.entries.length ? `${day.value} ${day.entries.length}件記録済み` : `${day.value} 未記録`}>{day.entries.length ? day.entries.length : "–"}</i>
+                  <span className="week-category-dots">{Array.from(new Set(day.entries.map((record) => record.category))).slice(0, 3).map((category) => <b className={`category-dot category-${category}`} key={category}></b>)}</span>
+                </button>
               ))}
             </div>
             <div className="weekly-insight">
@@ -867,21 +880,32 @@ export default function Home() {
         ) : (
           <div className="month-view">
             <div className="month-navigation">
-              <button onClick={() => setCalendarMonthOffset((value) => value - 1)} aria-label="前の月">‹</button>
+              <button onClick={() => moveCalendarMonth(-1)} aria-label="前の月">‹</button>
               <strong>{monthlyCalendar.label}</strong>
-              <button onClick={() => setCalendarMonthOffset((value) => Math.min(0, value + 1))} disabled={calendarMonthOffset === 0} aria-label="次の月">›</button>
+              <button onClick={() => moveCalendarMonth(1)} disabled={calendarMonthOffset === 0} aria-label="次の月">›</button>
             </div>
             <div className="month-weekdays">{["日","月","火","水","木","金","土"].map((day) => <span key={day}>{day}</span>)}</div>
             <div className="month-grid">
               {monthlyCalendar.cells.map((cell, index) => cell ? (
-                <div key={cell.value} className={`month-cell ${cell.count ? "is-recorded" : ""} ${cell.count >= 3 ? "is-full" : ""} ${cell.value === today() ? "is-today" : ""}`} aria-label={`${cell.value} ${cell.count}件`}>
-                  <span>{cell.day}</span>{cell.count > 0 && <b>{cell.count}</b>}
-                </div>
+                <button key={cell.value} className={`month-cell ${cell.count ? "is-recorded" : ""} ${cell.value === today() ? "is-today" : ""} ${cell.value === selectedCalendarDate ? "is-selected" : ""}`} aria-label={`${cell.value} ${cell.count}件`} onClick={() => setSelectedCalendarDate(cell.value)}>
+                  <span>{cell.day}</span>
+                  <span className="month-category-dots">{cell.categories.slice(0, 3).map((category) => <i className={`category-dot category-${category}`} key={category}></i>)}</span>
+                  {cell.count > 0 && <b>{cell.count}</b>}
+                </button>
               ) : <span className="month-cell is-empty" key={`empty-${index}`}></span>)}
             </div>
-            <p className="month-legend"><span></span>記録あり　<strong></strong>3件以上</p>
+            <p className="month-legend">色の点は記録したテーマです</p>
           </div>
         )}
+        <div className="calendar-day-detail">
+          <div className="calendar-detail-head"><div><span>SELECTED DAY</span><strong>{selectedCalendarLabel}</strong></div><b>{selectedCalendarEntries.length}件</b></div>
+          <div className="calendar-category-status">
+            {RECORD_CATEGORIES.map((category) => {
+              const count = selectedCalendarEntries.filter((record) => record.category === category.id).length;
+              return <button key={category.id} className={`category-${category.id} ${count ? "is-done" : "is-missing"}`} onClick={() => { openNewRecord(category.id); setRecordDate(selectedCalendarDate); }}><TopicIcon name={category.icon} /><span>{category.label}<small>{count ? `${count}回 記録済み` : "未記録"}</small></span><b>{count ? "✓" : "＋"}</b></button>;
+            })}
+          </div>
+        </div>
       </section>
 
       <section className="observation-card" aria-labelledby="observation-title">
@@ -936,7 +960,7 @@ export default function Home() {
       <p className="lead">テーマを選ぶと、必要な項目だけを表示します。</p>
       <div className="topic-grid">
         {RECORD_CATEGORIES.map((category) => (
-          <button key={category.id} onClick={() => { setRecordTime(currentTime()); setRecordCategory(category.id); }}>
+          <button key={category.id} className={`category-${category.id}`} onClick={() => { setRecordTime(currentTime()); setRecordCategory(category.id); }}>
             <span className="topic-mark"><TopicIcon name={category.icon} /></span>
             <span><strong>{category.label}</strong><small>{category.description}</small></span>
             <span aria-hidden="true">→</span>
@@ -949,7 +973,7 @@ export default function Home() {
     <form className="screen-form" onSubmit={saveRecord}>
       <div className="form-progress" aria-label="記録の進行状況"><span className="is-complete">1</span><i></i><span className="is-current">2</span><small>内容を入力</small></div>
       <button type="button" className="topic-back" onClick={() => setRecordCategory(null)}>← テーマを選び直す</button>
-      <div className="selected-topic">
+      <div className={`selected-topic category-${selectedCategory.id}`}>
         <span className="topic-mark"><TopicIcon name={selectedCategory.icon} /></span>
         <div><p>今日のテーマ</p><h2>{selectedCategory.label}</h2></div>
       </div>
