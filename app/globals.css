@@ -361,3 +361,36 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 @media (max-width: 359px) {
   .today-topic-grid { grid-template-columns: repeat(3, 1fr); row-gap: 12px; }
 }
+
+/* A daily page that grows with every record */
+.today-date { margin: 0 0 7px; color: var(--muted); font-size: 10px; font-weight: 400; letter-spacing: .04em; }
+.today-rhythm { position: relative; overflow: hidden; background:
+  linear-gradient(rgba(255,255,255,.9), rgba(255,255,255,.9)),
+  repeating-linear-gradient(0deg, transparent 0 27px, rgba(0,134,97,.07) 27px 28px);
+}
+.today-rhythm::after { position: absolute; top: -7px; left: 50%; width: 62px; height: 18px; transform: translateX(-50%) rotate(-2deg); border-right: 1px solid rgba(0,134,97,.06); border-left: 1px solid rgba(0,134,97,.06); background: rgba(221,238,232,.72); content: ""; }
+.daily-stamp { display: grid; width: 54px; height: 54px; place-items: center; align-content: center; border: 1px dashed rgba(0,134,97,.26); border-radius: 50%; color: var(--muted); transform: rotate(5deg); }
+.daily-stamp strong { font-family: var(--font-display); font-size: 21px; font-weight: 400; line-height: .9; }
+.daily-stamp small { margin-top: 4px; font-family: var(--font-display); font-size: 7px; font-weight: 600; letter-spacing: .12em; }
+.daily-stamp.has-records { border: 1.5px solid var(--green); color: var(--green); animation: stamp-in .42s cubic-bezier(.2,.8,.2,1); }
+.today-page-message { margin: 17px 0 0; padding-top: 14px; border-top: 1px dashed rgba(0,134,97,.17); color: var(--muted); font-size: 10px; line-height: 1.7; text-align: center; }
+.today-topic-grid button:active .topic-mark { transform: scale(.88); }
+.today-topic-grid button b { animation: count-pop .36s cubic-bezier(.2,.9,.3,1.3); }
+
+.record-list::before { left: 79px; }
+.record-list button { grid-template-columns: 65px 34px 1fr auto; gap: 10px; }
+.record-list button::after { display: none; }
+.timeline-topic-icon { position: relative; z-index: 1; display: grid; width: 32px; height: 32px; place-items: center; border: 2px solid white; border-radius: 50%; background: var(--mint); color: var(--green-dark); box-shadow: 0 0 0 1px rgba(0,134,97,.12); }
+.timeline-topic-icon svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.55; stroke-linecap: round; stroke-linejoin: round; }
+.record-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; }
+.record-summary small { flex-basis: 100%; margin-top: 2px; color: #929a95; font-size: 9px; }
+
+.bottom-nav button:nth-child(2) .nav-icon { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 50%; background: var(--green); color: white; box-shadow: 0 8px 18px rgba(0,134,97,.22); font-size: 24px; transform: translateY(-5px); transition: transform .16s ease, box-shadow .16s ease; }
+.bottom-nav button:nth-child(2):active .nav-icon { box-shadow: 0 4px 10px rgba(0,134,97,.18); transform: translateY(-3px) scale(.92); }
+.bottom-nav button:nth-child(2) > span:last-child { margin-top: -5px; color: var(--green-dark); }
+
+@keyframes stamp-in { from { opacity: .25; transform: rotate(15deg) scale(1.35); } to { opacity: 1; transform: rotate(5deg) scale(1); } }
+@keyframes count-pop { from { transform: scale(.55); } to { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .daily-stamp.has-records, .today-topic-grid button b { animation: none; }
+}
