@@ -521,6 +521,14 @@ export default function Home() {
     window.setTimeout(() => setNotice(""), 3200);
   }
 
+  function moveCalendarMonth(delta: number) {
+    const nextOffset = Math.min(0, calendarMonthOffset + delta);
+    const base = new Date(`${today()}T00:00:00+09:00`);
+    const nextMonth = new Date(base.getFullYear(), base.getMonth() + nextOffset, 1);
+    setCalendarMonthOffset(nextOffset);
+    setSelectedCalendarDate(`${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}-01`);
+  }
+
   function openNewRecord(category: RecordCategory | null = null) {
     setEditingRecordId(null);
     setRecordCategory(category);
@@ -849,7 +857,7 @@ export default function Home() {
         <div className="calendar-head">
           <div><p className="card-label">{calendarMode === "week" ? "THIS WEEK" : "MONTHLY LOG"}</p><h2 id="rhythm-title">記録カレンダー</h2></div>
           <div className="calendar-switch" aria-label="カレンダー表示">
-            <button className={calendarMode === "week" ? "is-selected" : ""} onClick={() => setCalendarMode("week")}>週</button>
+            <button className={calendarMode === "week" ? "is-selected" : ""} onClick={() => { setCalendarMode("week"); setSelectedCalendarDate(today()); }}>週</button>
             <button className={calendarMode === "month" ? "is-selected" : ""} onClick={() => setCalendarMode("month")}>月</button>
           </div>
         </div>
@@ -872,9 +880,9 @@ export default function Home() {
         ) : (
           <div className="month-view">
             <div className="month-navigation">
-              <button onClick={() => setCalendarMonthOffset((value) => value - 1)} aria-label="前の月">‹</button>
+              <button onClick={() => moveCalendarMonth(-1)} aria-label="前の月">‹</button>
               <strong>{monthlyCalendar.label}</strong>
-              <button onClick={() => setCalendarMonthOffset((value) => Math.min(0, value + 1))} disabled={calendarMonthOffset === 0} aria-label="次の月">›</button>
+              <button onClick={() => moveCalendarMonth(1)} disabled={calendarMonthOffset === 0} aria-label="次の月">›</button>
             </div>
             <div className="month-weekdays">{["日","月","火","水","木","金","土"].map((day) => <span key={day}>{day}</span>)}</div>
             <div className="month-grid">
