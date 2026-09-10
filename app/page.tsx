@@ -24,6 +24,7 @@ type DailyRecord = {
   durationMinutes: number | null;
   behaviorTypes: BehaviorType[];
   behaviorCustomText: string;
+  behaviorCustomTexts: string[];
   behaviorIntensity: number | null;
   mood: number;
   appetite: Status;
@@ -44,6 +45,7 @@ type CoachMessage = {
 const PROFILE_KEY = "wan-tone-profile-v1";
 const RECORDS_KEY = "wan-tone-records-v1";
 const MESSAGES_KEY = "wan-tone-messages-v1";
+const CUSTOM_BEHAVIORS_KEY = "wan-tone-custom-behaviors-v1";
 
 const initialProfile: DogProfile = { name: "", breed: "", birthday: "" };
 
@@ -201,7 +203,9 @@ export default function Home() {
   const [durationMinutes, setDurationMinutes] = useState(20);
   const [behaviorTypes, setBehaviorTypes] = useState<BehaviorType[]>(["barking"]);
   const [behaviorCustomText, setBehaviorCustomText] = useState("");
-  const [behaviorIntensity, setBehaviorIntensity] = useState(2);
+  const [selectedCustomBehaviors, setSelectedCustomBehaviors] = useState<string[]>([]);
+  const [customBehaviorOptions, setCustomBehaviorOptions] = useState<string[]>([]);
+  const [behaviorIntensity, setBehaviorIntensity] = useState(5);
   const [reportBehaviorType, setReportBehaviorType] = useState<BehaviorType>("barking");
   const [mood, setMood] = useState(3);
   const [appetite, setAppetite] = useState<Status>("ふつう");
@@ -233,6 +237,14 @@ export default function Home() {
     [record.appetite, record.activity, record.toilet, record.sleep].includes("気になる"),
   ).length;
   const recentGoodCount = recentRecords.filter((record) => record.goodMoment.trim()).length;
+  const recentDayValues = new Set(recentDays.map((day) => day.value));
+  const latestGoodMoment = records.find((record) => recentDayValues.has(record.recordedOn) && record.goodMoment.trim())?.goodMoment.trim() ?? "";
+  const shortGoodMoment = latestGoodMoment.length > 34 ? `${latestGoodMoment.slice(0, 34)}…` : latestGoodMoment;
+  const growthMessage = latestGoodMoment
+    ? recentGoodCount > 1
+      ? `「${shortGoodMoment}」など、今週は${recentGoodCount}個の「できた」が残っています。できることが増えてきたね！`
+      : `「${shortGoodMoment}」ができたね！大切な一歩が残っています。`
+    : "";
   const todaysEntries = records.filter((record) => record.recordedOn === today());
   const walkEntries = recentRecords.filter((record) => record.category === "walk");
   const walkMinutes = walkEntries.reduce((total, record) => total + (record.durationMinutes ?? 0), 0);
@@ -324,12 +336,21 @@ export default function Home() {
       durationMinutes: record.durationMinutes ?? null,
       behaviorTypes: record.behaviorTypes?.length ? record.behaviorTypes : record.category === "barking" ? ["barking"] : [],
       behaviorCustomText: record.behaviorCustomText ?? "",
+      behaviorCustomTexts: record.behaviorCustomTexts?.length ? record.behaviorCustomTexts : record.behaviorCustomText ? [record.behaviorCustomText] : [],
       behaviorIntensity: record.behaviorIntensity ?? null,
     }));
     const localMessages = readLocal<CoachMessage[]>(MESSAGES_KEY, []);
+    const savedCustomBehaviors = readLocal<string[]>(CUSTOM_BEHAVIORS_KEY, []);
+    const localCustomBehaviors = localRecords
+      .flatMap((record) => record.behaviorCustomTexts ?? [])
+      .map((label) => label.trim())
+      .filter(Boolean);
+    const initialCustomBehaviors = Array.from(new Set([...savedCustomBehaviors, ...localCustomBehaviors])).slice(0, 12);
     setProfile(localProfile);
     setRecords(localRecords);
     setMessages(localMessages);
+    setCustomBehaviorOptions(initialCustomBehaviors);
+    writeLocal(CUSTOM_BEHAVIORS_KEY, initialCustomBehaviors);
 
     async function connect() {
       try {
@@ -346,7 +367,7 @@ export default function Home() {
           supabase.from("wt_dogs").select("id,name,breed,birthday").eq("owner_id", userId).maybeSingle(),
           supabase
             .from("wt_daily_records")
-            .select("id,category,recorded_on,recorded_time,duration_minutes,behavior_type,behavior_types,behavior_custom_text,behavior_intensity,mood,appetite,activity,toilet,sleep,behavior_note,good_moment")
+            .select("id,category,recorded_on,recorded_time,duration_minutes,behavior_type,behavior_types,behavior_custom_text,behavior_custom_texts,behavior_intensity,mood,appetite,activity,toilet,sleep,behavior_note,good_moment")
             .eq("owner_id", userId)
             .order("recorded_on", { ascending: false })
             .order("recorded_time", { ascending: false })
@@ -381,6 +402,9 @@ export default function Home() {
               ? (item.behavior_types as BehaviorType[])
               : item.category === "barking" ? [((item.behavior_type as BehaviorType | null) ?? "barking")] : [],
             behaviorCustomText: item.behavior_custom_text ?? "",
+            behaviorCustomTexts: item.behavior_custom_texts?.length
+              ? (item.behavior_custom_texts as string[])
+              : item.behavior_custom_text ? [item.behavior_custom_text] : [],
             behaviorIntensity: item.behavior_intensity ?? null,
             mood: item.mood,
             appetite: item.appetite as Status,
@@ -392,6 +416,13 @@ export default function Home() {
           }));
           setRecords(remoteRecords);
           writeLocal(RECORDS_KEY, remoteRecords);
+          const remoteCustomBehaviors = remoteRecords
+            .flatMap((record) => record.behaviorCustomTexts)
+            .map((label) => label.trim())
+            .filter(Boolean);
+          const mergedCustomBehaviors = Array.from(new Set([...readLocal<string[]>(CUSTOM_BEHAVIORS_KEY, []), ...remoteCustomBehaviors])).slice(0, 12);
+          setCustomBehaviorOptions(mergedCustomBehaviors);
+          writeLocal(CUSTOM_BEHAVIORS_KEY, mergedCustomBehaviors);
         }
         if (messageResult.data) {
           const remoteMessages = messageResult.data.map((item) => ({
@@ -425,7 +456,8 @@ export default function Home() {
     setDurationMinutes(20);
     setBehaviorTypes(["barking"]);
     setBehaviorCustomText("");
-    setBehaviorIntensity(2);
+    setSelectedCustomBehaviors([]);
+    setBehaviorIntensity(5);
     setMood(3);
     setAppetite("ふつう");
     setActivity("ふつう");
@@ -436,17 +468,45 @@ export default function Home() {
     setView("record");
   }
 
+  const behaviorSelectionCount = behaviorTypes.filter((type) => type !== "other").length + selectedCustomBehaviors.length;
+
   function toggleBehaviorType(type: BehaviorType) {
+    if (type === "other") return;
     setBehaviorTypes((current) => {
-      if (current.includes(type)) {
-        return current.length === 1 ? current : current.filter((item) => item !== type);
-      }
-      if (current.length >= 3) {
+      const fixed = current.filter((item) => item !== "other");
+      if (fixed.includes(type)) return fixed.filter((item) => item !== type);
+      if (fixed.length + selectedCustomBehaviors.length >= 3) {
         showNotice("困りごとは最大3つまで選べます");
-        return current;
+        return fixed;
       }
-      return [...current, type];
+      return [...fixed, type];
     });
+  }
+
+  function selectCustomBehavior(label: string) {
+    if (selectedCustomBehaviors.includes(label)) {
+      setSelectedCustomBehaviors((current) => current.filter((item) => item !== label));
+      return;
+    }
+    if (behaviorTypes.filter((type) => type !== "other").length + selectedCustomBehaviors.length >= 3) {
+      showNotice("困りごとは最大3つまで選べます");
+      return;
+    }
+    setSelectedCustomBehaviors((current) => [...current, label]);
+  }
+
+  function addCustomBehavior() {
+    const label = behaviorCustomText.trim();
+    if (!label) return;
+    if (!selectedCustomBehaviors.includes(label) && behaviorSelectionCount >= 3) {
+      showNotice("困りごとは最大3つまで選べます");
+      return;
+    }
+    const nextOptions = Array.from(new Set([label, ...customBehaviorOptions])).slice(0, 12);
+    setCustomBehaviorOptions(nextOptions);
+    writeLocal(CUSTOM_BEHAVIORS_KEY, nextOptions);
+    setSelectedCustomBehaviors((current) => current.includes(label) ? current : [...current, label]);
+    setBehaviorCustomText("");
   }
 
   async function getUserId() {
@@ -519,8 +579,11 @@ export default function Home() {
       recordedOn: recordDate,
       recordedTime: recordTime,
       durationMinutes: recordCategory === "walk" ? durationMinutes : null,
-      behaviorTypes: recordCategory === "barking" ? behaviorTypes : [],
-      behaviorCustomText: recordCategory === "barking" && behaviorTypes.includes("other") ? behaviorCustomText.trim() : "",
+      behaviorTypes: recordCategory === "barking"
+        ? [...behaviorTypes.filter((type) => type !== "other"), ...(selectedCustomBehaviors.length ? ["other" as BehaviorType] : [])]
+        : [],
+      behaviorCustomText: recordCategory === "barking" ? selectedCustomBehaviors[0] ?? "" : "",
+      behaviorCustomTexts: recordCategory === "barking" ? selectedCustomBehaviors : [],
       behaviorIntensity: recordCategory === "barking" ? behaviorIntensity : null,
       mood,
       appetite,
@@ -533,6 +596,11 @@ export default function Home() {
     let nextRecords = [nextRecord, ...records.filter((item) => item.id !== nextRecord.id)].sort((a, b) =>
       `${b.recordedOn}T${b.recordedTime}`.localeCompare(`${a.recordedOn}T${a.recordedTime}`),
     );
+    if (nextRecord.behaviorCustomTexts.length) {
+      const nextCustomBehaviors = Array.from(new Set([...nextRecord.behaviorCustomTexts, ...customBehaviorOptions])).slice(0, 12);
+      setCustomBehaviorOptions(nextCustomBehaviors);
+      writeLocal(CUSTOM_BEHAVIORS_KEY, nextCustomBehaviors);
+    }
 
     try {
       if (connection === "online") {
@@ -550,9 +618,10 @@ export default function Home() {
               recorded_on: recordDate,
               recorded_time: recordTime,
               duration_minutes: recordCategory === "walk" ? durationMinutes : null,
-              behavior_type: recordCategory === "barking" ? behaviorTypes[0] : null,
-              behavior_types: recordCategory === "barking" ? behaviorTypes : null,
-              behavior_custom_text: recordCategory === "barking" && behaviorTypes.includes("other") ? behaviorCustomText.trim() || null : null,
+              behavior_type: recordCategory === "barking" ? nextRecord.behaviorTypes[0] ?? "other" : null,
+              behavior_types: recordCategory === "barking" ? nextRecord.behaviorTypes : null,
+              behavior_custom_text: recordCategory === "barking" ? nextRecord.behaviorCustomText || null : null,
+              behavior_custom_texts: recordCategory === "barking" && nextRecord.behaviorCustomTexts.length ? nextRecord.behaviorCustomTexts : null,
               behavior_intensity: recordCategory === "barking" ? behaviorIntensity : null,
               mood,
               appetite,
@@ -679,6 +748,18 @@ export default function Home() {
         <p className="today-page-message">{todayPageMessage}</p>
       </section>
 
+      {growthMessage && (
+        <section className="growth-card" aria-labelledby="growth-title">
+          <div className="growth-spark" aria-hidden="true">✦</div>
+          <div>
+            <p className="card-label">GROWING TOGETHER</p>
+            <h2 id="growth-title">できること、増えてきたね。</h2>
+            <p>{growthMessage}</p>
+            <button className="text-button" onClick={() => openNewRecord("win")}>もうひとつ「できた」を残す →</button>
+          </div>
+        </section>
+      )}
+
       <section className="streak-strip" aria-label="継続状況">
         <div><strong>{streak}</strong><span>日</span></div>
         <p>{streak > 0 ? "記録が続いています。空いた日があっても、今日からまた続きです。" : "最初の記録を残すと、ここに継続日数が表示されます。"}</p>
@@ -737,10 +818,10 @@ export default function Home() {
         {records.length ? (
           <div className="record-list">
             {records.slice(0, 5).map((record) => (
-              <button key={record.id} onClick={() => { setEditingRecordId(record.id); setRecordCategory(record.category ?? "daily"); setRecordDate(record.recordedOn); setRecordTime(record.recordedTime ?? "12:00"); setDurationMinutes(record.durationMinutes ?? 20); setBehaviorTypes(record.behaviorTypes?.length ? record.behaviorTypes : ["barking"]); setBehaviorCustomText(record.behaviorCustomText ?? ""); setBehaviorIntensity(record.behaviorIntensity ?? 2); setMood(record.mood); setAppetite(record.appetite); setActivity(record.activity); setToilet(record.toilet); setSleep(record.sleep); setBehaviorNote(record.behaviorNote); setGoodMoment(record.goodMoment); setView("record"); }}>
+              <button key={record.id} onClick={() => { setEditingRecordId(record.id); setRecordCategory(record.category ?? "daily"); setRecordDate(record.recordedOn); setRecordTime(record.recordedTime ?? "12:00"); setDurationMinutes(record.durationMinutes ?? 20); setBehaviorTypes(record.behaviorTypes?.filter((type) => type !== "other").length ? record.behaviorTypes.filter((type) => type !== "other") : []); setSelectedCustomBehaviors(record.behaviorCustomTexts?.length ? record.behaviorCustomTexts : record.behaviorCustomText ? [record.behaviorCustomText] : []); setBehaviorCustomText(""); setBehaviorIntensity(record.behaviorIntensity ?? 5); setMood(record.mood); setAppetite(record.appetite); setActivity(record.activity); setToilet(record.toilet); setSleep(record.sleep); setBehaviorNote(record.behaviorNote); setGoodMoment(record.goodMoment); setView("record"); }}>
                 <span className="record-date"><strong>{record.recordedTime ?? "12:00"}</strong><small>{formatDate(record.recordedOn)}</small></span>
                 <span className="timeline-topic-icon"><TopicIcon name={categoryInfo(record.category).icon} /></span>
-                <span className="record-summary"><b>{record.category === "barking" ? record.behaviorTypes.map((type) => type === "other" && record.behaviorCustomText ? record.behaviorCustomText : behaviorInfo(type).label).join("・") : categoryInfo(record.category).label}</b>{record.category === "walk" && record.durationMinutes ? ` · ${record.durationMinutes}分` : ""}<small>{record.category === "barking" && record.behaviorIntensity ? `程度 ${record.behaviorIntensity}/3 · ` : ""}気分 {record.mood}/5</small></span>
+                <span className="record-summary"><b>{record.category === "barking" ? [...record.behaviorTypes.filter((type) => type !== "other").map((type) => behaviorInfo(type).label), ...(record.behaviorCustomTexts?.length ? record.behaviorCustomTexts : record.behaviorCustomText ? [record.behaviorCustomText] : [])].join("・") : categoryInfo(record.category).label}</b>{record.category === "walk" && record.durationMinutes ? ` · ${record.durationMinutes}分` : ""}<small>{record.category === "barking" && record.behaviorIntensity ? `気になり度 ${record.behaviorIntensity}/10 · ` : ""}気分 {record.mood}/5</small></span>
                 <span aria-hidden="true">›</span>
               </button>
             ))}
@@ -797,33 +878,41 @@ export default function Home() {
       <p className="time-note">記録を始めた時刻が自動で入っています。</p>
       {recordCategory === "barking" && (
         <section className="behavior-picker">
-          <div className="behavior-picker-heading"><p>どの困りごとですか？</p><span>{behaviorTypes.length}/3</span></div>
+          <div className="behavior-picker-heading"><p>どの困りごとですか？</p><span>{behaviorSelectionCount}/3</span></div>
           <div>
-            {BEHAVIOR_TYPES.map((item) => (
+            {BEHAVIOR_TYPES.filter((item) => item.id !== "other").map((item) => (
               <button
                 type="button"
                 key={item.id}
                 className={behaviorTypes.includes(item.id) ? "is-selected" : ""}
                 aria-pressed={behaviorTypes.includes(item.id)}
-                disabled={!behaviorTypes.includes(item.id) && behaviorTypes.length >= 3}
+                disabled={!behaviorTypes.includes(item.id) && behaviorSelectionCount >= 3}
                 onClick={() => toggleBehaviorType(item.id)}
               >
                 <strong>{item.label}</strong><small>{item.description}</small>
               </button>
             ))}
           </div>
-          {behaviorTypes.includes("other") && (
-            <label className="custom-behavior">その他の困りごと
-              <input value={behaviorCustomText} onChange={(event) => setBehaviorCustomText(event.target.value)} placeholder="例：拾い食い、家具をかじる" maxLength={60} required />
-            </label>
-          )}
-          <fieldset>
-            <legend>どのくらい気になった？</legend>
-            <div>
-              {[{ value: 1, label: "少し" }, { value: 2, label: "気になった" }, { value: 3, label: "強く気になった" }].map((item) => (
-                <button type="button" key={item.value} className={behaviorIntensity === item.value ? "is-selected" : ""} onClick={() => setBehaviorIntensity(item.value)}>{item.label}</button>
-              ))}
+          {customBehaviorOptions.length > 0 && (
+            <div className="saved-behaviors">
+              <span>以前追加した項目</span>
+              <div>{customBehaviorOptions.map((label) => (
+                <button type="button" key={label} className={selectedCustomBehaviors.includes(label) ? "is-selected" : ""} onClick={() => selectCustomBehavior(label)}>{label}</button>
+              ))}</div>
             </div>
+          )}
+          <label className="custom-behavior">その他の困りごと
+            <span className="custom-behavior-entry">
+              <input value={behaviorCustomText} onChange={(event) => setBehaviorCustomText(event.target.value)} placeholder="例：拾い食い、家具をかじる" maxLength={60} />
+              <button type="button" onClick={addCustomBehavior} disabled={!behaviorCustomText.trim()}>追加</button>
+            </span>
+            <small>追加すると今回の記録に選ばれ、次回から選択項目として残ります。</small>
+          </label>
+          <fieldset className="intensity-field">
+            <legend>どのくらい気になった？</legend>
+            <div className="intensity-value"><output>{behaviorIntensity}</output><span>{behaviorIntensity <= 3 ? "少し気になった" : behaviorIntensity <= 7 ? "気になった" : "とても気になった"}</span></div>
+            <input aria-label="気になり度" type="range" min="1" max="10" step="1" value={behaviorIntensity} onChange={(event) => setBehaviorIntensity(Number(event.target.value))} />
+            <div className="intensity-labels"><span>1 ほとんど気にならない</span><span>10 とても気になる</span></div>
           </fieldset>
         </section>
       )}
@@ -909,7 +998,7 @@ export default function Home() {
         <div className="report-empty"><strong>{behaviorInfo(reportBehaviorType).label}の記録はまだありません</strong><p>起きたときに、時刻と程度を残してみましょう。</p></div>
       )}
 
-      <button className="primary-button report-add" onClick={() => { openNewRecord("barking"); setBehaviorTypes([reportBehaviorType]); }}>{behaviorInfo(reportBehaviorType).label}を記録する<span>→</span></button>
+      <button className="primary-button report-add" onClick={() => { openNewRecord("barking"); reportBehaviorType === "other" ? setBehaviorTypes([]) : setBehaviorTypes([reportBehaviorType]); }}>{behaviorInfo(reportBehaviorType).label}を記録する<span>→</span></button>
       <p className="report-note">表示しているのは記録回数の変化です。記録漏れや生活リズムも影響するため、実際の発生回数や因果関係を断定するものではありません。</p>
     </section>
   );
