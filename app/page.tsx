@@ -238,6 +238,20 @@ export default function Home() {
         : walkEntries.length > 0
           ? `この7日でお散歩は${walkEntries.length}回${walkMinutes ? `・合計${walkMinutes}分` : ""}。積み重ねが見えています。`
           : "今週のお散歩はまだ未記録です。短いお散歩も、残すと暮らしのリズムが見えてきます。";
+  const todayLabel = new Intl.DateTimeFormat("ja-JP", {
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+    timeZone: "Asia/Tokyo",
+  }).format(new Date(`${today()}T00:00:00+09:00`));
+  const todayPageMessage =
+    todaysEntries.length === 0
+      ? "まだ何も書かれていない今日。最初の足あとを残してみよう。"
+      : todaysEntries.length === 1
+        ? "最初の足あとが残りました。今日のページが始まっています。"
+        : todaysEntries.length < 4
+          ? "少しずつ、今日の輪郭が見えてきました。"
+          : "今日もよく見て、よく向き合えました。大切な一ページです。";
 
   useEffect(() => {
     const localProfile = readLocal(PROFILE_KEY, initialProfile);
@@ -461,9 +475,9 @@ export default function Home() {
           .single();
         if (error) throw error;
         nextRecords = nextRecords.map((item) => (item.id === nextRecord.id ? { ...item, id: data.id } : item));
-        showNotice("今日の記録を保存しました");
+        showNotice(`${categoryInfo(recordCategory ?? "daily").label}の足あとを残しました`);
       } else {
-        showNotice("今日の記録をこの端末に保存しました");
+        showNotice(`${categoryInfo(recordCategory ?? "daily").label}の足あとを端末に残しました`);
       }
     } catch {
       setConnection("local");
@@ -521,7 +535,7 @@ export default function Home() {
     <>
       <section className="welcome">
         <div>
-          <p className="eyebrow">TODAY WITH {dogName.toUpperCase()}</p>
+          <p className="eyebrow">TODAY WITH {dogName.toUpperCase()}</p><p className="today-date">{todayLabel}</p>
           <h1>{profile.name ? `${profile.name}ちゃん、今日も一緒に。` : "今日から、少しずつ。"}</h1>
           <p className="welcome-copy">小さな変化と、今日もかわいかった瞬間。毎日の記録がコーチとの会話につながります。</p>
         </div>
@@ -542,20 +556,20 @@ export default function Home() {
         <div className="checkin-top">
           <div>
             <p className="card-label">今日のチェックイン</p>
-            <h2>{todaysRecord ? "今日の記録ができました" : "今日のかわいいを、ひとつ。"}</h2>
+            <h2>{todaysRecord ? "もうひとつ、今日を残そう。" : "今日のかわいいを、ひとつ。"}</h2>
           </div>
           <div className={`record-mark ${todaysRecord ? "is-done" : ""}`}>{todaysRecord ? "✓" : <span className="paw-mark" aria-hidden="true"><i></i><i></i><i></i><b></b></span>}</div>
         </div>
         <p>{todaysRecord ? "あとから何度でも書き直せます。" : "気になったことも、できたことも。1分で残せます。"}</p>
         <button className="primary-button" onClick={() => openNewRecord()}>
-          {todaysRecord ? "今日の記録を見直す" : "今日の記録をつける"}<span>→</span>
+          今日の記録を追加する<span>→</span>
         </button>
       </section>
 
       <section className="today-rhythm" aria-labelledby="today-rhythm-title">
         <div className="today-rhythm-heading">
           <div><p className="card-label">TODAY'S RHYTHM</p><h2 id="today-rhythm-title">今日のリズム</h2></div>
-          <span>{todaysEntries.length}件</span>
+          <div className={`daily-stamp ${todaysEntries.length ? "has-records" : ""}`}><strong>{todaysEntries.length}</strong><small>PAWS</small></div>
         </div>
         <div className="today-topic-grid">
           {RECORD_CATEGORIES.map((category) => {
@@ -569,6 +583,7 @@ export default function Home() {
             );
           })}
         </div>
+        <p className="today-page-message">{todayPageMessage}</p>
       </section>
 
       <section className="streak-strip" aria-label="継続状況">
@@ -631,7 +646,8 @@ export default function Home() {
             {records.slice(0, 5).map((record) => (
               <button key={record.id} onClick={() => { setEditingRecordId(record.id); setRecordCategory(record.category ?? "daily"); setRecordDate(record.recordedOn); setRecordTime(record.recordedTime ?? "12:00"); setDurationMinutes(record.durationMinutes ?? 20); setMood(record.mood); setAppetite(record.appetite); setActivity(record.activity); setToilet(record.toilet); setSleep(record.sleep); setBehaviorNote(record.behaviorNote); setGoodMoment(record.goodMoment); setView("record"); }}>
                 <span className="record-date"><strong>{record.recordedTime ?? "12:00"}</strong><small>{formatDate(record.recordedOn)}</small></span>
-                <span className="record-summary"><b>{categoryInfo(record.category).label}</b>{record.category === "walk" && record.durationMinutes ? ` · ${record.durationMinutes}分` : ""} · 気分 {record.mood}/5</span>
+                <span className="timeline-topic-icon"><TopicIcon name={categoryInfo(record.category).icon} /></span>
+                <span className="record-summary"><b>{categoryInfo(record.category).label}</b>{record.category === "walk" && record.durationMinutes ? ` · ${record.durationMinutes}分` : ""}<small>気分 {record.mood}/5</small></span>
                 <span aria-hidden="true">›</span>
               </button>
             ))}
