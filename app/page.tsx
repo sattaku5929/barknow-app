@@ -131,6 +131,17 @@ function Icon({ children }: { children: ReactNode }) {
   return <span className="nav-icon" aria-hidden="true">{children}</span>;
 }
 
+function NavGlyph({ name }: { name: "home" | "report" | "record" | "coach" | "profile" }) {
+  const paths: Record<typeof name, ReactNode> = {
+    home: <><path d="m4 11 8-7 8 7" /><path d="M6.5 10v9h11v-9M10 19v-5h4v5" /></>,
+    report: <><path d="M5 19V9M12 19V5M19 19v-7" /><path d="M3 19h18" /></>,
+    record: <><path d="M12 5v14M5 12h14" /></>,
+    coach: <><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-4.5 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" /><path d="M8 10h8M8 13h5" /></>,
+    profile: <><circle cx="12" cy="8" r="3.2" /><path d="M5.5 20c.7-4 2.8-6 6.5-6s5.8 2 6.5 6" /></>,
+  };
+  return <svg viewBox="0 0 24 24">{paths[name]}</svg>;
+}
+
 function TopicIcon({ name }: { name: RecordCategory }) {
   const paths: Record<RecordCategory, ReactNode> = {
     daily: <><rect x="4" y="5" width="16" height="15" rx="3" /><path d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h6" /></>,
@@ -699,7 +710,7 @@ export default function Home() {
         <div>
           <p className="eyebrow">TODAY WITH {dogName.toUpperCase()}</p><p className="today-date">{todayLabel}</p>
           <h1>{profile.name ? `${profile.name}ちゃん、今日も一緒に。` : "今日から、少しずつ。"}</h1>
-          <p className="welcome-copy">小さな変化と、今日もかわいかった瞬間。毎日の記録がコーチとの会話につながります。</p>
+          <p className="welcome-copy">今日の様子を、迷わず、すぐに。</p>
         </div>
         <button className="avatar" onClick={() => setView("profile")} aria-label="愛犬プロフィールを開く">
           {profile.name ? profile.name.slice(0, 1) : "＋"}
@@ -713,20 +724,6 @@ export default function Home() {
           <span aria-hidden="true">→</span>
         </button>
       )}
-
-      <section className="checkin-card">
-        <div className="checkin-top">
-          <div>
-            <p className="card-label">今日のチェックイン</p>
-            <h2>{todaysRecord ? "もうひとつ、今日を残そう。" : "今日のかわいいを、ひとつ。"}</h2>
-          </div>
-          <div className={`record-mark ${todaysRecord ? "is-done" : ""}`}>{todaysRecord ? "✓" : <span className="paw-mark" aria-hidden="true"><i></i><i></i><i></i><b></b></span>}</div>
-        </div>
-        <p>{todaysRecord ? "あとから何度でも書き直せます。" : "気になったことも、できたことも。1分で残せます。"}</p>
-        <button className="primary-button" onClick={() => openNewRecord()}>
-          今日の記録を追加する<span>→</span>
-        </button>
-      </section>
 
       <section className="today-rhythm" aria-labelledby="today-rhythm-title">
         <div className="today-rhythm-heading">
@@ -746,6 +743,7 @@ export default function Home() {
           })}
         </div>
         <p className="today-page-message">{todayPageMessage}</p>
+        <button className="primary-button today-add-button" onClick={() => openNewRecord()}>記録を追加する<NavGlyph name="record" /></button>
       </section>
 
       {growthMessage && (
@@ -760,16 +758,17 @@ export default function Home() {
         </section>
       )}
 
-      <section className="streak-strip" aria-label="継続状況">
-        <div><strong>{streak}</strong><span>日</span></div>
-        <p>{streak > 0 ? "記録が続いています。空いた日があっても、今日からまた続きです。" : "最初の記録を残すと、ここに継続日数が表示されます。"}</p>
+      <section className="overview-stats" aria-label="記録の概要">
+        <div><span>連続記録</span><strong>{streak}<small>日</small></strong></div>
+        <div><span>この7日</span><strong>{recentDays.filter((day) => day.entries.length).length}<small>日</small></strong></div>
+        <div><span>できた</span><strong>{recentGoodCount}<small>件</small></strong></div>
       </section>
 
-      <section className="rhythm-card" aria-labelledby="rhythm-title">
+      <section className="rhythm-card compact-week" aria-labelledby="rhythm-title">
         <div className="rhythm-heading">
           <div>
-            <p className="card-label">7 DAYS WITH {dogName.toUpperCase()}</p>
-            <h2 id="rhythm-title">この7日間</h2>
+            <p className="card-label">THIS WEEK</p>
+            <h2 id="rhythm-title">記録カレンダー</h2>
           </div>
           <strong>{recentDays.filter((day) => day.entries.length).length}<span>/ 7日</span></strong>
         </div>
@@ -814,10 +813,10 @@ export default function Home() {
       </section>
 
       <section className="content-section">
-        <SectionTitle eyebrow="TIMELINE" title="愛犬の一日" />
+        <SectionTitle eyebrow="RECENT LOGS" title="最近の記録" />
         {records.length ? (
           <div className="record-list">
-            {records.slice(0, 5).map((record) => (
+            {records.slice(0, 3).map((record) => (
               <button key={record.id} onClick={() => { setEditingRecordId(record.id); setRecordCategory(record.category ?? "daily"); setRecordDate(record.recordedOn); setRecordTime(record.recordedTime ?? "12:00"); setDurationMinutes(record.durationMinutes ?? 20); setBehaviorTypes(record.behaviorTypes?.filter((type) => type !== "other").length ? record.behaviorTypes.filter((type) => type !== "other") : []); setSelectedCustomBehaviors(record.behaviorCustomTexts?.length ? record.behaviorCustomTexts : record.behaviorCustomText ? [record.behaviorCustomText] : []); setBehaviorCustomText(""); setBehaviorIntensity(record.behaviorIntensity ?? 5); setMood(record.mood); setAppetite(record.appetite); setActivity(record.activity); setToilet(record.toilet); setSleep(record.sleep); setBehaviorNote(record.behaviorNote); setGoodMoment(record.goodMoment); setView("record"); }}>
                 <span className="record-date"><strong>{record.recordedTime ?? "12:00"}</strong><small>{formatDate(record.recordedOn)}</small></span>
                 <span className="timeline-topic-icon"><TopicIcon name={categoryInfo(record.category).icon} /></span>
@@ -845,8 +844,8 @@ export default function Home() {
 
   const recordView = !selectedCategory ? (
     <section className="topic-screen">
-      <SectionTitle eyebrow="DAILY NOTE" title="何を残しますか？" />
-      <p className="lead">今日の「気になる」も「かわいい」も。残したいことをひとつ選んでください。</p>
+      <SectionTitle eyebrow="STEP 1 / 2" title="何を記録しますか？" />
+      <p className="lead">テーマを選ぶと、必要な項目だけを表示します。</p>
       <div className="topic-grid">
         {RECORD_CATEGORIES.map((category) => (
           <button key={category.id} onClick={() => { setRecordTime(currentTime()); setRecordCategory(category.id); }}>
@@ -860,6 +859,7 @@ export default function Home() {
     </section>
   ) : (
     <form className="screen-form" onSubmit={saveRecord}>
+      <div className="form-progress" aria-label="記録の進行状況"><span className="is-complete">1</span><i></i><span className="is-current">2</span><small>内容を入力</small></div>
       <button type="button" className="topic-back" onClick={() => setRecordCategory(null)}>← テーマを選び直す</button>
       <div className="selected-topic">
         <span className="topic-mark"><TopicIcon name={selectedCategory.icon} /></span>
@@ -1055,11 +1055,11 @@ export default function Home() {
           {view === "profile" && profileView}
         </main>
         <nav className="bottom-nav" aria-label="メインメニュー">
-          <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}><Icon>⌂</Icon><span>ホーム</span></button>
-          <button className={view === "report" ? "active" : ""} onClick={() => setView("report")}><Icon>↗</Icon><span>レポート</span></button>
-          <button className={view === "record" ? "active" : ""} onClick={() => openNewRecord()}><Icon>＋</Icon><span>記録</span></button>
-          <button className={view === "coach" ? "active" : ""} onClick={() => setView("coach")}><Icon><svg viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-4.5 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" /><path d="M8 10h8M8 13h5" /></svg></Icon><span>コーチ</span></button>
-          <button className={view === "profile" ? "active" : ""} onClick={() => setView("profile")}><Icon>○</Icon><span>設定</span></button>
+          <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}><Icon><NavGlyph name="home" /></Icon><span>ホーム</span></button>
+          <button className={view === "report" ? "active" : ""} onClick={() => setView("report")}><Icon><NavGlyph name="report" /></Icon><span>レポート</span></button>
+          <button className={view === "record" ? "active" : ""} onClick={() => openNewRecord()}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>
+          <button className={view === "coach" ? "active" : ""} onClick={() => setView("coach")}><Icon><NavGlyph name="coach" /></Icon><span>コーチ</span></button>
+          <button className={view === "profile" ? "active" : ""} onClick={() => setView("profile")}><Icon><NavGlyph name="profile" /></Icon><span>設定</span></button>
         </nav>
         <div className={`toast ${notice ? "show" : ""}`} role="status">{notice}</div>
       </div>
