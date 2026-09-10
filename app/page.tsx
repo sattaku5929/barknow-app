@@ -317,7 +317,7 @@ export default function Home() {
 
   useEffect(() => {
     const localProfile = readLocal(PROFILE_KEY, initialProfile);
-    const localRecords = readLocal<DailyRecord[]>(RECORDS_KEY, []).map((record) => ({
+    const localRecords: DailyRecord[] = readLocal<DailyRecord[]>(RECORDS_KEY, []).map((record): DailyRecord => ({
       ...record,
       category: record.category ?? "daily",
       recordedTime: record.recordedTime ?? "12:00",
@@ -371,7 +371,7 @@ export default function Home() {
           writeLocal(PROFILE_KEY, remoteProfile);
         }
         if (recordResult.data) {
-          const remoteRecords = recordResult.data.map((item) => ({
+          const remoteRecords: DailyRecord[] = recordResult.data.map((item): DailyRecord => ({
             id: item.id,
             category: (item.category as RecordCategory) ?? "daily",
             recordedOn: item.recorded_on,
