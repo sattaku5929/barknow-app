@@ -514,3 +514,151 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .custom-behavior-entry input { flex: 1; min-width: 0; }
 .custom-behavior-entry button { flex: 0 0 64px; min-height: 50px; border: 0; border-radius: 14px; background: var(--green); color: white; cursor: pointer; font-size: 12px; font-weight: 700; }
 .custom-behavior-entry button:disabled { opacity: .35; }
+
+
+/* Clear daily dashboard — inspired by low-friction journal and habit trackers */
+:root {
+  --surface: #ffffff;
+  --surface-soft: #f6f8f6;
+  --surface-green: #edf7f2;
+  --shadow-card: 0 10px 32px rgba(26, 67, 52, .07);
+}
+html, body { background: #f2f5f3; }
+body { font-size: 16px; }
+.app-shell { background: #f8faf8; }
+.app-header {
+  min-height: 64px;
+  padding: 9px 18px;
+  border-bottom-color: rgba(27, 61, 49, .07);
+  background: rgba(248,250,248,.94);
+}
+.app-main { padding: 24px 18px calc(112px + env(safe-area-inset-bottom)); }
+
+.welcome { align-items: center; }
+.welcome .eyebrow { margin-bottom: 5px; font-size: 9px; }
+.today-date { margin-bottom: 5px; font-size: 12px; }
+.welcome h1 { font-size: clamp(24px, 6.7vw, 34px); line-height: 1.35; letter-spacing: .02em; }
+.welcome-copy { margin-top: 8px; font-size: 14px; line-height: 1.6; }
+.avatar { width: 48px; height: 48px; border: 2px solid white; box-shadow: 0 4px 14px rgba(26,67,52,.1); }
+
+.today-rhythm {
+  margin-top: 22px;
+  padding: 22px 18px 18px;
+  border: 1px solid rgba(0,134,97,.11);
+  border-radius: 26px;
+  background: white;
+  box-shadow: var(--shadow-card);
+}
+.today-rhythm::after { width: 54px; height: 14px; }
+.today-rhythm-heading { align-items: center; }
+.today-rhythm-heading h2 { font-size: 23px; font-weight: 500; letter-spacing: .02em; }
+.daily-stamp { width: 52px; height: 52px; }
+.today-topic-grid {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+  margin-top: 18px;
+}
+.today-topic-grid button {
+  min-height: 78px;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 4px;
+  border: 1px solid rgba(27,61,49,.07);
+  border-radius: 17px;
+  background: var(--surface-soft);
+}
+.today-topic-grid button:nth-child(2), .today-topic-grid button:nth-child(6) { background: #fbf6ea; }
+.today-topic-grid button:nth-child(3), .today-topic-grid button:nth-child(5) { background: #f0f5f5; }
+.today-topic-grid .topic-mark { width: 42px; height: 42px; background: white; }
+.today-topic-grid button small { overflow: visible; font-size: 12px; font-weight: 700; }
+.today-topic-grid button b { top: 3px; right: calc(50% - 30px); min-width: 21px; height: 21px; font-size: 10px; }
+.today-page-message { margin-top: 14px; font-size: 12px; }
+.today-add-button { min-height: 54px; justify-content: center; gap: 9px; margin-top: 13px; border-radius: 17px; font-size: 15px; }
+.today-add-button svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+.overview-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 14px 0 24px;
+}
+.overview-stats > div { padding: 14px 8px; border: 1px solid rgba(27,61,49,.07); border-radius: 17px; background: white; text-align: center; }
+.overview-stats span { display: block; color: var(--muted); font-size: 10px; font-weight: 700; }
+.overview-stats strong { display: block; margin-top: 4px; color: var(--green-dark); font-family: var(--font-display); font-size: 26px; font-weight: 500; line-height: 1; }
+.overview-stats small { margin-left: 2px; font-family: var(--font-sans); font-size: 10px; }
+
+.growth-card { margin: 0 0 16px; }
+.compact-week { margin-bottom: 16px; padding: 20px 17px; }
+.compact-week .rhythm-heading h2 { font-size: 19px; }
+.compact-week .rhythm-heading > strong { font-size: 24px; }
+.week-dots { gap: 5px; }
+.week-day { font-size: 10px; }
+.week-day i { min-width: 32px; font-size: 11px; }
+.weekly-insight p { font-size: 13px; line-height: 1.65; }
+.weekly-insight button { font-size: 13px; }
+
+.observation-card { margin-bottom: 28px; padding: 19px; }
+.observation-card h2 { font-size: 19px; }
+.observation-card p:not(.card-label) { font-size: 13px; line-height: 1.7; }
+
+.section-title { display: block; }
+.section-title > span { display: block; margin-bottom: 6px; }
+.section-title > span::after { width: 24px; }
+.section-title h2 { font-size: 23px; text-align: left; }
+.content-section { margin-top: 26px; }
+.record-list { margin-top: 13px; overflow: hidden; border: 1px solid rgba(27,61,49,.08); border-radius: 20px; background: white; }
+.record-list::before { left: 73px; }
+.record-list button { min-height: 76px; grid-template-columns: 58px 35px 1fr auto; padding: 7px 12px 7px 8px; }
+.record-list button:last-child { border-bottom: 0; }
+.record-date strong { font-size: 16px; }
+.record-summary { font-size: 13px; }
+.record-summary b { font-size: 12px; }
+.record-summary small { font-size: 10px; }
+
+.coach-preview { margin-top: 20px; padding: 20px; border: 1px solid rgba(0,134,97,.1); border-radius: 22px; background: var(--surface-green); }
+.coach-preview h2 { font-size: 19px; }
+.coach-preview p { font-size: 13px; line-height: 1.65; }
+
+.topic-screen .section-title, .report-screen .section-title, .coach-screen .section-title, .screen-form .section-title { margin-bottom: 8px; }
+.lead { margin-top: 8px; font-size: 15px; line-height: 1.7; }
+.topic-grid { gap: 9px; margin-top: 22px; }
+.topic-grid > button { min-height: 110px; grid-template-columns: 1fr; justify-items: start; align-content: center; gap: 9px; padding: 16px; }
+.topic-grid .topic-mark { width: 44px; height: 44px; }
+.topic-grid strong { font-size: 15px; }
+.topic-grid small { font-size: 11px; line-height: 1.45; }
+.topic-hint { margin-top: 16px; font-size: 12px; line-height: 1.6; }
+
+.form-progress { display: grid; grid-template-columns: 28px 42px 28px 1fr; align-items: center; gap: 6px; margin: -2px 0 14px; }
+.form-progress > span { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 50%; font-family: var(--font-display); font-size: 11px; font-weight: 700; }
+.form-progress .is-complete { background: var(--green); color: white; }
+.form-progress .is-current { border: 1px solid var(--green); background: white; color: var(--green); }
+.form-progress i { height: 1px; background: var(--green); }
+.form-progress small { color: var(--muted); font-size: 11px; font-weight: 700; }
+.topic-back { margin: 0 0 10px; font-size: 13px; }
+.selected-topic { padding: 16px; box-shadow: 0 6px 20px rgba(26,67,52,.045); }
+.field-label { font-size: 14px; }
+.mood-field legend, .status-field legend, .behavior-picker > p, .behavior-picker legend { font-size: 14px; }
+.mood-field button { min-height: 54px; font-size: 10px; }
+.segmented button { min-height: 46px; font-size: 13px; }
+.screen-form > .primary-button { min-height: 56px; font-size: 15px; }
+
+.trend-card { box-shadow: var(--shadow-card); }
+.report-filter button { min-height: 42px; font-size: 12px; }
+.report-detail h2 { font-size: 20px; }
+.report-observation, .report-empty p, .report-note { font-size: 12px; }
+
+.message-list { min-height: 220px; }
+.coach-empty p, .message p { font-size: 14px; }
+.message-form label { font-size: 14px; }
+
+.bottom-nav { padding-top: 6px; }
+.bottom-nav button { min-height: 58px; gap: 4px; font-size: 11px; }
+.nav-icon svg { width: 23px; height: 23px; }
+.bottom-nav button:nth-child(3) .nav-icon { width: 42px; height: 42px; }
+.bottom-nav button:nth-child(3) > span:last-child { margin-top: -4px; }
+
+@media (min-width: 700px) {
+  .app-main { padding-top: 34px; }
+  .today-topic-grid { grid-template-columns: repeat(6, 1fr); }
+  .today-topic-grid button { min-height: 86px; }
+}
