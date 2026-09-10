@@ -127,6 +127,25 @@ function calculateStreak(records: DailyRecord[]) {
   return streak;
 }
 
+
+function statusScore(status: Status) {
+  return status === "良い" ? 100 : status === "ふつう" ? 72 : 38;
+}
+
+function recordConditionScore(record: DailyRecord) {
+  const moodScore = Math.max(20, Math.min(100, record.mood * 20));
+  const categoryScore =
+    record.category === "meal" ? statusScore(record.appetite)
+      : record.category === "walk" ? statusScore(record.activity)
+        : record.category === "toilet" ? statusScore(record.toilet)
+          : record.category === "sleep" ? statusScore(record.sleep)
+            : record.category === "barking" && record.behaviorIntensity
+              ? Math.max(25, 105 - record.behaviorIntensity * 8)
+              : record.category === "win" ? 100
+                : Math.round((statusScore(record.appetite) + statusScore(record.activity) + statusScore(record.toilet) + statusScore(record.sleep)) / 4);
+  return Math.round((moodScore + categoryScore) / 2);
+}
+
 function Icon({ children }: { children: ReactNode }) {
   return <span className="nav-icon" aria-hidden="true">{children}</span>;
 }
@@ -226,6 +245,8 @@ export default function Home() {
   const [behaviorNote, setBehaviorNote] = useState("");
   const [goodMoment, setGoodMoment] = useState("");
   const [draftMessage, setDraftMessage] = useState("");
+  const [calendarMode, setCalendarMode] = useState<"week" | "month">("week");
+  const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
 
   const streak = useMemo(() => calculateStreak(records), [records]);
   const todaysRecord = records.find((record) => record.recordedOn === today());
@@ -256,6 +277,44 @@ export default function Home() {
       ? `「${shortGoodMoment}」など、今週は${recentGoodCount}個の「できた」が残っています。できることが増えてきたね！`
       : `「${shortGoodMoment}」ができたね！大切な一歩が残っています。`
     : "";
+  const recordedConditionDays = recentDays.filter((day) => day.entries.length > 0);
+  const conditionScore = recordedConditionDays.length
+    ? Math.round(recordedConditionDays.reduce((total, day) => {
+        const dayScore = day.entries.reduce((sum, record) => sum + recordConditionScore(record), 0) / day.entries.length;
+        return total + dayScore;
+      }, 0) / recordedConditionDays.length)
+    : 0;
+  const recentBehaviorCount = recentRecords.filter((record) => record.category === "barking").length;
+  const conditionLevel = recordedConditionDays.length < 3
+    ? "記録をためています"
+    : conditionScore >= 78 ? "安定している様子"
+      : conditionScore >= 58 ? "少し波がある様子"
+        : "気になる日が多め";
+  const conditionCopy = recordedConditionDays.length < 3
+    ? "3日分ほど記録すると、暮らし全体の傾向が見え始めます。"
+    : conditionScore >= 78
+      ? "気分や生活記録は、全体として落ち着いています。"
+      : conditionScore >= 58
+        ? "良い日と気になる日があります。変化した日の記録を見てみましょう。"
+        : "気になる記録が続いています。必要に応じてコーチや獣医師へ相談してください。";
+  const monthlyCalendar = useMemo(() => {
+    const base = new Date(`${today()}T00:00:00+09:00`);
+    const first = new Date(base.getFullYear(), base.getMonth() + calendarMonthOffset, 1);
+    const year = first.getFullYear();
+    const month = first.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const leading = first.getDay();
+    return {
+      label: new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "long" }).format(first),
+      cells: Array.from({ length: 42 }, (_, index) => {
+        const day = index - leading + 1;
+        if (day < 1 || day > daysInMonth) return null;
+        const value = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const entries = records.filter((record) => record.recordedOn === value);
+        return { day, value, count: entries.length };
+      }),
+    };
+  }, [calendarMonthOffset, records]);
   const todaysEntries = records.filter((record) => record.recordedOn === today());
   const walkEntries = recentRecords.filter((record) => record.category === "walk");
   const walkMinutes = walkEntries.reduce((total, record) => total + (record.durationMinutes ?? 0), 0);
@@ -764,36 +823,64 @@ export default function Home() {
         <div><span>できた</span><strong>{recentGoodCount}<small>件</small></strong></div>
       </section>
 
-      <section className="rhythm-card compact-week" aria-labelledby="rhythm-title">
-        <div className="rhythm-heading">
-          <div>
-            <p className="card-label">THIS WEEK</p>
-            <h2 id="rhythm-title">記録カレンダー</h2>
+      <section className={`condition-card condition-${recordedConditionDays.length < 3 ? "collecting" : conditionScore >= 78 ? "good" : conditionScore >= 58 ? "middle" : "watch"}`} aria-labelledby="condition-title">
+        <div className="condition-ring" style={{ background: `conic-gradient(var(--green) ${conditionScore * 3.6}deg, #e4ebe7 0deg)` }}>
+          <span><strong>{recordedConditionDays.length ? conditionScore : "–"}</strong><small>{recordedConditionDays.length ? "/100" : "集計中"}</small></span>
+        </div>
+        <div className="condition-content">
+          <p className="card-label">LIFE CONDITION</p>
+          <h2 id="condition-title">{dogName}の今は、<b>{conditionLevel}</b></h2>
+          <p>{conditionCopy}</p>
+          <div className="condition-facts">
+            <span>記録日 <b>{recordedConditionDays.length}</b></span>
+            <span>気になる状態 <b>{recentConcernCount}</b></span>
+            <span>困りごと <b>{recentBehaviorCount}</b></span>
           </div>
-          <strong>{recentDays.filter((day) => day.entries.length).length}<span>/ 7日</span></strong>
+          <button className="text-button" onClick={() => setView("report")}>詳しい変化を見る →</button>
         </div>
-        <div className="week-dots">
-          {recentDays.map((day) => (
-            <div key={day.value} className={`week-day ${day.entries.length ? "is-recorded" : ""} ${day.value === today() ? "is-today" : ""}`}>
-              <span>{day.label}</span>
-              <i aria-label={day.entries.length ? `${day.value} ${day.entries.length}件記録済み` : `${day.value} 未記録`}>{day.entries.length ? (day.entries.length > 1 ? day.entries.length : "✓") : ""}</i>
+      </section>
+
+      <section className="rhythm-card compact-week" aria-labelledby="rhythm-title">
+        <div className="calendar-head">
+          <div><p className="card-label">{calendarMode === "week" ? "THIS WEEK" : "MONTHLY LOG"}</p><h2 id="rhythm-title">記録カレンダー</h2></div>
+          <div className="calendar-switch" aria-label="カレンダー表示">
+            <button className={calendarMode === "week" ? "is-selected" : ""} onClick={() => setCalendarMode("week")}>週</button>
+            <button className={calendarMode === "month" ? "is-selected" : ""} onClick={() => setCalendarMode("month")}>月</button>
+          </div>
+        </div>
+        {calendarMode === "week" ? (
+          <>
+            <div className="week-dots">
+              {recentDays.map((day) => (
+                <div key={day.value} className={`week-day ${day.entries.length ? "is-recorded" : ""} ${day.value === today() ? "is-today" : ""}`}>
+                  <span>{day.label}</span>
+                  <i aria-label={day.entries.length ? `${day.value} ${day.entries.length}件記録済み` : `${day.value} 未記録`}>{day.entries.length ? (day.entries.length > 1 ? day.entries.length : "✓") : ""}</i>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="weekly-insight">
-          <p>
-            {recentRecords.length === 0
-              ? "まずは今日だけ。1分の記録から始めましょう。"
-              : recentConcernCount > 0
-                ? `気になる記録が${recentConcernCount}件あります。コーチに共有しておくと安心です。`
-                : recentGoodCount > 0
-                  ? `「できた」が${recentGoodCount}日分たまりました。小さな変化が見えています。`
-                  : "記録が少しずつつながっています。短いメモでも十分です。"}
-          </p>
-          <button onClick={() => recentConcernCount > 0 ? setView("coach") : openNewRecord()}>
-            {recentConcernCount > 0 ? "コーチに相談する" : todaysRecord ? "記録を見直す" : "今日を記録する"} →
-          </button>
-        </div>
+            <div className="weekly-insight">
+              <p>{recentRecords.length === 0 ? "まずは今日だけ。1分の記録から始めましょう。" : recentConcernCount > 0 ? `気になる記録が${recentConcernCount}件あります。コーチに共有しておくと安心です。` : recentGoodCount > 0 ? `「できた」が${recentGoodCount}件たまりました。小さな変化が見えています。` : "記録が少しずつつながっています。短いメモでも十分です。"}</p>
+              <button onClick={() => recentConcernCount > 0 ? setView("coach") : openNewRecord()}>{recentConcernCount > 0 ? "コーチに相談する" : "今日を記録する"} →</button>
+            </div>
+          </>
+        ) : (
+          <div className="month-view">
+            <div className="month-navigation">
+              <button onClick={() => setCalendarMonthOffset((value) => value - 1)} aria-label="前の月">‹</button>
+              <strong>{monthlyCalendar.label}</strong>
+              <button onClick={() => setCalendarMonthOffset((value) => Math.min(0, value + 1))} disabled={calendarMonthOffset === 0} aria-label="次の月">›</button>
+            </div>
+            <div className="month-weekdays">{["日","月","火","水","木","金","土"].map((day) => <span key={day}>{day}</span>)}</div>
+            <div className="month-grid">
+              {monthlyCalendar.cells.map((cell, index) => cell ? (
+                <div key={cell.value} className={`month-cell ${cell.count ? "is-recorded" : ""} ${cell.count >= 3 ? "is-full" : ""} ${cell.value === today() ? "is-today" : ""}`} aria-label={`${cell.value} ${cell.count}件`}>
+                  <span>{cell.day}</span>{cell.count > 0 && <b>{cell.count}</b>}
+                </div>
+              ) : <span className="month-cell is-empty" key={`empty-${index}`}></span>)}
+            </div>
+            <p className="month-legend"><span></span>記録あり　<strong></strong>3件以上</p>
+          </div>
+        )}
       </section>
 
       <section className="observation-card" aria-labelledby="observation-title">
