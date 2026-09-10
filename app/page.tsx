@@ -22,7 +22,8 @@ type DailyRecord = {
   recordedOn: string;
   recordedTime: string;
   durationMinutes: number | null;
-  behaviorType: BehaviorType | null;
+  behaviorTypes: BehaviorType[];
+  behaviorCustomText: string;
   behaviorIntensity: number | null;
   mood: number;
   appetite: Status;
@@ -198,7 +199,8 @@ export default function Home() {
   const [recordCategory, setRecordCategory] = useState<RecordCategory | null>(null);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [durationMinutes, setDurationMinutes] = useState(20);
-  const [behaviorType, setBehaviorType] = useState<BehaviorType>("barking");
+  const [behaviorTypes, setBehaviorTypes] = useState<BehaviorType[]>(["barking"]);
+  const [behaviorCustomText, setBehaviorCustomText] = useState("");
   const [behaviorIntensity, setBehaviorIntensity] = useState(2);
   const [reportBehaviorType, setReportBehaviorType] = useState<BehaviorType>("barking");
   const [mood, setMood] = useState(3);
@@ -283,7 +285,7 @@ export default function Home() {
     });
   }, []);
   const selectedBehaviorRecords = records.filter(
-    (record) => record.category === "barking" && record.behaviorType === reportBehaviorType,
+    (record) => record.category === "barking" && record.behaviorTypes.includes(reportBehaviorType),
   );
   const previousReportDays = new Set(reportDays.slice(0, 7).map((day) => day.value));
   const currentReportDays = reportDays.slice(7);
@@ -320,7 +322,8 @@ export default function Home() {
       category: record.category ?? "daily",
       recordedTime: record.recordedTime ?? "12:00",
       durationMinutes: record.durationMinutes ?? null,
-      behaviorType: record.behaviorType ?? (record.category === "barking" ? "barking" : null),
+      behaviorTypes: record.behaviorTypes?.length ? record.behaviorTypes : record.category === "barking" ? ["barking"] : [],
+      behaviorCustomText: record.behaviorCustomText ?? "",
       behaviorIntensity: record.behaviorIntensity ?? null,
     }));
     const localMessages = readLocal<CoachMessage[]>(MESSAGES_KEY, []);
@@ -343,7 +346,7 @@ export default function Home() {
           supabase.from("wt_dogs").select("id,name,breed,birthday").eq("owner_id", userId).maybeSingle(),
           supabase
             .from("wt_daily_records")
-            .select("id,category,recorded_on,recorded_time,duration_minutes,behavior_type,behavior_intensity,mood,appetite,activity,toilet,sleep,behavior_note,good_moment")
+            .select("id,category,recorded_on,recorded_time,duration_minutes,behavior_type,behavior_types,behavior_custom_text,behavior_intensity,mood,appetite,activity,toilet,sleep,behavior_note,good_moment")
             .eq("owner_id", userId)
             .order("recorded_on", { ascending: false })
             .order("recorded_time", { ascending: false })
@@ -374,7 +377,10 @@ export default function Home() {
             recordedOn: item.recorded_on,
             recordedTime: item.recorded_time?.slice(0, 5) ?? "12:00",
             durationMinutes: item.duration_minutes ?? null,
-            behaviorType: (item.behavior_type as BehaviorType | null) ?? (item.category === "barking" ? "barking" : null),
+            behaviorTypes: item.behavior_types?.length
+              ? (item.behavior_types as BehaviorType[])
+              : item.category === "barking" ? [((item.behavior_type as BehaviorType | null) ?? "barking")] : [],
+            behaviorCustomText: item.behavior_custom_text ?? "",
             behaviorIntensity: item.behavior_intensity ?? null,
             mood: item.mood,
             appetite: item.appetite as Status,
@@ -417,7 +423,8 @@ export default function Home() {
     setRecordDate(today());
     setRecordTime(currentTime());
     setDurationMinutes(20);
-    setBehaviorType("barking");
+    setBehaviorTypes(["barking"]);
+    setBehaviorCustomText("");
     setBehaviorIntensity(2);
     setMood(3);
     setAppetite("ふつう");
@@ -427,6 +434,19 @@ export default function Home() {
     setBehaviorNote("");
     setGoodMoment("");
     setView("record");
+  }
+
+  function toggleBehaviorType(type: BehaviorType) {
+    setBehaviorTypes((current) => {
+      if (current.includes(type)) {
+        return current.length === 1 ? current : current.filter((item) => item !== type);
+      }
+      if (current.length >= 3) {
+        showNotice("困りごとは最大3つまで選べます");
+        return current;
+      }
+      return [...current, type];
+    });
   }
 
   async function getUserId() {
@@ -499,7 +519,8 @@ export default function Home() {
       recordedOn: recordDate,
       recordedTime: recordTime,
       durationMinutes: recordCategory === "walk" ? durationMinutes : null,
-      behaviorType: recordCategory === "barking" ? behaviorType : null,
+      behaviorTypes: recordCategory === "barking" ? behaviorTypes : [],
+      behaviorCustomText: recordCategory === "barking" && behaviorTypes.includes("other") ? behaviorCustomText.trim() : "",
       behaviorIntensity: recordCategory === "barking" ? behaviorIntensity : null,
       mood,
       appetite,
@@ -529,7 +550,9 @@ export default function Home() {
               recorded_on: recordDate,
               recorded_time: recordTime,
               duration_minutes: recordCategory === "walk" ? durationMinutes : null,
-              behavior_type: recordCategory === "barking" ? behaviorType : null,
+              behavior_type: recordCategory === "barking" ? behaviorTypes[0] : null,
+              behavior_types: recordCategory === "barking" ? behaviorTypes : null,
+              behavior_custom_text: recordCategory === "barking" && behaviorTypes.includes("other") ? behaviorCustomText.trim() || null : null,
               behavior_intensity: recordCategory === "barking" ? behaviorIntensity : null,
               mood,
               appetite,
@@ -714,10 +737,10 @@ export default function Home() {
         {records.length ? (
           <div className="record-list">
             {records.slice(0, 5).map((record) => (
-              <button key={record.id} onClick={() => { setEditingRecordId(record.id); setRecordCategory(record.category ?? "daily"); setRecordDate(record.recordedOn); setRecordTime(record.recordedTime ?? "12:00"); setDurationMinutes(record.durationMinutes ?? 20); setBehaviorType(record.behaviorType ?? "barking"); setBehaviorIntensity(record.behaviorIntensity ?? 2); setMood(record.mood); setAppetite(record.appetite); setActivity(record.activity); setToilet(record.toilet); setSleep(record.sleep); setBehaviorNote(record.behaviorNote); setGoodMoment(record.goodMoment); setView("record"); }}>
+              <button key={record.id} onClick={() => { setEditingRecordId(record.id); setRecordCategory(record.category ?? "daily"); setRecordDate(record.recordedOn); setRecordTime(record.recordedTime ?? "12:00"); setDurationMinutes(record.durationMinutes ?? 20); setBehaviorTypes(record.behaviorTypes?.length ? record.behaviorTypes : ["barking"]); setBehaviorCustomText(record.behaviorCustomText ?? ""); setBehaviorIntensity(record.behaviorIntensity ?? 2); setMood(record.mood); setAppetite(record.appetite); setActivity(record.activity); setToilet(record.toilet); setSleep(record.sleep); setBehaviorNote(record.behaviorNote); setGoodMoment(record.goodMoment); setView("record"); }}>
                 <span className="record-date"><strong>{record.recordedTime ?? "12:00"}</strong><small>{formatDate(record.recordedOn)}</small></span>
                 <span className="timeline-topic-icon"><TopicIcon name={categoryInfo(record.category).icon} /></span>
-                <span className="record-summary"><b>{record.category === "barking" ? behaviorInfo(record.behaviorType).label : categoryInfo(record.category).label}</b>{record.category === "walk" && record.durationMinutes ? ` · ${record.durationMinutes}分` : ""}<small>{record.category === "barking" && record.behaviorIntensity ? `程度 ${record.behaviorIntensity}/3 · ` : ""}気分 {record.mood}/5</small></span>
+                <span className="record-summary"><b>{record.category === "barking" ? record.behaviorTypes.map((type) => type === "other" && record.behaviorCustomText ? record.behaviorCustomText : behaviorInfo(type).label).join("・") : categoryInfo(record.category).label}</b>{record.category === "walk" && record.durationMinutes ? ` · ${record.durationMinutes}分` : ""}<small>{record.category === "barking" && record.behaviorIntensity ? `程度 ${record.behaviorIntensity}/3 · ` : ""}気分 {record.mood}/5</small></span>
                 <span aria-hidden="true">›</span>
               </button>
             ))}
@@ -774,14 +797,26 @@ export default function Home() {
       <p className="time-note">記録を始めた時刻が自動で入っています。</p>
       {recordCategory === "barking" && (
         <section className="behavior-picker">
-          <p>どの困りごとですか？</p>
+          <div className="behavior-picker-heading"><p>どの困りごとですか？</p><span>{behaviorTypes.length}/3</span></div>
           <div>
             {BEHAVIOR_TYPES.map((item) => (
-              <button type="button" key={item.id} className={behaviorType === item.id ? "is-selected" : ""} onClick={() => setBehaviorType(item.id)}>
+              <button
+                type="button"
+                key={item.id}
+                className={behaviorTypes.includes(item.id) ? "is-selected" : ""}
+                aria-pressed={behaviorTypes.includes(item.id)}
+                disabled={!behaviorTypes.includes(item.id) && behaviorTypes.length >= 3}
+                onClick={() => toggleBehaviorType(item.id)}
+              >
                 <strong>{item.label}</strong><small>{item.description}</small>
               </button>
             ))}
           </div>
+          {behaviorTypes.includes("other") && (
+            <label className="custom-behavior">その他の困りごと
+              <input value={behaviorCustomText} onChange={(event) => setBehaviorCustomText(event.target.value)} placeholder="例：拾い食い、家具をかじる" maxLength={60} required />
+            </label>
+          )}
           <fieldset>
             <legend>どのくらい気になった？</legend>
             <div>
@@ -874,7 +909,7 @@ export default function Home() {
         <div className="report-empty"><strong>{behaviorInfo(reportBehaviorType).label}の記録はまだありません</strong><p>起きたときに、時刻と程度を残してみましょう。</p></div>
       )}
 
-      <button className="primary-button report-add" onClick={() => { openNewRecord("barking"); setBehaviorType(reportBehaviorType); }}>{behaviorInfo(reportBehaviorType).label}を記録する<span>→</span></button>
+      <button className="primary-button report-add" onClick={() => { openNewRecord("barking"); setBehaviorTypes([reportBehaviorType]); }}>{behaviorInfo(reportBehaviorType).label}を記録する<span>→</span></button>
       <p className="report-note">表示しているのは記録回数の変化です。記録漏れや生活リズムも影響するため、実際の発生回数や因果関係を断定するものではありません。</p>
     </section>
   );
@@ -932,9 +967,9 @@ export default function Home() {
         </main>
         <nav className="bottom-nav" aria-label="メインメニュー">
           <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}><Icon>⌂</Icon><span>ホーム</span></button>
-          <button className={view === "record" ? "active" : ""} onClick={() => openNewRecord()}><Icon>＋</Icon><span>記録</span></button>
           <button className={view === "report" ? "active" : ""} onClick={() => setView("report")}><Icon>↗</Icon><span>レポート</span></button>
-          <button className={view === "coach" ? "active" : ""} onClick={() => setView("coach")}><Icon>◌</Icon><span>コーチ</span></button>
+          <button className={view === "record" ? "active" : ""} onClick={() => openNewRecord()}><Icon>＋</Icon><span>記録</span></button>
+          <button className={view === "coach" ? "active" : ""} onClick={() => setView("coach")}><Icon><svg viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-4.5 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" /><path d="M8 10h8M8 13h5" /></svg></Icon><span>コーチ</span></button>
           <button className={view === "profile" ? "active" : ""} onClick={() => setView("profile")}><Icon>○</Icon><span>設定</span></button>
         </nav>
         <div className={`toast ${notice ? "show" : ""}`} role="status">{notice}</div>
