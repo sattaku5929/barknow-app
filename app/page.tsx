@@ -837,6 +837,7 @@ export default function Home() {
             <span>困りごと <b>{recentBehaviorCount}</b></span>
           </div>
           <button className="text-button" onClick={() => setView("report")}>詳しい変化を見る →</button>
+          <small className="condition-note">日々の記録から見た目安で、診断ではありません。</small>
         </div>
       </section>
 
