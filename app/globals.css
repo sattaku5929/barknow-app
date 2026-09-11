@@ -1009,6 +1009,26 @@ body { font-size: 16px; }
   .admin-welcome span { max-width:240px; line-height:1.6; }
 }
 
+.admin-tabs { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-top:18px; padding:5px; border-radius:15px; background:#e4ebe7; }
+.admin-tabs button { min-height:44px; border:0; border-radius:11px; background:transparent; color:var(--muted); cursor:pointer; font-size:12px; font-weight:750; }
+.admin-tabs button.is-selected { background:#fff; color:var(--green-dark); box-shadow:0 5px 14px rgba(42,74,61,.08); }
+.account-list { display:grid; gap:10px; margin-top:14px; }
+.admin-account { padding:16px; border:1px solid rgba(27,61,49,.08); border-radius:18px; background:#fff; }
+.admin-account-main { display:grid; grid-template-columns:40px 1fr auto; align-items:center; gap:11px; }
+.admin-account-main > span { display:grid; width:40px; height:40px; place-items:center; border-radius:13px; background:var(--mint); color:var(--green); }
+.admin-account-main svg { width:22px; fill:none; stroke:currentColor; stroke-width:1.6; }
+.admin-account-main > div { min-width:0; }
+.admin-account-main strong,.admin-account-main small { display:block; }
+.admin-account-main strong { overflow:hidden; font-size:13px; text-overflow:ellipsis; white-space:nowrap; }
+.admin-account-main small { margin-top:4px; color:var(--muted); font-size:11px; }
+.admin-account-main > b { padding:5px 8px; border-radius:8px; font-family:var(--font-display); font-size:9px; letter-spacing:.08em; }
+.admin-account-main > b.admin { background:#e8f6ef; color:var(--green-dark); }
+.admin-account-main > b.owner { background:var(--soft-blue); color:#477f9c; }
+.admin-account-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:13px; padding-top:12px; border-top:1px solid rgba(27,61,49,.08); }
+.admin-account-actions button { min-height:38px; padding:0 12px; border:1px solid rgba(27,61,49,.12); border-radius:10px; background:#fff; color:var(--green-dark); cursor:pointer; font-size:10px; font-weight:700; }
+.admin-account-actions button:last-child { background:#edf3f0; }
+.admin-account-actions button:disabled { cursor:default; opacity:.48; }
+
 /* Focused daily experience */
 .focused-welcome { align-items:center; }
 .focused-welcome .eyebrow { margin-bottom:7px; font-family:var(--font-sans); font-size:12px; font-weight:700; letter-spacing:.04em; }
