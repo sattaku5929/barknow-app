@@ -75,6 +75,15 @@ type AdminCustomer = {
   latestMessageAt: string | null;
 };
 
+type AdminAccount = {
+  userId: string;
+  email: string;
+  role: UserRole;
+  dogId: string | null;
+  dogName: string;
+  assignedCoachId: string | null;
+};
+
 const PROFILE_KEY = "wan-tone-profile-v1";
 const RECORDS_KEY = "wan-tone-records-v1";
 const MESSAGES_KEY = "wan-tone-messages-v1";
@@ -308,6 +317,9 @@ export default function Home() {
   const [authPassword, setAuthPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>([]);
+  const [adminAccounts, setAdminAccounts] = useState<AdminAccount[]>([]);
+  const [adminTab, setAdminTab] = useState<"customers" | "accounts">("customers");
+  const [currentUserId, setCurrentUserId] = useState("");
   const [view, setView] = useState<View>("home");
   const [connection, setConnection] = useState<Connection>("checking");
   const [profile, setProfile] = useState<DogProfile>(initialProfile);
@@ -500,6 +512,36 @@ export default function Home() {
           ? `${currentBehaviorTotal - previousBehaviorTotal}件増加`
           : "前の7日間と同じ";
 
+  async function loadAdminWorkspace() {
+    const [customerResult, accountResult] = await Promise.all([
+      supabase.rpc("wt_admin_customer_overview"),
+      supabase.rpc("wt_admin_accounts"),
+    ]);
+    if (!customerResult.error && customerResult.data) {
+      setAdminCustomers(customerResult.data.map((item: Record<string, unknown>) => ({
+        assignmentId: String(item.assignment_id),
+        ownerId: String(item.owner_id),
+        dogId: String(item.dog_id),
+        dogName: String(item.dog_name ?? "名前未登録"),
+        breed: String(item.breed ?? "犬種未登録"),
+        records7d: Number(item.records_7d ?? 0),
+        concerns7d: Number(item.concerns_7d ?? 0),
+        latestMessage: String(item.latest_message ?? ""),
+        latestMessageAt: item.latest_message_at ? String(item.latest_message_at) : null,
+      })));
+    }
+    if (!accountResult.error && accountResult.data) {
+      setAdminAccounts(accountResult.data.map((item: Record<string, unknown>) => ({
+        userId: String(item.user_id),
+        email: String(item.email ?? "メール未確認"),
+        role: item.role === "admin" ? "admin" : "owner",
+        dogId: item.dog_id ? String(item.dog_id) : null,
+        dogName: String(item.dog_name ?? "愛犬未登録"),
+        assignedCoachId: item.assigned_coach_id ? String(item.assigned_coach_id) : null,
+      })));
+    }
+  }
+
   useEffect(() => {
     const localProfile = readLocal(PROFILE_KEY, initialProfile);
     const localRecords: DailyRecord[] = readLocal<DailyRecord[]>(RECORDS_KEY, []).map((record): DailyRecord => ({
@@ -542,6 +584,7 @@ export default function Home() {
         setAuthenticated(true);
         setAnonymousUser(isAnonymous);
         setUserEmail(session.user.email ?? "");
+        setCurrentUserId(userId);
 
         let role: UserRole = "owner";
         if (!isAnonymous) {
@@ -551,20 +594,7 @@ export default function Home() {
         setUserRole(role);
 
         if (role === "admin") {
-          const customerResult = await supabase.rpc("wt_admin_customer_overview");
-          if (!customerResult.error && customerResult.data) {
-            setAdminCustomers(customerResult.data.map((item: Record<string, unknown>) => ({
-              assignmentId: String(item.assignment_id),
-              ownerId: String(item.owner_id),
-              dogId: String(item.dog_id),
-              dogName: String(item.dog_name ?? "名前未登録"),
-              breed: String(item.breed ?? "犬種未登録"),
-              records7d: Number(item.records_7d ?? 0),
-              concerns7d: Number(item.concerns_7d ?? 0),
-              latestMessage: String(item.latest_message ?? ""),
-              latestMessageAt: item.latest_message_at ? String(item.latest_message_at) : null,
-            })));
-          }
+          await loadAdminWorkspace();
           setConnection("online");
           return;
         }
@@ -754,11 +784,23 @@ export default function Home() {
       window.location.reload();
     } catch (error) {
       const message = error instanceof Error ? error.message : "認証に失敗しました";
+      const normalized = message.toLowerCase();
       setAuthError(
-        message.includes("Invalid login") ? "メールアドレスまたはパスワードが違います。"
-          : message.includes("already registered") ? "このメールアドレスは登録済みです。ログインしてください。"
-            : message.includes("Password") ? "パスワードは8文字以上で入力してください。"
-              : "認証に失敗しました。入力内容とSupabase設定を確認してください。",
+        normalized.includes("email signups are disabled") || normalized.includes("signup is disabled")
+          ? "メールの新規登録が無効です。SupabaseのAuthentication設定でEmailを有効にしてください。"
+          : normalized.includes("database error saving new user")
+            ? "ユーザー保存用のDB設定が未完了です。migration 008・009を実行してください。"
+            : normalized.includes("rate limit") || normalized.includes("too many requests")
+              ? "確認メールの送信上限に達しています。しばらく待ってから再度お試しください。"
+              : normalized.includes("invalid login")
+                ? "メールアドレスまたはパスワードが違います。"
+                : normalized.includes("already registered") || normalized.includes("already been registered")
+                  ? "このメールアドレスは登録済みです。「ログイン」からお進みください。"
+                  : normalized.includes("password")
+                    ? "パスワードは8文字以上で設定してください。"
+                    : normalized.includes("invalid email")
+                      ? "メールアドレスの形式を確認してください。"
+                      : `登録できませんでした（${message}）`,
       );
     } finally {
       setSaving(false);
@@ -781,6 +823,39 @@ export default function Home() {
     await supabase.auth.signOut();
     clearOwnerCache();
     window.location.reload();
+  }
+
+  async function changeAccountRole(account: AdminAccount, role: UserRole) {
+    if (account.userId === currentUserId && role !== "admin") {
+      showNotice("自分自身の管理者権限は解除できません");
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.rpc("wt_admin_set_role", { target_user_id: account.userId, next_role: role });
+    if (error) showNotice(`権限を変更できませんでした（${error.message}）`);
+    else {
+      showNotice(role === "admin" ? `${account.email}を管理者にしました` : `${account.email}を飼い主に戻しました`);
+      await loadAdminWorkspace();
+    }
+    setSaving(false);
+  }
+
+  async function toggleCustomerAssignment(account: AdminAccount) {
+    if (!account.dogId) {
+      showNotice("愛犬登録後に担当へ追加できます");
+      return;
+    }
+    setSaving(true);
+    const assignedToMe = account.assignedCoachId === currentUserId;
+    const { error } = assignedToMe
+      ? await supabase.rpc("wt_admin_remove_assignment", { target_dog_id: account.dogId })
+      : await supabase.rpc("wt_admin_assign_to_me", { target_owner_id: account.userId, target_dog_id: account.dogId });
+    if (error) showNotice(`担当を変更できませんでした（${error.message}）`);
+    else {
+      showNotice(assignedToMe ? `${account.dogName}の担当を解除しました` : `${account.dogName}を担当顧客に追加しました`);
+      await loadAdminWorkspace();
+    }
+    setSaving(false);
   }
 
   function moveCalendarMonth(delta: number) {
@@ -1759,8 +1834,9 @@ export default function Home() {
     <div className="admin-stage">
       <header className="admin-header"><div><p>WAN TONE</p><strong>Coach Console</strong></div><button onClick={() => void signOut()}>ログアウト</button></header>
       <main className="admin-main">
-        <section className="admin-welcome"><div><p className="card-label">CUSTOMERS</p><h1>担当のお客様</h1><span>記録の変化を見て、必要なタイミングで声をかける。</span></div><b>{adminCustomers.length}<small>組</small></b></section>
-        {adminCustomers.length ? (
+        <section className="admin-welcome"><div><p className="card-label">COACH CONSOLE</p><h1>{adminTab === "customers" ? "担当のお客様" : "ユーザー管理"}</h1><span>{adminTab === "customers" ? "記録の変化を見て、必要なタイミングで声をかける。" : "管理者権限と担当顧客を、この画面で設定できます。"}</span></div><b>{adminTab === "customers" ? adminCustomers.length : adminAccounts.length}<small>件</small></b></section>
+        <nav className="admin-tabs" aria-label="管理メニュー"><button className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button className={adminTab === "accounts" ? "is-selected" : ""} onClick={() => setAdminTab("accounts")}>ユーザー管理</button></nav>
+        {adminTab === "customers" && (adminCustomers.length ? (
           <div className="customer-list">
             {adminCustomers.map((customer) => (
               <article className="customer-card" key={customer.assignmentId}>
@@ -1772,7 +1848,29 @@ export default function Home() {
             ))}
           </div>
         ) : (
-          <section className="admin-empty"><span><NavGlyph name="coach" /></span><h2>担当のお客様はまだいません</h2><p>Supabaseで担当者を割り当てると、愛犬の記録状況がここに表示されます。</p></section>
+          <section className="admin-empty"><span><NavGlyph name="coach" /></span><h2>担当のお客様はまだいません</h2><p>「ユーザー管理」から、愛犬を自分の担当へ追加できます。</p></section>
+        ))}
+        {adminTab === "accounts" && (
+          <div className="account-list">
+            {adminAccounts.map((account) => {
+              const isMe = account.userId === currentUserId;
+              const assignedToMe = account.assignedCoachId === currentUserId;
+              return (
+                <article className="admin-account" key={account.userId}>
+                  <div className="admin-account-main">
+                    <span>{account.role === "admin" ? <NavGlyph name="coach" /> : <NavGlyph name="profile" />}</span>
+                    <div><strong>{account.email}</strong><small>{account.role === "admin" ? `管理者${isMe ? "（自分）" : ""}` : `${account.dogName}${account.dogId ? "" : ""}`}</small></div>
+                    <b className={account.role}>{account.role === "admin" ? "ADMIN" : "OWNER"}</b>
+                  </div>
+                  <div className="admin-account-actions">
+                    {account.role === "owner" && <button onClick={() => void toggleCustomerAssignment(account)} disabled={saving || !account.dogId || Boolean(account.assignedCoachId && !assignedToMe)}>{!account.dogId ? "愛犬未登録" : assignedToMe ? "担当を解除" : account.assignedCoachId ? "他の管理者が担当中" : "自分の担当にする"}</button>}
+                    <button onClick={() => void changeAccountRole(account, account.role === "admin" ? "owner" : "admin")} disabled={saving || isMe}>{account.role === "admin" ? "飼い主に戻す" : "管理者にする"}</button>
+                  </div>
+                </article>
+              );
+            })}
+            {!adminAccounts.length && <section className="admin-empty"><h2>ユーザー情報を取得できません</h2><p>migration 009を実行すると、この画面から管理できます。</p></section>}
+          </div>
         )}
       </main>
     </div>
