@@ -202,7 +202,7 @@ begin
   left join public.wt_daily_records r on r.dog_id = d.id
   where a.coach_id = auth.uid()
   group by a.id, a.owner_id, d.id, d.name, d.breed
-  order by latest_message_at desc nulls last, d.name;
+  order by 9 desc nulls last, d.name;
 end;
 $$;
 
