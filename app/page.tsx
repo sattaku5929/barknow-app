@@ -10,6 +10,8 @@ type RecordCategory = "daily" | "meal" | "barking" | "toilet" | "walk" | "sleep"
 type BehaviorType = "barking" | "nipping" | "toilet_accident" | "jumping" | "pulling" | "other";
 type GoalPeriod = "day" | "week" | "month";
 type CareGoalType = "brush" | "teeth" | "paws" | "bath" | "nails" | "ears" | "training" | "custom";
+type UserRole = "owner" | "admin";
+type AuthMode = "login" | "signup";
 
 type DogProfile = {
   id?: string;
@@ -59,6 +61,18 @@ type GoalCompletion = {
   goalId: string;
   completedOn: string;
   completedAt: string;
+};
+
+type AdminCustomer = {
+  assignmentId: string;
+  ownerId: string;
+  dogId: string;
+  dogName: string;
+  breed: string;
+  records7d: number;
+  concerns7d: number;
+  latestMessage: string;
+  latestMessageAt: string | null;
 };
 
 const PROFILE_KEY = "wan-tone-profile-v1";
@@ -284,6 +298,16 @@ function StatusSelector({
 }
 
 export default function Home() {
+  const [authReady, setAuthReady] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [anonymousUser, setAnonymousUser] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole>("owner");
+  const [userEmail, setUserEmail] = useState("");
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>([]);
   const [view, setView] = useState<View>("home");
   const [connection, setConnection] = useState<Connection>("checking");
   const [profile, setProfile] = useState<DogProfile>(initialProfile);
@@ -507,14 +531,43 @@ export default function Home() {
 
     async function connect() {
       try {
-        let { data: sessionData } = await supabase.auth.getSession();
-        if (!sessionData.session) {
-          const result = await supabase.auth.signInAnonymously();
-          if (result.error) throw result.error;
-          sessionData = { session: result.data.session };
+        const { data: sessionData } = await supabase.auth.getSession();
+        const session = sessionData.session;
+        if (!session) {
+          setConnection("local");
+          return;
         }
-        const userId = sessionData.session?.user.id;
-        if (!userId) throw new Error("No active session");
+        const userId = session.user.id;
+        const isAnonymous = Boolean(session.user.is_anonymous);
+        setAuthenticated(true);
+        setAnonymousUser(isAnonymous);
+        setUserEmail(session.user.email ?? "");
+
+        let role: UserRole = "owner";
+        if (!isAnonymous) {
+          const roleResult = await supabase.from("wt_user_roles").select("role").eq("user_id", userId).maybeSingle();
+          if (!roleResult.error && roleResult.data?.role === "admin") role = "admin";
+        }
+        setUserRole(role);
+
+        if (role === "admin") {
+          const customerResult = await supabase.rpc("wt_admin_customer_overview");
+          if (!customerResult.error && customerResult.data) {
+            setAdminCustomers(customerResult.data.map((item: Record<string, unknown>) => ({
+              assignmentId: String(item.assignment_id),
+              ownerId: String(item.owner_id),
+              dogId: String(item.dog_id),
+              dogName: String(item.dog_name ?? "名前未登録"),
+              breed: String(item.breed ?? "犬種未登録"),
+              records7d: Number(item.records_7d ?? 0),
+              concerns7d: Number(item.concerns_7d ?? 0),
+              latestMessage: String(item.latest_message ?? ""),
+              latestMessageAt: item.latest_message_at ? String(item.latest_message_at) : null,
+            })));
+          }
+          setConnection("online");
+          return;
+        }
 
         const [dogResult, recordResult, messageResult] = await Promise.all([
           supabase.from("wt_dogs").select("id,name,breed,birthday").eq("owner_id", userId).maybeSingle(),
@@ -627,6 +680,8 @@ export default function Home() {
         setConnection("online");
       } catch {
         setConnection("local");
+      } finally {
+        setAuthReady(true);
       }
     }
 
@@ -659,6 +714,73 @@ export default function Home() {
   function showNotice(message: string) {
     setNotice(message);
     window.setTimeout(() => setNotice(""), 3200);
+  }
+
+  function clearOwnerCache() {
+    [PROFILE_KEY, RECORDS_KEY, MESSAGES_KEY, CUSTOM_BEHAVIORS_KEY, CARE_GOALS_KEY, GOAL_COMPLETIONS_KEY, REMINDER_SENT_KEY]
+      .forEach((key) => window.localStorage.removeItem(key));
+  }
+
+  async function submitAuth(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAuthError("");
+    setSaving(true);
+    try {
+      if (anonymousUser) {
+        const { error } = await supabase.auth.updateUser(
+          { email: authEmail.trim(), password: authPassword },
+          { emailRedirectTo: window.location.origin },
+        );
+        if (error) throw error;
+        showNotice("確認メールを送りました。メール内のリンクを開いてください");
+        return;
+      }
+      if (authMode === "signup") {
+        const { data, error } = await supabase.auth.signUp({
+          email: authEmail.trim(),
+          password: authPassword,
+          options: { emailRedirectTo: window.location.origin },
+        });
+        if (error) throw error;
+        if (!data.session) {
+          showNotice("確認メールを送りました。認証後、自動でログインできます");
+          return;
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword });
+        if (error) throw error;
+      }
+      clearOwnerCache();
+      window.location.reload();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "認証に失敗しました";
+      setAuthError(
+        message.includes("Invalid login") ? "メールアドレスまたはパスワードが違います。"
+          : message.includes("already registered") ? "このメールアドレスは登録済みです。ログインしてください。"
+            : message.includes("Password") ? "パスワードは8文字以上で入力してください。"
+              : "認証に失敗しました。入力内容とSupabase設定を確認してください。",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function resetPassword() {
+    if (!authEmail.trim()) {
+      setAuthError("先にメールアドレスを入力してください。");
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(authEmail.trim(), { redirectTo: window.location.origin });
+    setSaving(false);
+    if (error) setAuthError("再設定メールを送れませんでした。Supabase設定を確認してください。");
+    else showNotice("パスワード再設定メールを送りました");
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    clearOwnerCache();
+    window.location.reload();
   }
 
   function moveCalendarMonth(delta: number) {
@@ -1596,8 +1718,69 @@ export default function Home() {
       <label className="field-label">誕生日<input type="date" value={profile.birthday} onChange={(event) => setProfile({ ...profile, birthday: event.target.value })} /></label>
       <div className="privacy-card"><strong>記録について</strong><p>登録した情報は、あなたと担当コーチのサポートのために使用します。共有範囲は今後プロフィールから管理できるようにします。</p></div>
       <button className="primary-button" disabled={saving}>{saving ? "保存中…" : "プロフィールを保存"}<span>→</span></button>
+      <div className="account-card"><span><small>ログイン中</small><strong>{userEmail}</strong></span><button type="button" onClick={() => void signOut()}>ログアウト</button></div>
     </form>
   );
+
+  const authView = (
+    <div className="auth-stage">
+      <section className="auth-brand">
+        <p>WAN TONE</p>
+        <h1>愛犬との毎日を、<br />ちゃんと覚えておく。</h1>
+        <span>記録が変化につながり、コーチとの会話につながる。</span>
+        <div className="auth-paw"><CareIcon name="paws" /></div>
+      </section>
+      <section className="auth-panel">
+        <div className="auth-heading">
+          <p className="card-label">WELCOME</p>
+          <h2>{anonymousUser ? "今の記録を引き継ぐ" : authMode === "login" ? "おかえりなさい" : "はじめまして"}</h2>
+          <p>{anonymousUser ? "メールアカウントへ変更すると、別の端末でも今の愛犬と記録を使えます。" : authMode === "login" ? "一度ログインすれば、次回からそのまま続けられます。" : "無料アカウントを作って、うちの子の記録を始めましょう。"}</p>
+        </div>
+        {!anonymousUser && (
+          <div className="auth-switch">
+            <button className={authMode === "login" ? "is-selected" : ""} onClick={() => { setAuthMode("login"); setAuthError(""); }}>ログイン</button>
+            <button className={authMode === "signup" ? "is-selected" : ""} onClick={() => { setAuthMode("signup"); setAuthError(""); }}>新規登録</button>
+          </div>
+        )}
+        <form className="auth-form" onSubmit={submitAuth}>
+          <label>メールアドレス<input type="email" inputMode="email" autoComplete="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" required /></label>
+          <label>パスワード<input type="password" autoComplete={authMode === "login" && !anonymousUser ? "current-password" : "new-password"} minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="8文字以上" required /></label>
+          {authError && <p className="auth-error" role="alert">{authError}</p>}
+          <button className="auth-submit" disabled={saving}>{saving ? "確認中…" : anonymousUser ? "今のデータを引き継ぐ" : authMode === "login" ? "ログインする" : "アカウントを作る"}<span>→</span></button>
+        </form>
+        {!anonymousUser && authMode === "login" && <button className="forgot-password" onClick={() => void resetPassword()}>パスワードを忘れた方</button>}
+        {anonymousUser && <p className="migration-note">この操作では愛犬・記録・相談履歴の所有者IDは変わりません。</p>}
+      </section>
+      <div className={`toast ${notice ? "show" : ""}`} role="status">{notice}</div>
+    </div>
+  );
+
+  const adminView = (
+    <div className="admin-stage">
+      <header className="admin-header"><div><p>WAN TONE</p><strong>Coach Console</strong></div><button onClick={() => void signOut()}>ログアウト</button></header>
+      <main className="admin-main">
+        <section className="admin-welcome"><div><p className="card-label">CUSTOMERS</p><h1>担当のお客様</h1><span>記録の変化を見て、必要なタイミングで声をかける。</span></div><b>{adminCustomers.length}<small>組</small></b></section>
+        {adminCustomers.length ? (
+          <div className="customer-list">
+            {adminCustomers.map((customer) => (
+              <article className="customer-card" key={customer.assignmentId}>
+                <div className="customer-profile"><span>{customer.dogName.slice(0, 1)}</span><div><h2>{customer.dogName}</h2><p>{customer.breed}</p></div><b>{customer.concerns7d > 0 ? "要確認" : "安定"}</b></div>
+                <div className="customer-stats"><span><b>{customer.records7d}</b>7日間の記録</span><span><b>{customer.concerns7d}</b>気になる記録</span></div>
+                <div className="customer-message"><small>最新の相談</small><p>{customer.latestMessage || "相談はまだありません"}</p></div>
+                <button disabled>詳細・チャット画面は次のPRで追加</button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <section className="admin-empty"><span><NavGlyph name="coach" /></span><h2>担当のお客様はまだいません</h2><p>Supabaseで担当者を割り当てると、愛犬の記録状況がここに表示されます。</p></section>
+        )}
+      </main>
+    </div>
+  );
+
+  if (!authReady) return <div className="auth-loading"><span className="loading-paw"><CareIcon name="paws" /></span><p>うちの子の記録を開いています…</p></div>;
+  if (!authenticated || anonymousUser) return authView;
+  if (userRole === "admin") return adminView;
 
   return (
     <div className="app-stage">
