@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Wan Tone app
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Google Calendar integration
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Run `supabase/migrations/018_google_calendar_and_coach_profiles.sql` after migration 017.
+2. Enable the Google Calendar API in Google Cloud.
+3. Create an OAuth 2.0 Client with application type **Web application**.
+   While the OAuth consent screen is in Testing, add every coach Google account as a test user.
+4. Add this production redirect URI exactly:
 
-## Learn More
+```text
+https://barknow-app.vercel.app/api/google-calendar/callback
+```
 
-To learn more about Next.js, take a look at the following resources:
+5. Add these Vercel environment variables to Production and Preview, then redeploy.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```text
+GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
+GOOGLE_OAUTH_REDIRECT_URI=https://barknow-app.vercel.app/api/google-calendar/callback
+GOOGLE_TOKEN_ENCRYPTION_KEY
+SUPABASE_SERVICE_ROLE_KEY
+NEXT_PUBLIC_APP_URL=https://barknow-app.vercel.app
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Generate `GOOGLE_TOKEN_ENCRYPTION_KEY` once and keep it unchanged:
 
-## Deploy on Vercel
+```bash
+openssl rand -base64 32
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Never expose `GOOGLE_CLIENT_SECRET`, `GOOGLE_TOKEN_ENCRYPTION_KEY`, or `SUPABASE_SERVICE_ROLE_KEY` through a `NEXT_PUBLIC_` variable. Refresh tokens are encrypted with AES-256-GCM before storage and are only accessed from server routes using the service-role client.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The app database is authoritative. Booking uses the database lock and unique constraint, while Google Calendar synchronization runs after the response through a durable sync queue. Google busy intervals are checked when showing availability and immediately before booking.
