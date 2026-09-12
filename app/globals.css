@@ -1021,6 +1021,8 @@ body { font-size: 16px; }
 .coaching-steps b { display:grid; width:28px; height:28px; margin:0 auto 7px; place-items:center; border-radius:50%; background:#dfe7e3; color:#78847f; }
 .coaching-steps .is-current { color:var(--green-dark); font-weight:700; }
 .coaching-steps .is-current b { background:var(--green); color:#fff; }
+.coaching-steps .is-complete { color:var(--green-dark); }
+.coaching-steps .is-complete b { background:#d6eee3; color:var(--green-dark); }
 .application-summary { margin-top:24px; padding:17px; border-radius:16px; background:rgba(255,255,255,.78); text-align:left; }
 .application-summary small { color:var(--green); font-size:9px; font-weight:800; letter-spacing:.09em; }
 .application-summary p { margin:4px 0 13px; color:var(--ink); font-size:13px; line-height:1.65; }
@@ -1048,6 +1050,7 @@ body { font-size: 16px; }
 .application-card-head p { overflow:hidden; margin:3px 0 0; max-width:220px; color:var(--muted); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
 .application-card-head > b { padding:6px 8px; border-radius:8px; background:#eef3f0; color:var(--muted); font-size:9px; white-space:nowrap; }
 .application-card-head > b.status-submitted { background:#fff2dc; color:#996518; }
+.application-card-head > b.status-offered { background:#e8f0ff; color:#496a9b; }
 .application-card-head > b.status-active { background:#e4f5ec; color:var(--green-dark); }
 .application-topics { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; }
 .application-topics span { padding:6px 9px; border-radius:9px; background:var(--soft-blue); color:#477f9c; font-size:10px; font-weight:700; }
@@ -1059,6 +1062,19 @@ body { font-size: 16px; }
 .application-actions label { color:var(--muted); font-size:9px; font-weight:700; }
 .application-actions select { width:100%; min-height:40px; margin-top:5px; padding:0 9px; border:1px solid rgba(27,61,49,.12); border-radius:10px; background:#fff; color:var(--ink); font-size:11px; }
 .application-card > time { display:block; margin-top:11px; color:var(--muted); font-size:9px; text-align:right; }
+.coach-offers { margin-top:18px; padding:20px; border:1px solid rgba(8,113,85,.1); border-radius:22px; background:linear-gradient(145deg,#eef8f3,#f8fbfa); }
+.coach-offers-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.coach-offers-heading .card-label { margin:0 0 4px; }
+.coach-offers-heading h2 { margin:0; font-size:20px; }
+.coach-offers-heading > span { display:grid; min-width:34px; height:34px; padding:0 9px; place-items:center; border-radius:17px; background:var(--green); color:#fff; font-size:11px; font-weight:800; }
+.coach-offer-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; margin-top:15px; }
+.coach-offer-card { padding:18px; border:1px solid rgba(27,61,49,.08); border-radius:18px; background:#fff; box-shadow:0 10px 26px rgba(42,74,61,.055); }
+.coach-offer-note { margin:12px 0 0; color:var(--muted); font-size:10px; line-height:1.6; }
+.coach-offer-actions { display:grid; grid-template-columns:.8fr 1.2fr; gap:8px; margin-top:13px; }
+.coach-offer-actions button { min-height:43px; padding:0 12px; border:0; border-radius:11px; background:var(--green); color:#fff; cursor:pointer; font-size:11px; font-weight:750; }
+.coach-offer-actions button span { margin-left:5px; }
+.coach-offer-actions button.secondary { border:1px solid rgba(27,61,49,.13); background:#fff; color:var(--muted); }
+.coach-offer-actions button:disabled { cursor:default; opacity:.5; }
 @media (max-width:699px) {
   .coaching-bridge { grid-template-columns:44px 1fr; padding:19px; }
   .coaching-bridge-mark { width:44px; height:44px; border-radius:14px; }
@@ -1071,6 +1087,9 @@ body { font-size: 16px; }
   .coach-assigned-card > b { grid-column:2; justify-self:start; }
   .application-list { grid-template-columns:1fr; }
   .application-actions { grid-template-columns:1fr; }
+  .coach-offers { padding:16px; }
+  .coach-offer-list { grid-template-columns:1fr; }
+  .coach-offer-actions { grid-template-columns:1fr; }
 }
 .admin-main { width:min(100%,960px); margin:auto; padding:30px 20px 60px; }
 .admin-welcome { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; padding:25px; border-radius:24px; background:linear-gradient(145deg,#174f3e,#087155); color:#fff; }
