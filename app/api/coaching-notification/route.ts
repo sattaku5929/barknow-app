@@ -13,6 +13,10 @@ function escapeHtml(value: string) {
   })[character] ?? character);
 }
 
+function escapeSlack(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 const concernLabels: Record<string, string> = {
   barking: "吠え",
   nipping: "噛む・甘噛み",
@@ -53,46 +57,77 @@ export async function POST(request: NextRequest) {
 
   const { data: dog } = await supabase.from("wt_dogs").select("name,breed").eq("id", application.dog_id).single();
   const resendApiKey = process.env.RESEND_API_KEY;
-  if (!resendApiKey) return NextResponse.json({ sent: false, reason: "email_not_configured" });
-
+  const slackWebhookUrl = process.env.SLACK_COACHING_WEBHOOK_URL;
   const adminEmail = process.env.COACHING_ADMIN_EMAIL ?? "mitaku0929@gmail.com";
   const fromEmail = process.env.COACHING_NOTIFICATION_FROM ?? "Wan Tone <onboarding@resend.dev>";
-  const dogName = escapeHtml(dog?.name ?? "名前未登録");
-  const ownerEmail = escapeHtml(userData.user.email ?? "メール未確認");
-  const concerns = (application.concern_categories ?? []).map((item: string) => escapeHtml(concernLabels[item] ?? item)).join("・");
-  const outcome = escapeHtml(application.desired_outcome);
-  const note = escapeHtml(application.note ?? "");
+  const rawDogName = dog?.name ?? "名前未登録";
+  const rawBreed = dog?.breed ?? "犬種未登録";
+  const rawOwnerEmail = userData.user.email ?? "メール未確認";
+  const rawConcerns = (application.concern_categories ?? []).map((item: string) => concernLabels[item] ?? item).join("・");
+  const rawOutcome = application.desired_outcome;
+  const rawNote = application.note ?? "";
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendApiKey}`,
-      "Content-Type": "application/json",
-      "Idempotency-Key": `coaching-application-${application.id}`,
-    },
-    body: JSON.stringify({
-      from: fromEmail,
-      to: [adminEmail],
-      subject: `【Wan Tone】${dogName}のコーチング相談が届きました`,
-      html: `
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:auto;color:#252825">
-          <p style="font-size:12px;letter-spacing:.12em;color:#008661">WAN TONE COACHING</p>
-          <h1 style="font-size:24px">新しいコーチング相談</h1>
-          <div style="padding:20px;border-radius:16px;background:#f2f7f4">
-            <p><strong>愛犬：</strong>${dogName}（${escapeHtml(dog?.breed ?? "犬種未登録")}）</p>
-            <p><strong>飼い主：</strong>${ownerEmail}</p>
-            <p><strong>相談テーマ：</strong>${concerns}</p>
-            <p><strong>目指したい状態：</strong><br>${outcome}</p>
-            ${note ? `<p><strong>補足：</strong><br>${note}</p>` : ""}
-          </div>
-          <p style="margin-top:22px"><a href="${request.nextUrl.origin}" style="display:inline-block;padding:13px 20px;border-radius:10px;background:#087155;color:white;text-decoration:none;font-weight:700">管理者画面を開く</a></p>
-        </div>
-      `,
-    }),
-  });
+  const emailRequest = resendApiKey
+    ? fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+          "Idempotency-Key": `coaching-application-${application.id}`,
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [adminEmail],
+          subject: `【Wan Tone】${rawDogName}のコーチング相談が届きました`,
+          html: `
+            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:auto;color:#252825">
+              <p style="font-size:12px;letter-spacing:.12em;color:#008661">WAN TONE COACHING</p>
+              <h1 style="font-size:24px">新しいコーチング相談</h1>
+              <div style="padding:20px;border-radius:16px;background:#f2f7f4">
+                <p><strong>愛犬：</strong>${escapeHtml(rawDogName)}（${escapeHtml(rawBreed)}）</p>
+                <p><strong>飼い主：</strong>${escapeHtml(rawOwnerEmail)}</p>
+                <p><strong>相談テーマ：</strong>${escapeHtml(rawConcerns)}</p>
+                <p><strong>目指したい状態：</strong><br>${escapeHtml(rawOutcome)}</p>
+                ${rawNote ? `<p><strong>補足：</strong><br>${escapeHtml(rawNote)}</p>` : ""}
+              </div>
+              <p style="margin-top:22px"><a href="${request.nextUrl.origin}" style="display:inline-block;padding:13px 20px;border-radius:10px;background:#087155;color:white;text-decoration:none;font-weight:700">管理者画面を開く</a></p>
+            </div>
+          `,
+        }),
+      })
+    : null;
 
-  if (!response.ok) {
-    return NextResponse.json({ sent: false, reason: "email_provider_error" }, { status: 502 });
-  }
-  return NextResponse.json({ sent: true });
+  const slackRequest = slackWebhookUrl
+    ? fetch(slackWebhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: `Wan Toneに${rawDogName}のコーチング相談が届きました`,
+          blocks: [
+            { type: "header", text: { type: "plain_text", text: "🐾 新しいコーチング相談", emoji: true } },
+            { type: "section", fields: [
+              { type: "mrkdwn", text: `*愛犬*\n${escapeSlack(rawDogName)}（${escapeSlack(rawBreed)}）` },
+              { type: "mrkdwn", text: `*飼い主*\n${escapeSlack(rawOwnerEmail)}` },
+              { type: "mrkdwn", text: `*相談テーマ*\n${escapeSlack(rawConcerns)}` },
+              { type: "mrkdwn", text: `*目指したい状態*\n${escapeSlack(rawOutcome)}` },
+            ] },
+            ...(rawNote ? [{ type: "section", text: { type: "mrkdwn", text: `*補足*\n${escapeSlack(rawNote)}` } }] : []),
+            { type: "actions", elements: [{ type: "button", text: { type: "plain_text", text: "管理者画面を開く" }, url: request.nextUrl.origin, style: "primary" }] },
+          ],
+        }),
+      })
+    : null;
+
+  const [emailResponse, slackResponse] = await Promise.all([emailRequest, slackRequest]);
+  const delivery = {
+    email: emailResponse ? emailResponse.ok : null,
+    slack: slackResponse ? slackResponse.ok : null,
+  };
+  const configured = Boolean(emailRequest || slackRequest);
+  const delivered = emailResponse?.ok || slackResponse?.ok || false;
+
+  return NextResponse.json(
+    { sent: delivered, delivery, reason: configured ? (delivered ? undefined : "notification_provider_error") : "notifications_not_configured" },
+    { status: configured && !delivered ? 502 : 200 },
+  );
 }
