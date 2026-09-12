@@ -375,6 +375,7 @@ export default function Home() {
   const [adminNameDrafts, setAdminNameDrafts] = useState<Record<string, string>>({});
   const [adminApplications, setAdminApplications] = useState<AdminCoachingApplication[]>([]);
   const [adminApplicationsError, setAdminApplicationsError] = useState("");
+  const [assignmentErrors, setAssignmentErrors] = useState<Record<string, string>>({});
   const [adminTab, setAdminTab] = useState<"applications" | "customers" | "accounts">("applications");
   const [lastAdminRefresh, setLastAdminRefresh] = useState<Date | null>(null);
   const [selectedAdminCustomer, setSelectedAdminCustomer] = useState<AdminCustomer | null>(null);
@@ -1214,8 +1215,16 @@ export default function Home() {
       target_application_id: application.id,
       target_coach_id: coachId,
     });
-    if (error) showNotice(`担当を設定できませんでした（${error.message}）`);
+    if (error) {
+      setAssignmentErrors((current) => ({ ...current, [application.id]: error.message }));
+      showNotice("担当を設定できませんでした。申込み欄の詳細を確認してください");
+    }
     else {
+      setAssignmentErrors((current) => {
+        const next = { ...current };
+        delete next[application.id];
+        return next;
+      });
       showNotice(`${application.dogName}の担当候補へ確認を依頼しました`);
       await loadAdminWorkspace();
     }
@@ -2433,6 +2442,7 @@ export default function Home() {
                     <label>担当コーチ<select value={application.assignedCoachId ?? ""} onChange={(event) => void assignCoachingApplication(application, event.target.value)} disabled={saving}><option value="">選択してください</option>{coaches.map((coach) => <option value={coach.userId} key={coach.userId}>{coach.email}</option>)}</select></label>
                     <label>進行状況<select value={application.status} onChange={(event) => void updateCoachingStatus(application, event.target.value as CoachingStatus)} disabled={saving}><option value="submitted">受付中</option><option value="offered" disabled>コーチ確認中</option><option value="assigned" disabled>担当決定</option><option value="consulting" disabled={!application.assignedCoachId}>初回相談中</option><option value="payment_pending" disabled={!application.assignedCoachId}>お支払い待ち</option><option value="active" disabled={!application.assignedCoachId}>利用中</option><option value="closed">終了</option></select></label>
                   </div>
+                  {assignmentErrors[application.id] && <p className="application-error">担当設定エラー：{assignmentErrors[application.id]}</p>}
                   <time>{new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(application.submittedAt))} 申込み</time>
                 </article>
               );
