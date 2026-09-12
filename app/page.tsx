@@ -13,6 +13,7 @@ type CareGoalType = "brush" | "teeth" | "paws" | "bath" | "nails" | "ears" | "tr
 type UserRole = "owner" | "coach" | "admin";
 type AuthMode = "login" | "signup";
 type CoachingStatus = "submitted" | "offered" | "assigned" | "consulting" | "payment_pending" | "active" | "closed";
+type AdminTab = "applications" | "customers" | "accounts" | "schedule" | "coachProfile";
 
 type DogProfile = {
   id?: string;
@@ -99,6 +100,7 @@ type CoachingApplication = {
   desiredOutcome: string;
   note: string;
   assignedCoachId: string | null;
+  ownerConfirmedAt: string | null;
   submittedAt: string;
 };
 
@@ -108,6 +110,27 @@ type AdminCoachingApplication = CoachingApplication & {
   dogName: string;
   ownerEmail: string;
   coachEmail: string | null;
+};
+
+type CoachProfile = {
+  displayName: string;
+  headline: string;
+  bio: string;
+  credentials: string;
+  avatarUrl: string;
+  meetUrl: string;
+};
+
+type AvailabilitySlot = { id: string; startsAt: string; endsAt: string };
+type OnlineSession = {
+  id: string;
+  ownerEmail: string;
+  dogName: string;
+  sessionType: "initial" | "followup";
+  status: "booked" | "completed" | "cancelled";
+  startsAt: string;
+  endsAt: string;
+  meetUrl: string;
 };
 
 const PROFILE_KEY = "wan-tone-profile-v1";
@@ -237,6 +260,17 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat("ja-JP", { month: "short", day: "numeric", weekday: "short" }).format(
     new Date(`${value}T00:00:00+09:00`),
   );
+}
+
+function formatOnlineDate(value: string) {
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Tokyo",
+  }).format(new Date(value));
 }
 
 function calculateStreak(records: DailyRecord[]) {
@@ -376,7 +410,7 @@ export default function Home() {
   const [adminApplications, setAdminApplications] = useState<AdminCoachingApplication[]>([]);
   const [adminApplicationsError, setAdminApplicationsError] = useState("");
   const [assignmentErrors, setAssignmentErrors] = useState<Record<string, string>>({});
-  const [adminTab, setAdminTab] = useState<"applications" | "customers" | "accounts">("applications");
+  const [adminTab, setAdminTab] = useState<AdminTab>("applications");
   const [lastAdminRefresh, setLastAdminRefresh] = useState<Date | null>(null);
   const [selectedAdminCustomer, setSelectedAdminCustomer] = useState<AdminCustomer | null>(null);
   const [adminDetailRecords, setAdminDetailRecords] = useState<DailyRecord[]>([]);
@@ -415,6 +449,12 @@ export default function Home() {
   const [coachingConcerns, setCoachingConcerns] = useState<string[]>([]);
   const [coachingOutcome, setCoachingOutcome] = useState("");
   const [coachingNote, setCoachingNote] = useState("");
+  const [assignedCoachProfile, setAssignedCoachProfile] = useState<CoachProfile | null>(null);
+  const [coachProfile, setCoachProfile] = useState<CoachProfile>({ displayName: "", headline: "", bio: "", credentials: "", avatarUrl: "", meetUrl: "" });
+  const [availableSlots, setAvailableSlots] = useState<AvailabilitySlot[]>([]);
+  const [onlineSessions, setOnlineSessions] = useState<OnlineSession[]>([]);
+  const [slotStart, setSlotStart] = useState("");
+  const [slotDuration, setSlotDuration] = useState(60);
   const [calendarMode, setCalendarMode] = useState<"week" | "month">("week");
   const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(today());
@@ -633,11 +673,39 @@ export default function Home() {
         desiredOutcome: String(item.desired_outcome ?? ""),
         note: String(item.note ?? ""),
         assignedCoachId: item.assigned_coach_id ? String(item.assigned_coach_id) : null,
+        ownerConfirmedAt: null,
         coachEmail: item.coach_email ? String(item.coach_email) : null,
         submittedAt: String(item.submitted_at),
       })));
     }
     setLastAdminRefresh(new Date());
+  }
+
+  async function loadStaffBookingWorkspace() {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+    if (userRole === "coach") {
+      const { data } = await supabase.from("wt_coach_profiles").select("display_name,headline,bio,credentials,avatar_url,meet_url").eq("coach_id", userData.user.id).maybeSingle();
+      if (data) setCoachProfile({ displayName: data.display_name ?? "", headline: data.headline ?? "", bio: data.bio ?? "", credentials: data.credentials ?? "", avatarUrl: data.avatar_url ?? "", meetUrl: data.meet_url ?? "" });
+      const { data: slots } = await supabase.from("wt_coach_availability_slots").select("id,starts_at,ends_at").eq("coach_id", userData.user.id).eq("active", true).gte("starts_at", new Date().toISOString()).order("starts_at");
+      if (slots) setAvailableSlots(slots.map((slot) => ({ id: slot.id, startsAt: slot.starts_at, endsAt: slot.ends_at })));
+    }
+    const { data: sessions } = await supabase.rpc("wt_staff_online_sessions");
+    if (sessions) setOnlineSessions(sessions.map((session: Record<string, unknown>) => ({ id: String(session.session_id), ownerEmail: String(session.owner_email ?? ""), dogName: String(session.dog_name ?? ""), sessionType: session.session_type === "followup" ? "followup" : "initial", status: String(session.status) as OnlineSession["status"], startsAt: String(session.starts_at), endsAt: String(session.ends_at), meetUrl: String(session.meet_url ?? "") })));
+  }
+
+  async function loadOwnerBookingWorkspace(application: CoachingApplication) {
+    if (!application.assignedCoachId) return;
+    const [{ data: profileData }, { data: sessions }] = await Promise.all([
+      supabase.from("wt_coach_profiles").select("display_name,headline,bio,credentials,avatar_url,meet_url").eq("coach_id", application.assignedCoachId).maybeSingle(),
+      supabase.from("wt_online_sessions").select("id,session_type,status,starts_at,ends_at,meet_url").eq("application_id", application.id).order("starts_at"),
+    ]);
+    if (profileData) setAssignedCoachProfile({ displayName: profileData.display_name ?? "担当コーチ", headline: profileData.headline ?? "", bio: profileData.bio ?? "", credentials: profileData.credentials ?? "", avatarUrl: profileData.avatar_url ?? "", meetUrl: profileData.meet_url ?? "" });
+    if (sessions) setOnlineSessions(sessions.map((session) => ({ id: session.id, ownerEmail: "", dogName, sessionType: session.session_type as "initial" | "followup", status: session.status as OnlineSession["status"], startsAt: session.starts_at, endsAt: session.ends_at, meetUrl: session.meet_url ?? "" })));
+    if (application.ownerConfirmedAt) {
+      const { data: slots } = await supabase.rpc("wt_owner_available_slots", { target_application_id: application.id });
+      if (slots) setAvailableSlots(slots.map((slot: Record<string, unknown>) => ({ id: String(slot.slot_id), startsAt: String(slot.starts_at), endsAt: String(slot.ends_at) })));
+    }
   }
 
   useEffect(() => {
@@ -661,6 +729,8 @@ export default function Home() {
       .map((label) => label.trim())
       .filter(Boolean);
     const initialCustomBehaviors = Array.from(new Set([...savedCustomBehaviors, ...localCustomBehaviors])).slice(0, 12);
+    // Local storage is the offline source of truth during the first hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setProfile(localProfile);
     setRecords(localRecords);
     setMessages(localMessages);
@@ -782,7 +852,7 @@ export default function Home() {
             .order("completed_at", { ascending: false }),
           supabase
             .from("wt_coaching_applications")
-            .select("id,status,concern_categories,desired_outcome,note,assigned_coach_id,submitted_at")
+            .select("id,status,concern_categories,desired_outcome,note,assigned_coach_id,owner_confirmed_at,submitted_at")
             .eq("owner_id", userId)
             .order("submitted_at", { ascending: false })
             .limit(1)
@@ -819,6 +889,7 @@ export default function Home() {
             desiredOutcome: coachingResult.data.desired_outcome ?? "",
             note: coachingResult.data.note ?? "",
             assignedCoachId: coachingResult.data.assigned_coach_id ?? null,
+            ownerConfirmedAt: coachingResult.data.owner_confirmed_at ?? null,
             submittedAt: coachingResult.data.submitted_at,
           });
         }
@@ -863,13 +934,31 @@ export default function Home() {
   }, [authReady, userRole]);
 
   useEffect(() => {
+    if (!authReady || !authenticated) return;
+    const initialLoad = window.setTimeout(() => {
+      if (userRole === "admin" || userRole === "coach") void loadStaffBookingWorkspace();
+      if (coachingApplication?.assignedCoachId) void loadOwnerBookingWorkspace(coachingApplication);
+    }, 0);
+    const channel = supabase.channel(`booking-${currentUserId || "session"}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "wt_coach_availability_slots" }, () => {
+        if (userRole === "admin" || userRole === "coach") void loadStaffBookingWorkspace();
+        if (coachingApplication?.assignedCoachId) void loadOwnerBookingWorkspace(coachingApplication);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "wt_online_sessions" }, () => {
+        if (userRole === "admin" || userRole === "coach") void loadStaffBookingWorkspace();
+        if (coachingApplication?.assignedCoachId) void loadOwnerBookingWorkspace(coachingApplication);
+      }).subscribe();
+    return () => { window.clearTimeout(initialLoad); void supabase.removeChannel(channel); };
+  }, [authReady, authenticated, currentUserId, userRole, coachingApplication?.id, coachingApplication?.assignedCoachId, coachingApplication?.ownerConfirmedAt]);
+
+  useEffect(() => {
     if (!authReady || !authenticated || anonymousUser) return;
     async function refreshCoachingStatus() {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
       const { data, error } = await supabase
         .from("wt_coaching_applications")
-        .select("id,status,concern_categories,desired_outcome,note,assigned_coach_id,submitted_at")
+        .select("id,status,concern_categories,desired_outcome,note,assigned_coach_id,owner_confirmed_at,submitted_at")
         .eq("owner_id", userData.user.id)
         .order("submitted_at", { ascending: false })
         .limit(1)
@@ -885,6 +974,7 @@ export default function Home() {
         desiredOutcome: data.desired_outcome ?? "",
         note: data.note ?? "",
         assignedCoachId: data.assigned_coach_id ?? null,
+        ownerConfirmedAt: data.owner_confirmed_at ?? null,
         submittedAt: data.submitted_at,
       });
     }
@@ -1176,7 +1266,7 @@ export default function Home() {
           desired_outcome: coachingOutcome.trim(),
           note: coachingNote.trim(),
         })
-        .select("id,status,concern_categories,desired_outcome,note,assigned_coach_id,submitted_at")
+        .select("id,status,concern_categories,desired_outcome,note,assigned_coach_id,owner_confirmed_at,submitted_at")
         .single();
       if (error) throw error;
       setCoachingApplication({
@@ -1186,6 +1276,7 @@ export default function Home() {
         desiredOutcome: data.desired_outcome,
         note: data.note ?? "",
         assignedCoachId: data.assigned_coach_id ?? null,
+        ownerConfirmedAt: data.owner_confirmed_at ?? null,
         submittedAt: data.submitted_at,
       });
       const { data: sessionData } = await supabase.auth.getSession();
@@ -1281,6 +1372,74 @@ export default function Home() {
       await loadAdminWorkspace();
     }
     setSaving(false);
+  }
+
+  async function confirmAssignedCoach() {
+    if (!coachingApplication || !window.confirm("この担当者で決定しますか？")) return;
+    setSaving(true);
+    const { error } = await supabase.rpc("wt_owner_confirm_coach", { target_application_id: coachingApplication.id });
+    if (error) showNotice(`担当を確定できませんでした（${error.message}）`);
+    else {
+      const confirmed = { ...coachingApplication, ownerConfirmedAt: new Date().toISOString() };
+      setCoachingApplication(confirmed);
+      showNotice("担当コーチが決定しました");
+      await loadOwnerBookingWorkspace(confirmed);
+    }
+    setSaving(false);
+  }
+
+  async function saveCoachProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+    if (coachProfile.meetUrl && !coachProfile.meetUrl.startsWith("https://meet.google.com/")) {
+      showNotice("Google Meet URLを確認してください");
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.from("wt_coach_profiles").upsert({ coach_id: userData.user.id, display_name: coachProfile.displayName.trim(), headline: coachProfile.headline.trim(), bio: coachProfile.bio.trim(), credentials: coachProfile.credentials.trim(), avatar_url: coachProfile.avatarUrl.trim() || null, meet_url: coachProfile.meetUrl.trim() || null, updated_at: new Date().toISOString() });
+    showNotice(error ? `プロフィールを保存できませんでした（${error.message}）` : "コーチプロフィールを保存しました");
+    setSaving(false);
+  }
+
+  async function addAvailabilitySlot(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user || !slotStart) return;
+    const startsAt = new Date(slotStart);
+    const endsAt = new Date(startsAt.getTime() + slotDuration * 60_000);
+    setSaving(true);
+    const { error } = await supabase.from("wt_coach_availability_slots").insert({ coach_id: userData.user.id, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString() });
+    if (error) showNotice(`空き枠を追加できませんでした（${error.message}）`);
+    else { setSlotStart(""); showNotice("オンライン対応枠を追加しました"); await loadStaffBookingWorkspace(); }
+    setSaving(false);
+  }
+
+  async function removeAvailabilitySlot(slotId: string) {
+    if (!window.confirm("この対応枠を削除しますか？")) return;
+    const { error } = await supabase.from("wt_coach_availability_slots").delete().eq("id", slotId);
+    showNotice(error ? `削除できませんでした（${error.message}）` : "対応枠を削除しました");
+    if (!error) await loadStaffBookingWorkspace();
+  }
+
+  async function bookOnlineSession(slot: AvailabilitySlot) {
+    if (!coachingApplication) return;
+    const hasInitial = onlineSessions.some((session) => session.sessionType === "initial" && session.status !== "cancelled");
+    const sessionType = hasInitial ? "followup" : "initial";
+    const label = new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(slot.startsAt));
+    if (!window.confirm(`${label}で${sessionType === "initial" ? "初回" : "継続"}オンライン診断を予約しますか？`)) return;
+    setSaving(true);
+    const { error } = await supabase.rpc("wt_book_online_session", { target_application_id: coachingApplication.id, target_slot_id: slot.id, requested_session_type: sessionType });
+    showNotice(error ? `予約できませんでした（${error.message}）` : "オンライン診断を予約しました");
+    if (!error) await loadOwnerBookingWorkspace(coachingApplication);
+    setSaving(false);
+  }
+
+  async function updateOnlineSessionStatus(sessionId: string, status: "completed" | "cancelled") {
+    if (!window.confirm(status === "completed" ? "面談を完了にしますか？" : "この予約をキャンセルしますか？")) return;
+    const { error } = await supabase.rpc("wt_staff_update_online_session", { target_session_id: sessionId, next_status: status });
+    showNotice(error ? `予約を更新できませんでした（${error.message}）` : status === "completed" ? "面談を完了にしました" : "予約をキャンセルしました");
+    if (!error) await loadStaffBookingWorkspace();
   }
 
   function moveCalendarMonth(delta: number) {
@@ -1663,7 +1822,7 @@ export default function Home() {
 
       <section className="care-today care-goals-card" aria-labelledby="care-today-title">
         <div className="care-today-head">
-          <div><p className="card-label">TODAY'S CARE</p><h2 id="care-today-title">今日やること</h2></div>
+          <div><p className="card-label">TODAY’S CARE</p><h2 id="care-today-title">今日やること</h2></div>
           {careGoals.length > 0 && <span><b>{completedGoalCount}</b> / {careGoals.length} 達成</span>}
         </div>
         {careGoals.length === 0 ? (
@@ -1692,7 +1851,7 @@ export default function Home() {
 
       <section className="today-rhythm" aria-labelledby="today-rhythm-title">
         <div className="today-rhythm-heading">
-          <div><p className="card-label">TODAY'S RHYTHM</p><h2 id="today-rhythm-title">今日のリズム</h2></div>
+          <div><p className="card-label">TODAY’S RHYTHM</p><h2 id="today-rhythm-title">今日のリズム</h2></div>
           <div className={`daily-stamp ${todaysEntries.length ? "has-records" : ""}`}><strong>{todaysEntries.length}</strong><small>PAWS</small></div>
         </div>
         <div className="today-topic-grid">
@@ -2209,12 +2368,14 @@ export default function Home() {
         <button onClick={() => setView("coach")}>{coachingApplication ? "担当状況を確認する" : "コーチングについて相談する"}<span>→</span></button>
       </section>
 
-      <button className="primary-button report-add" onClick={() => { openNewRecord("barking"); reportBehaviorType === "other" ? setBehaviorTypes([]) : setBehaviorTypes([reportBehaviorType]); }}>{behaviorInfo(reportBehaviorType).label}を記録する<span>→</span></button>
+      <button className="primary-button report-add" onClick={() => { openNewRecord("barking"); if (reportBehaviorType === "other") setBehaviorTypes([]); else setBehaviorTypes([reportBehaviorType]); }}>{behaviorInfo(reportBehaviorType).label}を記録する<span>→</span></button>
       <p className="report-note">表示しているのは記録回数の変化です。記録漏れや生活リズムも影響するため、実際の発生回数や因果関係を断定するものではありません。</p>
     </section>
   );
 
-  const coachingChatOpen = coachingApplication && ["assigned", "consulting", "payment_pending", "active"].includes(coachingApplication.status);
+  const coachingChatOpen = Boolean(coachingApplication?.ownerConfirmedAt) && Boolean(coachingApplication && ["assigned", "consulting", "payment_pending", "active"].includes(coachingApplication.status));
+  const ownerBookedSessions = onlineSessions.filter((session) => session.status === "booked");
+  const ownerHasInitialSession = onlineSessions.some((session) => session.sessionType === "initial" && session.status !== "cancelled");
   const coachView = (
     <section className="coach-screen">
       <SectionTitle eyebrow="COACHING" title={coachingChatOpen ? "担当コーチに相談" : "記録を、変化につなげる"} />
@@ -2255,10 +2416,35 @@ export default function Home() {
       ) : (
         <>
           <section className="coach-assigned-card">
-            <div className="coach-avatar"><NavGlyph name="coach" /></div>
-            <div><p className="card-label">YOUR COACH</p><h2>担当コーチとつながりました</h2><p>記録を見ながら、まずは今いちばん気になることから話しましょう。</p></div>
-            <b>{coachingStatusLabel(coachingApplication.status)}</b>
+            <div className="coach-avatar coach-profile-avatar">{assignedCoachProfile?.avatarUrl ? <img src={assignedCoachProfile.avatarUrl} alt="" /> : <NavGlyph name="coach" />}</div>
+            <div><p className="card-label">YOUR COACH</p><h2>{assignedCoachProfile?.displayName || "担当コーチ"}</h2><strong>{assignedCoachProfile?.headline || "愛犬との暮らしを一緒に整えます"}</strong><p>{assignedCoachProfile?.bio || "記録を見ながら、まずは今いちばん気になることから話しましょう。"}</p>{assignedCoachProfile?.credentials && <small>{assignedCoachProfile.credentials}</small>}</div>
+            <b>{coachingApplication.ownerConfirmedAt ? "担当確定" : "確認待ち"}</b>
           </section>
+          {!coachingApplication.ownerConfirmedAt ? (
+            <section className="coach-confirm-card">
+              <p className="card-label">FINAL CONFIRMATION</p>
+              <h2>この担当者で決定しますか？</h2>
+              <p>確定すると、オンライン診断の予約と担当コーチとのチャットが使えるようになります。</p>
+              <button className="primary-button" onClick={() => void confirmAssignedCoach()} disabled={saving}>{saving ? "確定中…" : "このコーチに決定する"}<span>→</span></button>
+            </section>
+          ) : (
+            <>
+              <section className="meet-guidance">
+                <span>G</span><div><strong>Google Meetを使用します</strong><p>オンライン診断はGoogle Meetで行います。開始前にGoogleアカウントをご用意ください。</p></div>
+              </section>
+              {ownerBookedSessions.length > 0 && (
+                <section className="owner-session-list">
+                  <div className="booking-section-title"><div><p className="card-label">NEXT SESSION</p><h2>予約済みのオンライン診断</h2></div></div>
+                  {ownerBookedSessions.map((session) => <article key={session.id}><time>{formatOnlineDate(session.startsAt)}</time><div><strong>{session.sessionType === "initial" ? "初回オンライン診断" : "継続オンライン診断"}</strong><small>{Math.round((new Date(session.endsAt).getTime() - new Date(session.startsAt).getTime()) / 60000)}分</small></div>{session.meetUrl ? <a href={session.meetUrl} target="_blank" rel="noreferrer">Meetを開く</a> : <span>URL準備中</span>}</article>)}
+                </section>
+              )}
+              <section className="owner-booking-card">
+                <div className="booking-section-title"><div><p className="card-label">BOOK ONLINE</p><h2>{ownerHasInitialSession ? "次回のオンライン診断を予約" : "初回オンライン診断を予約"}</h2><p>担当コーチが登録した空き枠から選べます。</p></div><b>{availableSlots.length}枠</b></div>
+                <div className="owner-slot-list">{availableSlots.length ? availableSlots.slice(0, 12).map((slot) => <button key={slot.id} onClick={() => void bookOnlineSession(slot)} disabled={saving}><span><strong>{formatOnlineDate(slot.startsAt)}</strong><small>{Math.round((new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60000)}分</small></span><b>選ぶ →</b></button>) : <p>現在予約できる日時はありません。担当コーチが枠を追加すると、ここへ自動で反映されます。</p>}</div>
+              </section>
+            </>
+          )}
+          {coachingApplication.ownerConfirmedAt && <>
           <div className="connection-note"><span className={connection}></span>{connection === "online" ? "コーチルームに接続中" : connection === "checking" ? "接続を確認しています" : "端末保存モード"}</div>
           <div className="message-list" aria-live="polite">
             {messages.length ? messages.map((message) => (
@@ -2274,6 +2460,7 @@ export default function Home() {
             <textarea id="coach-message" rows={4} value={draftMessage} onChange={(event) => setDraftMessage(event.target.value)} placeholder="困っている場面や、試したことを書いてください" required />
             <button className="primary-button" disabled={saving}>{saving ? "送信中…" : connection === "online" ? "コーチに送る" : "相談メモを保存"}<span>→</span></button>
           </form>
+          </>}
         </>
       )}
     </section>
@@ -2357,6 +2544,13 @@ export default function Home() {
   const filteredAdminAccounts = adminAccountFilter === "all"
     ? adminAccounts
     : adminAccounts.filter((account) => account.role === adminAccountFilter);
+  const adminPageMeta: Record<AdminTab, { title: string; description: string; count: number }> = {
+    applications: { title: "コーチング申込み", description: "相談内容を確認し、合いそうなコーチへつなぐ。", count: adminApplications.length },
+    customers: { title: userRole === "admin" ? "すべての担当顧客" : "担当のお客様", description: "記録の変化を見て、必要なタイミングで声をかける。", count: adminCustomers.length },
+    schedule: { title: "オンライン対応日時", description: "空き枠と予約状況を、ひとつの場所で確認する。", count: onlineSessions.filter((session) => session.status === "booked").length },
+    coachProfile: { title: "コーチプロフィール", description: "オーナーへ表示する経歴とオンライン面談情報を整える。", count: availableSlots.length },
+    accounts: { title: "ユーザー管理", description: "権限と担当コーチを、この画面で設定できます。", count: adminAccounts.length },
+  };
 
   const adminView = (
     <div className="admin-stage">
@@ -2408,7 +2602,7 @@ export default function Home() {
             )}
           </div>
         ) : <>
-        <section className="admin-welcome"><div><p className="card-label">{userRole === "admin" ? "ADMIN CONSOLE" : "COACH CONSOLE"}</p><h1>{adminTab === "applications" ? "コーチング申込み" : adminTab === "customers" ? (userRole === "admin" ? "すべての担当顧客" : "担当のお客様") : "ユーザー管理"}</h1><span>{userRole === "coach" && coachOffers.length ? "新しい担当依頼を確認して、引き受けるか選んでください。" : adminTab === "applications" ? "相談内容を確認し、合いそうなコーチへつなぐ。" : adminTab === "customers" ? "記録の変化を見て、必要なタイミングで声をかける。" : "権限と担当コーチを、この画面で設定できます。"}</span></div><b>{userRole === "coach" ? coachOffers.length : adminTab === "applications" ? adminApplications.length : adminTab === "customers" ? adminCustomers.length : adminAccounts.length}<small>{userRole === "coach" && coachOffers.length ? "件の依頼" : "件"}</small></b></section>
+        <section className="admin-welcome"><div><p className="card-label">{userRole === "admin" ? "ADMIN CONSOLE" : "COACH CONSOLE"}</p><h1>{adminPageMeta[adminTab].title}</h1><span>{userRole === "coach" && coachOffers.length && adminTab === "customers" ? "新しい担当依頼を確認して、引き受けるか選んでください。" : adminPageMeta[adminTab].description}</span></div><b>{userRole === "coach" && coachOffers.length && adminTab === "customers" ? coachOffers.length : adminPageMeta[adminTab].count}<small>{userRole === "coach" && coachOffers.length && adminTab === "customers" ? "件の依頼" : adminTab === "schedule" ? "件の予約" : adminTab === "coachProfile" ? "件の空き枠" : "件"}</small></b></section>
         {userRole === "coach" && coachOffers.length > 0 && (
           <section className="coach-offers" aria-labelledby="coach-offers-title">
             <div className="coach-offers-heading"><div><p className="card-label">NEW ASSIGNMENT</p><h2 id="coach-offers-title">担当のご相談</h2></div><span>{coachOffers.length}件</span></div>
@@ -2423,7 +2617,7 @@ export default function Home() {
             ))}</div>
           </section>
         )}
-        {userRole === "admin" && <nav className="admin-tabs has-three" aria-label="管理メニュー"><button className={adminTab === "applications" ? "is-selected" : ""} onClick={() => setAdminTab("applications")}>申込み{pendingApplicationCount > 0 && <b>{pendingApplicationCount}</b>}</button><button className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button className={adminTab === "accounts" ? "is-selected" : ""} onClick={() => setAdminTab("accounts")}>ユーザー</button></nav>}
+        {userRole === "admin" ? <nav className="admin-tabs has-four" aria-label="管理メニュー"><button className={adminTab === "applications" ? "is-selected" : ""} onClick={() => setAdminTab("applications")}>申込み{pendingApplicationCount > 0 && <b>{pendingApplicationCount}</b>}</button><button className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button className={adminTab === "schedule" ? "is-selected" : ""} onClick={() => setAdminTab("schedule")}>予約</button><button className={adminTab === "accounts" ? "is-selected" : ""} onClick={() => setAdminTab("accounts")}>ユーザー</button></nav> : <nav className="admin-tabs has-three" aria-label="コーチメニュー"><button className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button className={adminTab === "schedule" ? "is-selected" : ""} onClick={() => setAdminTab("schedule")}>予約・空き枠</button><button className={adminTab === "coachProfile" ? "is-selected" : ""} onClick={() => setAdminTab("coachProfile")}>プロフィール</button></nav>}
         {adminTab === "applications" && <div className="admin-inbox-status"><span><i className={pendingApplicationCount ? "has-new" : ""}></i>{adminApplicationsError ? "申込みを取得できませんでした" : pendingApplicationCount ? `未対応の申込みが${pendingApplicationCount}件あります` : "未対応の申込みはありません"}<small>{adminApplicationsError ? adminApplicationsError : lastAdminRefresh ? `${lastAdminRefresh.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}更新 · 30秒ごとに自動確認` : "確認中"}</small></span><button onClick={() => void loadAdminWorkspace()}>今すぐ更新</button></div>}
         {adminTab === "applications" && (adminApplications.length ? (
           <div className="application-list">
@@ -2463,6 +2657,40 @@ export default function Home() {
         ) : (
           <section className="admin-empty"><span><NavGlyph name="coach" /></span><h2>担当のお客様はまだいません</h2><p>「ユーザー管理」から、愛犬を自分の担当へ追加できます。</p></section>
         ))}
+        {adminTab === "schedule" && (
+          <div className="staff-booking-workspace">
+            {userRole === "coach" && (
+              <section className="staff-schedule-panel">
+                <div className="admin-panel-heading"><div><p className="card-label">AVAILABILITY</p><h2>オンライン対応枠を追加</h2></div><span>日本時間</span></div>
+                <p className="staff-panel-lead">初回・継続診断で共通の空き枠です。予約が入った枠は自動で選択できなくなります。</p>
+                <form className="slot-create-form" onSubmit={addAvailabilitySlot}>
+                  <label>開始日時<input type="datetime-local" value={slotStart} min={new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }) + "T00:00"} onChange={(event) => setSlotStart(event.target.value)} required /></label>
+                  <label>所要時間<select value={slotDuration} onChange={(event) => setSlotDuration(Number(event.target.value))}><option value={30}>30分</option><option value={45}>45分</option><option value={60}>60分</option><option value={90}>90分</option></select></label>
+                  <button disabled={saving}>{saving ? "追加中…" : "空き枠を追加"}</button>
+                </form>
+                <div className="staff-slot-list">{availableSlots.length ? availableSlots.map((slot) => <article key={slot.id}><div><strong>{formatOnlineDate(slot.startsAt)}</strong><small>{Math.round((new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60000)}分</small></div><button onClick={() => void removeAvailabilitySlot(slot.id)}>削除</button></article>) : <p>これから予約できる空き枠はありません。</p>}</div>
+              </section>
+            )}
+            <section className="staff-schedule-panel">
+              <div className="admin-panel-heading"><div><p className="card-label">BOOKINGS</p><h2>オンライン診断の予約状況</h2></div><button className="inline-refresh" onClick={() => void loadStaffBookingWorkspace()}>更新</button></div>
+              <div className="staff-session-list">{onlineSessions.length ? onlineSessions.map((session) => <article key={session.id} className={`session-${session.status}`}><time>{formatOnlineDate(session.startsAt)}</time><div><strong>{session.dogName || "愛犬名未登録"}</strong><p>{session.ownerEmail}</p><small>{session.sessionType === "initial" ? "初回オンライン診断" : "継続オンライン診断"} · {session.status === "booked" ? "予約済み" : session.status === "completed" ? "完了" : "キャンセル"}</small></div><div className="staff-session-actions">{session.meetUrl && session.status === "booked" && <a href={session.meetUrl} target="_blank" rel="noreferrer">Meetを開く</a>}{session.status === "booked" && <><button onClick={() => void updateOnlineSessionStatus(session.id, "completed")}>完了</button><button className="danger" onClick={() => void updateOnlineSessionStatus(session.id, "cancelled")}>取消</button></>}</div></article>) : <section className="admin-empty compact"><h2>予約はまだありません</h2><p>オーナーが日時を選ぶと、リアルタイムでここに反映されます。</p></section>}</div>
+            </section>
+          </div>
+        )}
+        {adminTab === "coachProfile" && userRole === "coach" && (
+          <form className="staff-profile-form" onSubmit={saveCoachProfile}>
+            <div className="staff-profile-preview"><div className="coach-avatar coach-profile-avatar">{coachProfile.avatarUrl ? <img src={coachProfile.avatarUrl} alt="" /> : <NavGlyph name="coach" />}</div><div><p className="card-label">PROFILE PREVIEW</p><h2>{coachProfile.displayName || "コーチ名"}</h2><strong>{coachProfile.headline || "専門分野や大切にしていること"}</strong></div></div>
+            <div className="staff-profile-fields">
+              <label>表示名<input value={coachProfile.displayName} onChange={(event) => setCoachProfile({ ...coachProfile, displayName: event.target.value })} placeholder="例：三宅コーチ" required /></label>
+              <label>肩書き・ひとこと<input value={coachProfile.headline} onChange={(event) => setCoachProfile({ ...coachProfile, headline: event.target.value })} placeholder="例：行動の理由を一緒に考えます" /></label>
+              <label>アイコン画像URL<input type="url" value={coachProfile.avatarUrl} onChange={(event) => setCoachProfile({ ...coachProfile, avatarUrl: event.target.value })} placeholder="https://..." /></label>
+              <label>経歴・資格<textarea rows={3} value={coachProfile.credentials} onChange={(event) => setCoachProfile({ ...coachProfile, credentials: event.target.value })} placeholder="保有資格、経験など" /></label>
+              <label>自己紹介<textarea rows={5} value={coachProfile.bio} onChange={(event) => setCoachProfile({ ...coachProfile, bio: event.target.value })} placeholder="オーナーへ伝えたいサポート方針など" /></label>
+              <label>Google Meet URL<input type="url" value={coachProfile.meetUrl} onChange={(event) => setCoachProfile({ ...coachProfile, meetUrl: event.target.value })} placeholder="https://meet.google.com/xxx-xxxx-xxx" /><small>予約確定後、オーナーとコーチ双方に表示されます。</small></label>
+            </div>
+            <button className="staff-save-button" disabled={saving}>{saving ? "保存中…" : "プロフィールを保存"}</button>
+          </form>
+        )}
         {adminTab === "accounts" && (
           <div className="account-directory">
             <section className="account-overview">
