@@ -368,6 +368,7 @@ export default function Home() {
   const [adminAccounts, setAdminAccounts] = useState<AdminAccount[]>([]);
   const [adminApplications, setAdminApplications] = useState<AdminCoachingApplication[]>([]);
   const [adminTab, setAdminTab] = useState<"applications" | "customers" | "accounts">("applications");
+  const [lastAdminRefresh, setLastAdminRefresh] = useState<Date | null>(null);
   const [selectedAdminCustomer, setSelectedAdminCustomer] = useState<AdminCustomer | null>(null);
   const [adminDetailRecords, setAdminDetailRecords] = useState<DailyRecord[]>([]);
   const [adminDetailMessages, setAdminDetailMessages] = useState<CoachMessage[]>([]);
@@ -616,6 +617,7 @@ export default function Home() {
         submittedAt: String(item.submitted_at),
       })));
     }
+    setLastAdminRefresh(new Date());
   }
 
   useEffect(() => {
@@ -837,6 +839,12 @@ export default function Home() {
     const timer = window.setInterval(checkReminders, 60_000);
     return () => window.clearInterval(timer);
   }, [careGoals, goalCompletions, dogName]);
+
+  useEffect(() => {
+    if (!authReady || (userRole !== "admin" && userRole !== "coach")) return;
+    const timer = window.setInterval(() => void loadAdminWorkspace(), 30_000);
+    return () => window.clearInterval(timer);
+  }, [authReady, userRole]);
 
   function showNotice(message: string) {
     setNotice(message);
@@ -1115,6 +1123,17 @@ export default function Home() {
         assignedCoachId: data.assigned_coach_id ?? null,
         submittedAt: data.submitted_at,
       });
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session?.access_token) {
+        void fetch("/api/coaching-notification", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sessionData.session.access_token}`,
+          },
+          body: JSON.stringify({ applicationId: data.id }),
+        }).catch(() => undefined);
+      }
       showNotice("コーチング相談を受け付けました");
     } catch (error) {
       const message = error instanceof Error ? error.message : "申込みに失敗しました";
@@ -2215,6 +2234,7 @@ export default function Home() {
     ? Math.round(adminBehaviorRecords.reduce((sum, record) => sum + (record.behaviorIntensity ?? 0), 0) / adminBehaviorRecords.length * 10) / 10
     : null;
   const adminGoodMoments = adminDetailRecords.filter((record) => record.goodMoment.trim()).slice(0, 3);
+  const pendingApplicationCount = adminApplications.filter((application) => application.status === "submitted").length;
 
   const adminView = (
     <div className="admin-stage">
@@ -2267,7 +2287,8 @@ export default function Home() {
           </div>
         ) : <>
         <section className="admin-welcome"><div><p className="card-label">{userRole === "admin" ? "ADMIN CONSOLE" : "COACH CONSOLE"}</p><h1>{adminTab === "applications" ? "コーチング申込み" : adminTab === "customers" ? (userRole === "admin" ? "すべての担当顧客" : "担当のお客様") : "ユーザー管理"}</h1><span>{adminTab === "applications" ? "相談内容を確認し、合いそうなコーチへつなぐ。" : adminTab === "customers" ? "記録の変化を見て、必要なタイミングで声をかける。" : "権限と担当コーチを、この画面で設定できます。"}</span></div><b>{adminTab === "applications" ? adminApplications.length : adminTab === "customers" ? adminCustomers.length : adminAccounts.length}<small>件</small></b></section>
-        {userRole === "admin" && <nav className="admin-tabs has-three" aria-label="管理メニュー"><button className={adminTab === "applications" ? "is-selected" : ""} onClick={() => setAdminTab("applications")}>申込み</button><button className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button className={adminTab === "accounts" ? "is-selected" : ""} onClick={() => setAdminTab("accounts")}>ユーザー</button></nav>}
+        {userRole === "admin" && <nav className="admin-tabs has-three" aria-label="管理メニュー"><button className={adminTab === "applications" ? "is-selected" : ""} onClick={() => setAdminTab("applications")}>申込み{pendingApplicationCount > 0 && <b>{pendingApplicationCount}</b>}</button><button className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button className={adminTab === "accounts" ? "is-selected" : ""} onClick={() => setAdminTab("accounts")}>ユーザー</button></nav>}
+        {adminTab === "applications" && <div className="admin-inbox-status"><span><i className={pendingApplicationCount ? "has-new" : ""}></i>{pendingApplicationCount ? `未対応の申込みが${pendingApplicationCount}件あります` : "未対応の申込みはありません"}<small>{lastAdminRefresh ? `${lastAdminRefresh.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}更新 · 30秒ごとに自動確認` : "確認中"}</small></span><button onClick={() => void loadAdminWorkspace()}>今すぐ更新</button></div>}
         {adminTab === "applications" && (adminApplications.length ? (
           <div className="application-list">
             {adminApplications.map((application) => {

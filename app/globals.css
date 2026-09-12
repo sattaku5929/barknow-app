@@ -1032,6 +1032,14 @@ body { font-size: 16px; }
 .coach-assigned-card p:not(.card-label) { margin:6px 0 0; color:var(--muted); font-size:12px; line-height:1.65; }
 .coach-assigned-card > b { padding:6px 9px; border-radius:9px; background:#fff; color:var(--green-dark); font-size:9px; white-space:nowrap; }
 .admin-tabs.has-three { grid-template-columns:repeat(3,1fr); }
+.admin-tabs button { position:relative; }
+.admin-tabs button > b { display:grid; position:absolute; top:5px; right:7px; min-width:18px; height:18px; padding:0 5px; place-items:center; border-radius:9px; background:#d8654c; color:#fff; font-size:9px; }
+.admin-inbox-status { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:10px; padding:12px 14px; border:1px solid rgba(27,61,49,.08); border-radius:14px; background:#fff; }
+.admin-inbox-status > span { display:grid; grid-template-columns:9px 1fr; align-items:center; column-gap:8px; color:var(--ink); font-size:11px; font-weight:750; }
+.admin-inbox-status i { width:8px; height:8px; border-radius:50%; background:#b8c2bd; }
+.admin-inbox-status i.has-new { background:#df725a; box-shadow:0 0 0 4px rgba(223,114,90,.12); }
+.admin-inbox-status small { grid-column:2; margin-top:2px; color:var(--muted); font-size:9px; font-weight:500; }
+.admin-inbox-status button { min-height:36px; padding:0 11px; border:1px solid rgba(8,113,85,.15); border-radius:10px; background:var(--mint); color:var(--green-dark); cursor:pointer; font-size:10px; font-weight:750; white-space:nowrap; }
 .application-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:16px; }
 .application-card { padding:19px; border:1px solid rgba(27,61,49,.08); border-radius:20px; background:#fff; box-shadow:0 10px 26px rgba(42,74,61,.06); }
 .application-card-head { display:grid; grid-template-columns:44px 1fr auto; align-items:center; gap:11px; }
