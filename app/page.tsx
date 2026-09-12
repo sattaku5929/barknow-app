@@ -12,6 +12,7 @@ type GoalPeriod = "day" | "week" | "month";
 type CareGoalType = "brush" | "teeth" | "paws" | "bath" | "nails" | "ears" | "training" | "custom";
 type UserRole = "owner" | "coach" | "admin";
 type AuthMode = "login" | "signup";
+type CoachingStatus = "submitted" | "assigned" | "consulting" | "payment_pending" | "active" | "closed";
 
 type DogProfile = {
   id?: string;
@@ -88,6 +89,24 @@ type AdminGoalProgress = CareGoal & {
   completedCount: number;
 };
 
+type CoachingApplication = {
+  id: string;
+  status: CoachingStatus;
+  concernCategories: string[];
+  desiredOutcome: string;
+  note: string;
+  assignedCoachId: string | null;
+  submittedAt: string;
+};
+
+type AdminCoachingApplication = CoachingApplication & {
+  ownerId: string;
+  dogId: string;
+  dogName: string;
+  ownerEmail: string;
+  coachEmail: string | null;
+};
+
 const PROFILE_KEY = "wan-tone-profile-v1";
 const RECORDS_KEY = "wan-tone-records-v1";
 const MESSAGES_KEY = "wan-tone-messages-v1";
@@ -134,8 +153,32 @@ const BEHAVIOR_TYPES = [
   { id: "other", label: "その他", description: "気になる行動" },
 ] as const;
 
+const COACHING_CONCERNS = [
+  { id: "barking", label: "吠え" },
+  { id: "nipping", label: "噛む・甘噛み" },
+  { id: "toilet", label: "トイレ" },
+  { id: "walk", label: "散歩・引っ張り" },
+  { id: "care", label: "日々のケア" },
+  { id: "relationship", label: "接し方全般" },
+] as const;
+
 function behaviorInfo(type: BehaviorType | null | undefined) {
   return BEHAVIOR_TYPES.find((item) => item.id === type) ?? BEHAVIOR_TYPES[0];
+}
+
+function coachingStatusLabel(status: CoachingStatus) {
+  return {
+    submitted: "受付中",
+    assigned: "担当決定",
+    consulting: "初回相談中",
+    payment_pending: "お支払い待ち",
+    active: "利用中",
+    closed: "終了",
+  }[status];
+}
+
+function coachingConcernLabel(id: string) {
+  return COACHING_CONCERNS.find((item) => item.id === id)?.label ?? id;
 }
 
 function categoryInfo(category: RecordCategory | undefined): CategoryInfo {
@@ -323,7 +366,8 @@ export default function Home() {
   const [authError, setAuthError] = useState("");
   const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>([]);
   const [adminAccounts, setAdminAccounts] = useState<AdminAccount[]>([]);
-  const [adminTab, setAdminTab] = useState<"customers" | "accounts">("customers");
+  const [adminApplications, setAdminApplications] = useState<AdminCoachingApplication[]>([]);
+  const [adminTab, setAdminTab] = useState<"applications" | "customers" | "accounts">("applications");
   const [selectedAdminCustomer, setSelectedAdminCustomer] = useState<AdminCustomer | null>(null);
   const [adminDetailRecords, setAdminDetailRecords] = useState<DailyRecord[]>([]);
   const [adminDetailMessages, setAdminDetailMessages] = useState<CoachMessage[]>([]);
@@ -357,6 +401,10 @@ export default function Home() {
   const [behaviorNote, setBehaviorNote] = useState("");
   const [goodMoment, setGoodMoment] = useState("");
   const [draftMessage, setDraftMessage] = useState("");
+  const [coachingApplication, setCoachingApplication] = useState<CoachingApplication | null>(null);
+  const [coachingConcerns, setCoachingConcerns] = useState<string[]>([]);
+  const [coachingOutcome, setCoachingOutcome] = useState("");
+  const [coachingNote, setCoachingNote] = useState("");
   const [calendarMode, setCalendarMode] = useState<"week" | "month">("week");
   const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(today());
@@ -524,9 +572,10 @@ export default function Home() {
           : "前の7日間と同じ";
 
   async function loadAdminWorkspace() {
-    const [customerResult, accountResult] = await Promise.all([
+    const [customerResult, accountResult, applicationResult] = await Promise.all([
       supabase.rpc("wt_admin_customer_overview"),
       supabase.rpc("wt_admin_accounts"),
+      supabase.rpc("wt_admin_coaching_applications"),
     ]);
     if (!customerResult.error && customerResult.data) {
       setAdminCustomers(customerResult.data.map((item: Record<string, unknown>) => ({
@@ -545,10 +594,26 @@ export default function Home() {
       setAdminAccounts(accountResult.data.map((item: Record<string, unknown>) => ({
         userId: String(item.user_id),
         email: String(item.email ?? "メール未確認"),
-        role: item.role === "admin" ? "admin" : "owner",
+        role: item.role === "admin" ? "admin" : item.role === "coach" ? "coach" : "owner",
         dogId: item.dog_id ? String(item.dog_id) : null,
         dogName: String(item.dog_name ?? "愛犬未登録"),
         assignedCoachId: item.assigned_coach_id ? String(item.assigned_coach_id) : null,
+      })));
+    }
+    if (!applicationResult.error && applicationResult.data) {
+      setAdminApplications(applicationResult.data.map((item: Record<string, unknown>) => ({
+        id: String(item.application_id),
+        ownerId: String(item.owner_id),
+        dogId: String(item.dog_id),
+        dogName: String(item.dog_name ?? "名前未登録"),
+        ownerEmail: String(item.owner_email ?? "メール未確認"),
+        status: String(item.status) as CoachingStatus,
+        concernCategories: Array.isArray(item.concern_categories) ? item.concern_categories.map(String) : [],
+        desiredOutcome: String(item.desired_outcome ?? ""),
+        note: String(item.note ?? ""),
+        assignedCoachId: item.assigned_coach_id ? String(item.assigned_coach_id) : null,
+        coachEmail: item.coach_email ? String(item.coach_email) : null,
+        submittedAt: String(item.submitted_at),
       })));
     }
   }
@@ -605,6 +670,7 @@ export default function Home() {
         setUserRole(role);
 
         if (role === "admin" || role === "coach") {
+          if (role === "coach") setAdminTab("customers");
           await loadAdminWorkspace();
           if (role === "coach") {
             setConnection("online");
@@ -683,7 +749,7 @@ export default function Home() {
           setMessages(remoteMessages);
           writeLocal(MESSAGES_KEY, remoteMessages);
         }
-        const [goalResult, completionResult] = await Promise.all([
+        const [goalResult, completionResult, coachingResult] = await Promise.all([
           supabase
             .from("wt_care_goals")
             .select("id,title,goal_type,target_count,period,reminder_time,created_at")
@@ -696,6 +762,13 @@ export default function Home() {
             .eq("owner_id", userId)
             .gte("completed_on", new Date(Date.now() - 1000 * 60 * 60 * 24 * 62).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }))
             .order("completed_at", { ascending: false }),
+          supabase
+            .from("wt_coaching_applications")
+            .select("id,status,concern_categories,desired_outcome,note,assigned_coach_id,submitted_at")
+            .eq("owner_id", userId)
+            .order("submitted_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
         ]);
         if (!goalResult.error && goalResult.data) {
           const remoteGoals: CareGoal[] = goalResult.data.map((item) => ({
@@ -719,6 +792,17 @@ export default function Home() {
           }));
           setGoalCompletions(remoteCompletions);
           writeLocal(GOAL_COMPLETIONS_KEY, remoteCompletions);
+        }
+        if (!coachingResult.error && coachingResult.data) {
+          setCoachingApplication({
+            id: coachingResult.data.id,
+            status: coachingResult.data.status as CoachingStatus,
+            concernCategories: coachingResult.data.concern_categories ?? [],
+            desiredOutcome: coachingResult.data.desired_outcome ?? "",
+            note: coachingResult.data.note ?? "",
+            assignedCoachId: coachingResult.data.assigned_coach_id ?? null,
+            submittedAt: coachingResult.data.submitted_at,
+          });
         }
         setConnection("online");
       } catch {
@@ -975,6 +1059,95 @@ export default function Home() {
       setAdminDetailMessages((current) => [...current, { id: data.id, sender: "coach", body: data.body, createdAt: data.created_at }]);
       setAdminReply("");
       showNotice("メッセージを送りました");
+      await loadAdminWorkspace();
+    }
+    setSaving(false);
+  }
+
+  function toggleCoachingConcern(concern: string) {
+    setCoachingConcerns((current) => current.includes(concern)
+      ? current.filter((item) => item !== concern)
+      : current.length < 3 ? [...current, concern] : current);
+    if (!coachingConcerns.includes(concern) && coachingConcerns.length >= 3) showNotice("相談テーマは3つまで選べます");
+  }
+
+  async function submitCoachingApplication(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!profile.name) {
+      showNotice("先に愛犬プロフィールを登録してください");
+      setView("profile");
+      return;
+    }
+    if (!coachingConcerns.length || !coachingOutcome.trim()) {
+      showNotice("相談テーマと、目指したい状態を入力してください");
+      return;
+    }
+    if (connection !== "online") {
+      showNotice("オンライン接続後にお申し込みいただけます");
+      return;
+    }
+    setSaving(true);
+    const userId = await getUserId();
+    if (!userId) {
+      setSaving(false);
+      return;
+    }
+    try {
+      const dogId = await ensureRemoteDog(userId);
+      const { data, error } = await supabase
+        .from("wt_coaching_applications")
+        .insert({
+          owner_id: userId,
+          dog_id: dogId,
+          concern_categories: coachingConcerns,
+          desired_outcome: coachingOutcome.trim(),
+          note: coachingNote.trim(),
+        })
+        .select("id,status,concern_categories,desired_outcome,note,assigned_coach_id,submitted_at")
+        .single();
+      if (error) throw error;
+      setCoachingApplication({
+        id: data.id,
+        status: data.status as CoachingStatus,
+        concernCategories: data.concern_categories ?? [],
+        desiredOutcome: data.desired_outcome,
+        note: data.note ?? "",
+        assignedCoachId: data.assigned_coach_id ?? null,
+        submittedAt: data.submitted_at,
+      });
+      showNotice("コーチング相談を受け付けました");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "申込みに失敗しました";
+      showNotice(message.includes("wt_coaching_applications") ? "Supabaseでmigration 011を実行してください" : `申込みに失敗しました（${message}）`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function assignCoachingApplication(application: AdminCoachingApplication, coachId: string) {
+    if (!coachId) return;
+    setSaving(true);
+    const { error } = await supabase.rpc("wt_admin_assign_coaching_application", {
+      target_application_id: application.id,
+      target_coach_id: coachId,
+    });
+    if (error) showNotice(`担当を設定できませんでした（${error.message}）`);
+    else {
+      showNotice(`${application.dogName}の担当コーチを設定しました`);
+      await loadAdminWorkspace();
+    }
+    setSaving(false);
+  }
+
+  async function updateCoachingStatus(application: AdminCoachingApplication, status: CoachingStatus) {
+    setSaving(true);
+    const { error } = await supabase.rpc("wt_admin_update_coaching_status", {
+      target_application_id: application.id,
+      next_status: status,
+    });
+    if (error) showNotice(`状態を変更できませんでした（${error.message}）`);
+    else {
+      showNotice(`${application.dogName}を「${coachingStatusLabel(status)}」に変更しました`);
       await loadAdminWorkspace();
     }
     setSaving(false);
@@ -1445,6 +1618,27 @@ export default function Home() {
         </div>
       </section>
 
+      <section className={`coaching-bridge ${coachingApplication ? `status-${coachingApplication.status}` : "status-new"}`}>
+        <div className="coaching-bridge-mark"><NavGlyph name="coach" /></div>
+        <div className="coaching-bridge-copy">
+          <p className="card-label">WITH A PROFESSIONAL</p>
+          <h2>{coachingApplication
+            ? coachingApplication.status === "submitted" ? "コーチング相談を確認しています"
+              : coachingApplication.status === "assigned" ? "担当コーチが決まりました"
+                : coachingApplication.status === "payment_pending" ? "一緒に進める準備ができました"
+                  : coachingApplication.status === "active" ? "記録を、コーチと変化につなげる"
+                    : "コーチと相談を続ける"
+            : recentConcernCount > 0 ? `「気になる」が${recentConcernCount}件。記録を答えにつなげませんか。`
+              : recentBehaviorCount > 0 ? "困りごとの記録を、次の一歩へ。"
+                : "記録するだけで、終わらせない。"}</h2>
+          <p>{coachingApplication
+            ? coachingApplication.status === "submitted" ? "内容を確認後、あなたと愛犬に合うコーチをご案内します。"
+              : "日々の記録を共有できるので、毎回ゼロから説明せずに相談できます。"
+            : "記録で見えるのは「何が起きたか」。コーチと一緒なら、その理由と次に試すことまで整理できます。"}</p>
+          <button onClick={() => setView("coach")}>{coachingApplication ? "コーチルームを確認する" : "コーチングについて相談する"}<span>→</span></button>
+        </div>
+      </section>
+
       <section className="rhythm-card compact-week" aria-labelledby="rhythm-title">
         <div className="calendar-head">
           <div><p className="card-label">{calendarMode === "week" ? "THIS WEEK" : "MONTHLY LOG"}</p><h2 id="rhythm-title">記録カレンダー</h2></div>
@@ -1878,30 +2072,78 @@ export default function Home() {
         <div className="report-empty"><strong>{behaviorInfo(reportBehaviorType).label}の記録はまだありません</strong><p>起きたときに、時刻と程度を残してみましょう。</p></div>
       )}
 
+      <section className="report-coaching-cta">
+        <div><p className="card-label">FROM DATA TO ACTION</p><h2>この変化、どう見ればいい？</h2><p>回数だけでは分からない背景もあります。記録をコーチと一緒に読み、次に試すことを整理できます。</p></div>
+        <button onClick={() => setView("coach")}>{coachingApplication ? "担当状況を確認する" : "コーチングについて相談する"}<span>→</span></button>
+      </section>
+
       <button className="primary-button report-add" onClick={() => { openNewRecord("barking"); reportBehaviorType === "other" ? setBehaviorTypes([]) : setBehaviorTypes([reportBehaviorType]); }}>{behaviorInfo(reportBehaviorType).label}を記録する<span>→</span></button>
       <p className="report-note">表示しているのは記録回数の変化です。記録漏れや生活リズムも影響するため、実際の発生回数や因果関係を断定するものではありません。</p>
     </section>
   );
 
+  const coachingChatOpen = coachingApplication && ["assigned", "consulting", "payment_pending", "active"].includes(coachingApplication.status);
   const coachView = (
     <section className="coach-screen">
-      <SectionTitle eyebrow="COACH ROOM" title="コーチに相談" />
-      <p className="lead">記録だけでは伝わらないことも、ここで相談できます。</p>
-      <div className="connection-note"><span className={connection}></span>{connection === "online" ? "コーチルームに接続中" : connection === "checking" ? "接続を確認しています" : "端末保存モード"}</div>
-      <div className="message-list" aria-live="polite">
-        {messages.length ? messages.map((message) => (
-          <div key={message.id} className={`message ${message.sender}`}>
-            <span>{message.sender === "coach" ? "COACH" : "YOU"}</span>
-            <p>{message.body}</p>
-            <time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time>
+      <SectionTitle eyebrow="COACHING" title={coachingChatOpen ? "担当コーチに相談" : "記録を、変化につなげる"} />
+      {!coachingApplication || coachingApplication.status === "closed" ? (
+        <>
+          <section className="coaching-intro">
+            <div className="coaching-intro-icon"><NavGlyph name="coach" /></div>
+            <p className="card-label">WAN TONE COACHING</p>
+            <h2>ひとりで悩む時間を、<br />一緒に考える時間へ。</h2>
+            <p>これまでの記録をコーチと共有できます。「いつ・どんなときに」をもとに、その子に合う次の一歩を整理します。</p>
+            <div className="coaching-value-grid">
+              <span><b>01</b><strong>説明が楽</strong><small>記録をそのまま共有</small></span>
+              <span><b>02</b><strong>変化が見える</strong><small>試した前後を確認</small></span>
+              <span><b>03</b><strong>迷いを減らす</strong><small>次にやることを相談</small></span>
+            </div>
+          </section>
+          <form className="coaching-application-form" onSubmit={submitCoachingApplication}>
+            <div><p className="card-label">FIRST STEP</p><h2>コーチングについて相談する</h2><p>申込み後、担当候補のコーチとチャットで初回相談を行います。相談後に内容と料金をご案内します。</p></div>
+            <fieldset>
+              <legend>相談したいこと <small>3つまで</small></legend>
+              <div className="coaching-concerns">{COACHING_CONCERNS.map((concern) => <button type="button" key={concern.id} className={coachingConcerns.includes(concern.id) ? "is-selected" : ""} onClick={() => toggleCoachingConcern(concern.id)}>{concern.label}{coachingConcerns.includes(concern.id) && <span>✓</span>}</button>)}</div>
+            </fieldset>
+            <label>どうなれたら嬉しいですか？<textarea rows={3} value={coachingOutcome} onChange={(event) => setCoachingOutcome(event.target.value)} placeholder="例：来客時に落ち着いて過ごせるようになりたい" maxLength={300} required /></label>
+            <label>補足・気になっていること <small>任意</small><textarea rows={3} value={coachingNote} onChange={(event) => setCoachingNote(event.target.value)} placeholder="試したこと、生活環境など" maxLength={500} /></label>
+            <button className="primary-button" disabled={saving || !coachingConcerns.length || !coachingOutcome.trim()}>{saving ? "送信中…" : "相談を申し込む"}<span>→</span></button>
+            <p className="coaching-form-note">この時点では料金は発生しません。初回相談後にご判断いただけます。</p>
+          </form>
+        </>
+      ) : coachingApplication.status === "submitted" ? (
+        <section className="coaching-pending">
+          <span className="coaching-pending-paw"><CareIcon name="paws" /></span>
+          <p className="card-label">APPLICATION RECEIVED</p>
+          <h2>相談を受け付けました</h2>
+          <p>内容とこれまでの記録を確認し、合いそうなコーチをご案内します。</p>
+          <div className="coaching-steps"><span className="is-current"><b>✓</b>申込み</span><span><b>2</b>担当決定</span><span><b>3</b>初回相談</span></div>
+          <div className="application-summary"><small>相談テーマ</small><p>{coachingApplication.concernCategories.map(coachingConcernLabel).join("・")}</p><small>目指したい状態</small><p>{coachingApplication.desiredOutcome}</p></div>
+        </section>
+      ) : (
+        <>
+          <section className="coach-assigned-card">
+            <div className="coach-avatar"><NavGlyph name="coach" /></div>
+            <div><p className="card-label">YOUR COACH</p><h2>担当コーチとつながりました</h2><p>記録を見ながら、まずは今いちばん気になることから話しましょう。</p></div>
+            <b>{coachingStatusLabel(coachingApplication.status)}</b>
+          </section>
+          <div className="connection-note"><span className={connection}></span>{connection === "online" ? "コーチルームに接続中" : connection === "checking" ? "接続を確認しています" : "端末保存モード"}</div>
+          <div className="message-list" aria-live="polite">
+            {messages.length ? messages.map((message) => (
+              <div key={message.id} className={`message ${message.sender}`}>
+                <span>{message.sender === "coach" ? "COACH" : "YOU"}</span>
+                <p>{message.body}</p>
+                <time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time>
+              </div>
+            )) : <div className="coach-empty"><div className="coach-avatar"><NavGlyph name="coach" /></div><h3>担当コーチへ、最初のメッセージを。</h3><p>例：いちばん困っているのは散歩中の引っ張りです。記録のどこを見ればよいですか？</p></div>}
           </div>
-        )) : <div className="coach-empty"><div className="coach-avatar">C</div><h3>気になることを、そのまま送ってください。</h3><p>例：散歩中の引っ張りが強いです。どんな場面を記録すると相談しやすいですか？</p></div>}
-      </div>
-      <form className="message-form" onSubmit={sendMessage}>
-        <label htmlFor="coach-message">相談内容</label>
-        <textarea id="coach-message" rows={4} value={draftMessage} onChange={(event) => setDraftMessage(event.target.value)} placeholder="困っている場面や、試したことを書いてください" required />
-        <button className="primary-button" disabled={saving}>{saving ? "送信中…" : connection === "online" ? "コーチに送る" : "相談メモを保存"}<span>→</span></button>
-      </form>
+          <form className="message-form" onSubmit={sendMessage}>
+            <label htmlFor="coach-message">相談内容</label>
+            <textarea id="coach-message" rows={4} value={draftMessage} onChange={(event) => setDraftMessage(event.target.value)} placeholder="困っている場面や、試したことを書いてください" required />
+            <button className="primary-button" disabled={saving}>{saving ? "送信中…" : connection === "online" ? "コーチに送る" : "相談メモを保存"}<span>→</span></button>
+          </form>
+        </>
+      )}
     </section>
   );
 
@@ -2024,8 +2266,31 @@ export default function Home() {
             )}
           </div>
         ) : <>
-        <section className="admin-welcome"><div><p className="card-label">{userRole === "admin" ? "ADMIN CONSOLE" : "COACH CONSOLE"}</p><h1>{adminTab === "customers" ? (userRole === "admin" ? "すべての担当顧客" : "担当のお客様") : "ユーザー管理"}</h1><span>{adminTab === "customers" ? "記録の変化を見て、必要なタイミングで声をかける。" : "権限と担当コーチを、この画面で設定できます。"}</span></div><b>{adminTab === "customers" ? adminCustomers.length : adminAccounts.length}<small>件</small></b></section>
-        {userRole === "admin" && <nav className="admin-tabs" aria-label="管理メニュー"><button className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button className={adminTab === "accounts" ? "is-selected" : ""} onClick={() => setAdminTab("accounts")}>ユーザー管理</button></nav>}
+        <section className="admin-welcome"><div><p className="card-label">{userRole === "admin" ? "ADMIN CONSOLE" : "COACH CONSOLE"}</p><h1>{adminTab === "applications" ? "コーチング申込み" : adminTab === "customers" ? (userRole === "admin" ? "すべての担当顧客" : "担当のお客様") : "ユーザー管理"}</h1><span>{adminTab === "applications" ? "相談内容を確認し、合いそうなコーチへつなぐ。" : adminTab === "customers" ? "記録の変化を見て、必要なタイミングで声をかける。" : "権限と担当コーチを、この画面で設定できます。"}</span></div><b>{adminTab === "applications" ? adminApplications.length : adminTab === "customers" ? adminCustomers.length : adminAccounts.length}<small>件</small></b></section>
+        {userRole === "admin" && <nav className="admin-tabs has-three" aria-label="管理メニュー"><button className={adminTab === "applications" ? "is-selected" : ""} onClick={() => setAdminTab("applications")}>申込み</button><button className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button className={adminTab === "accounts" ? "is-selected" : ""} onClick={() => setAdminTab("accounts")}>ユーザー</button></nav>}
+        {adminTab === "applications" && (adminApplications.length ? (
+          <div className="application-list">
+            {adminApplications.map((application) => {
+              const coaches = adminAccounts.filter((account) => account.role === "coach");
+              return (
+                <article className="application-card" key={application.id}>
+                  <div className="application-card-head">
+                    <span>{application.dogName.slice(0, 1)}</span>
+                    <div><h2>{application.dogName}</h2><p>{application.ownerEmail}</p></div>
+                    <b className={`status-${application.status}`}>{coachingStatusLabel(application.status)}</b>
+                  </div>
+                  <div className="application-topics">{application.concernCategories.map((concern) => <span key={concern}>{coachingConcernLabel(concern)}</span>)}</div>
+                  <div className="application-goal"><small>目指したい状態</small><p>{application.desiredOutcome}</p>{application.note && <><small>補足</small><p>{application.note}</p></>}</div>
+                  <div className="application-actions">
+                    <label>担当コーチ<select value={application.assignedCoachId ?? ""} onChange={(event) => void assignCoachingApplication(application, event.target.value)} disabled={saving}><option value="">選択してください</option>{coaches.map((coach) => <option value={coach.userId} key={coach.userId}>{coach.email}</option>)}</select></label>
+                    <label>進行状況<select value={application.status} onChange={(event) => void updateCoachingStatus(application, event.target.value as CoachingStatus)} disabled={saving}><option value="submitted">受付中</option><option value="assigned" disabled={!application.assignedCoachId}>担当決定</option><option value="consulting" disabled={!application.assignedCoachId}>初回相談中</option><option value="payment_pending" disabled={!application.assignedCoachId}>お支払い待ち</option><option value="active" disabled={!application.assignedCoachId}>利用中</option><option value="closed">終了</option></select></label>
+                  </div>
+                  <time>{new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(application.submittedAt))} 申込み</time>
+                </article>
+              );
+            })}
+          </div>
+        ) : <section className="admin-empty"><span><NavGlyph name="coach" /></span><h2>新しい申込みはありません</h2><p>ownerがコーチング相談を送信すると、ここに表示されます。</p></section>)}
         {adminTab === "customers" && (adminCustomers.length ? (
           <div className="customer-list">
             {adminCustomers.map((customer) => (
