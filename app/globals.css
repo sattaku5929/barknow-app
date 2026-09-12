@@ -56,6 +56,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .wordmark { border: 0; background: none; text-align: left; cursor: pointer; }
 .wordmark strong { display: block; color: var(--green); font-family: var(--font-display); font-size: 21px; line-height: 1; letter-spacing: -0.03em; }
 .wordmark span { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.app-header-actions { display:flex; align-items:center; gap:10px; }
+.owner-admin-switch { display:flex; min-height:38px; align-items:center; gap:6px; padding:0 11px; border:1px solid rgba(8,113,85,.14); border-radius:12px; background:var(--mint); color:var(--green-dark); cursor:pointer; font-size:11px; font-weight:750; }
+.owner-admin-switch svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; }
 .header-status, .connection-note { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; font-weight: 700; }
 .header-status > span, .connection-note > span { width: 7px; height: 7px; border-radius: 50%; background: #c0c6c2; }
 .header-status > span.online, .connection-note > span.online { background: #27a77f; box-shadow: 0 0 0 4px rgba(39, 167, 127, 0.1); }
@@ -969,6 +972,8 @@ body { font-size: 16px; }
 .admin-header p { margin:0; color:var(--green); font-family:var(--font-display); font-size:10px; font-weight:700; letter-spacing:.16em; }
 .admin-header strong { display:block; margin-top:3px; font-size:17px; }
 .admin-header button { min-height:38px; padding:0 13px; border:1px solid rgba(37,40,37,.12); border-radius:11px; background:#fff; color:var(--muted); font-size:11px; }
+.admin-header-actions { display:flex; align-items:center; gap:8px; }
+.admin-header .mode-switch { border-color:transparent; background:var(--green-dark); color:#fff; cursor:pointer; font-weight:750; }
 .admin-main { width:min(100%,960px); margin:auto; padding:30px 20px 60px; }
 .admin-welcome { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; padding:25px; border-radius:24px; background:linear-gradient(145deg,#174f3e,#087155); color:#fff; }
 .admin-welcome .card-label { color:rgba(255,255,255,.62); }
