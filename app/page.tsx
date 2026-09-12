@@ -683,10 +683,6 @@ export default function Home() {
         if (role === "admin" || role === "coach") {
           if (role === "coach") setAdminTab("customers");
           await loadAdminWorkspace();
-          if (role === "coach") {
-            setConnection("online");
-            return;
-          }
         }
 
         const [dogResult, recordResult, messageResult] = await Promise.all([
@@ -856,7 +852,7 @@ export default function Home() {
   }, [authReady, userRole]);
 
   useEffect(() => {
-    if (!authReady || !authenticated || anonymousUser || userRole === "coach") return;
+    if (!authReady || !authenticated || anonymousUser) return;
     async function refreshCoachingStatus() {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
@@ -2321,7 +2317,7 @@ export default function Home() {
       <header className="admin-header">
         <div><p>WAN TONE</p><strong>{userRole === "admin" ? "Admin Console" : "Coach Console"}</strong></div>
         <div className="admin-header-actions">
-          {userRole === "admin" && <button className="mode-switch" onClick={() => { setStaffMode("owner"); setView("home"); }}>飼い主画面へ</button>}
+          {(userRole === "admin" || userRole === "coach") && <button className="mode-switch" onClick={() => { setStaffMode("owner"); setView("home"); }}>飼い主画面へ</button>}
           <button onClick={() => void signOut()}>ログアウト</button>
         </div>
       </header>
@@ -2450,7 +2446,7 @@ export default function Home() {
 
   if (!authReady) return <div className="auth-loading"><span className="loading-paw"><CareIcon name="paws" /></span><p>うちの子の記録を開いています…</p></div>;
   if (!authenticated || anonymousUser) return authView;
-  if (userRole === "coach" || (userRole === "admin" && staffMode === "staff")) return adminView;
+  if ((userRole === "coach" || userRole === "admin") && staffMode === "staff") return adminView;
 
   return (
     <div className="app-stage">
@@ -2460,7 +2456,7 @@ export default function Home() {
             <strong>Wan Tone</strong><span>by BarKnow</span>
           </button>
           <div className="app-header-actions">
-            {userRole === "admin" && <button className="owner-admin-switch" onClick={() => setStaffMode("staff")}><NavGlyph name="coach" /><span>管理画面</span></button>}
+            {(userRole === "admin" || userRole === "coach") && <button className="owner-admin-switch" onClick={() => setStaffMode("staff")}><NavGlyph name="coach" /><span>{userRole === "admin" ? "管理画面" : "コーチ画面"}</span></button>}
             <div className="header-status"><span className={connection}></span>{connection === "online" ? "同期中" : connection === "checking" ? "確認中" : "端末保存"}</div>
           </div>
         </header>
