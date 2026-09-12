@@ -368,6 +368,7 @@ export default function Home() {
   const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>([]);
   const [adminAccounts, setAdminAccounts] = useState<AdminAccount[]>([]);
   const [adminApplications, setAdminApplications] = useState<AdminCoachingApplication[]>([]);
+  const [adminApplicationsError, setAdminApplicationsError] = useState("");
   const [adminTab, setAdminTab] = useState<"applications" | "customers" | "accounts">("applications");
   const [lastAdminRefresh, setLastAdminRefresh] = useState<Date | null>(null);
   const [selectedAdminCustomer, setSelectedAdminCustomer] = useState<AdminCustomer | null>(null);
@@ -602,7 +603,10 @@ export default function Home() {
         assignedCoachId: item.assigned_coach_id ? String(item.assigned_coach_id) : null,
       })));
     }
-    if (!applicationResult.error && applicationResult.data) {
+    if (applicationResult.error) {
+      setAdminApplicationsError(applicationResult.error.message);
+    } else if (applicationResult.data) {
+      setAdminApplicationsError("");
       setAdminApplications(applicationResult.data.map((item: Record<string, unknown>) => ({
         id: String(item.application_id),
         ownerId: String(item.owner_id),
@@ -2374,7 +2378,7 @@ export default function Home() {
           </section>
         )}
         {userRole === "admin" && <nav className="admin-tabs has-three" aria-label="管理メニュー"><button className={adminTab === "applications" ? "is-selected" : ""} onClick={() => setAdminTab("applications")}>申込み{pendingApplicationCount > 0 && <b>{pendingApplicationCount}</b>}</button><button className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button className={adminTab === "accounts" ? "is-selected" : ""} onClick={() => setAdminTab("accounts")}>ユーザー</button></nav>}
-        {adminTab === "applications" && <div className="admin-inbox-status"><span><i className={pendingApplicationCount ? "has-new" : ""}></i>{pendingApplicationCount ? `未対応の申込みが${pendingApplicationCount}件あります` : "未対応の申込みはありません"}<small>{lastAdminRefresh ? `${lastAdminRefresh.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}更新 · 30秒ごとに自動確認` : "確認中"}</small></span><button onClick={() => void loadAdminWorkspace()}>今すぐ更新</button></div>}
+        {adminTab === "applications" && <div className="admin-inbox-status"><span><i className={pendingApplicationCount ? "has-new" : ""}></i>{adminApplicationsError ? "申込みを取得できませんでした" : pendingApplicationCount ? `未対応の申込みが${pendingApplicationCount}件あります` : "未対応の申込みはありません"}<small>{adminApplicationsError ? adminApplicationsError : lastAdminRefresh ? `${lastAdminRefresh.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}更新 · 30秒ごとに自動確認` : "確認中"}</small></span><button onClick={() => void loadAdminWorkspace()}>今すぐ更新</button></div>}
         {adminTab === "applications" && (adminApplications.length ? (
           <div className="application-list">
             {adminApplications.map((application) => {
