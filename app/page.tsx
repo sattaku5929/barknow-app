@@ -79,10 +79,13 @@ type AdminCustomer = {
 type AdminAccount = {
   userId: string;
   email: string;
+  displayName: string;
   role: UserRole;
   dogId: string | null;
   dogName: string;
   assignedCoachId: string | null;
+  lastSignInAt: string | null;
+  createdAt: string;
 };
 
 type AdminGoalProgress = CareGoal & {
@@ -368,6 +371,8 @@ export default function Home() {
   const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>([]);
   const [adminAccounts, setAdminAccounts] = useState<AdminAccount[]>([]);
   const [adminAccountsError, setAdminAccountsError] = useState("");
+  const [adminAccountFilter, setAdminAccountFilter] = useState<"all" | UserRole>("all");
+  const [adminNameDrafts, setAdminNameDrafts] = useState<Record<string, string>>({});
   const [adminApplications, setAdminApplications] = useState<AdminCoachingApplication[]>([]);
   const [adminApplicationsError, setAdminApplicationsError] = useState("");
   const [adminTab, setAdminTab] = useState<"applications" | "customers" | "accounts">("applications");
@@ -598,14 +603,19 @@ export default function Home() {
       setAdminAccountsError(accountResult.error.message);
     } else if (accountResult.data) {
       setAdminAccountsError("");
-      setAdminAccounts(accountResult.data.map((item: Record<string, unknown>) => ({
+      const accounts = accountResult.data.map((item: Record<string, unknown>) => ({
         userId: String(item.user_id),
         email: String(item.email ?? "メール未確認"),
+        displayName: String(item.display_name ?? ""),
         role: item.role === "admin" ? "admin" : item.role === "coach" ? "coach" : "owner",
         dogId: item.dog_id ? String(item.dog_id) : null,
         dogName: String(item.dog_name ?? "愛犬未登録"),
         assignedCoachId: item.assigned_coach_id ? String(item.assigned_coach_id) : null,
-      })));
+        lastSignInAt: item.last_sign_in_at ? String(item.last_sign_in_at) : null,
+        createdAt: String(item.created_at),
+      })) as AdminAccount[];
+      setAdminAccounts(accounts);
+      setAdminNameDrafts((current) => Object.fromEntries(accounts.map((account) => [account.userId, current[account.userId] ?? account.displayName])));
     }
     if (applicationResult.error) {
       setAdminApplicationsError(applicationResult.error.message);
@@ -975,6 +985,25 @@ export default function Home() {
     if (error) showNotice(`権限を変更できませんでした（${error.message}）`);
     else {
       showNotice(`${account.email}を${role === "admin" ? "管理者" : role === "coach" ? "コーチ" : "飼い主"}に変更しました`);
+      await loadAdminWorkspace();
+    }
+    setSaving(false);
+  }
+
+  async function saveAccountDisplayName(account: AdminAccount) {
+    const displayName = (adminNameDrafts[account.userId] ?? "").trim();
+    if (!displayName) {
+      showNotice("ユーザー名を入力してください");
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.rpc("wt_admin_set_display_name", {
+      target_user_id: account.userId,
+      target_display_name: displayName,
+    });
+    if (error) showNotice(`ユーザー名を変更できませんでした（${error.message}）`);
+    else {
+      showNotice(`${displayName}として保存しました`);
       await loadAdminWorkspace();
     }
     setSaving(false);
@@ -2311,6 +2340,14 @@ export default function Home() {
   const adminGoodMoments = adminDetailRecords.filter((record) => record.goodMoment.trim()).slice(0, 3);
   const pendingApplicationCount = adminApplications.filter((application) => application.status === "submitted").length;
   const coachOffers = adminApplications.filter((application) => application.status === "offered");
+  const accountRoleCounts = {
+    owner: adminAccounts.filter((account) => account.role === "owner").length,
+    coach: adminAccounts.filter((account) => account.role === "coach").length,
+    admin: adminAccounts.filter((account) => account.role === "admin").length,
+  };
+  const filteredAdminAccounts = adminAccountFilter === "all"
+    ? adminAccounts
+    : adminAccounts.filter((account) => account.role === adminAccountFilter);
 
   const adminView = (
     <div className="admin-stage">
@@ -2417,18 +2454,27 @@ export default function Home() {
           <section className="admin-empty"><span><NavGlyph name="coach" /></span><h2>担当のお客様はまだいません</h2><p>「ユーザー管理」から、愛犬を自分の担当へ追加できます。</p></section>
         ))}
         {adminTab === "accounts" && (
-          <div className="account-list">
-            {adminAccounts.map((account) => {
+          <div className="account-directory">
+            <section className="account-overview">
+              <div><small>登録ユーザー</small><strong>{adminAccounts.length}<span>人</span></strong><p>OWNER {accountRoleCounts.owner} · COACH {accountRoleCounts.coach} · ADMIN {accountRoleCounts.admin}</p></div>
+              <span>一覧更新<br /><b>{lastAdminRefresh ? lastAdminRefresh.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "確認中"}</b></span>
+            </section>
+            <nav className="account-filters" aria-label="権限で絞り込み">
+              {(["all", "owner", "coach", "admin"] as const).map((role) => <button key={role} className={adminAccountFilter === role ? "is-selected" : ""} onClick={() => setAdminAccountFilter(role)}>{role === "all" ? "全員" : role.toUpperCase()}<b>{role === "all" ? adminAccounts.length : accountRoleCounts[role]}</b></button>)}
+            </nav>
+            <div className="account-list">
+            {filteredAdminAccounts.map((account) => {
               const isMe = account.userId === currentUserId;
               const coachAccounts = adminAccounts.filter((item) => item.role === "coach");
               return (
                 <article className="admin-account" key={account.userId}>
                   <div className="admin-account-main">
                     <span>{account.role === "owner" ? <NavGlyph name="profile" /> : <NavGlyph name="coach" />}</span>
-                    <div><strong>{account.email}</strong><small>{account.role === "admin" ? `管理者${isMe ? "（自分）" : ""}` : account.role === "coach" ? "コーチ" : account.dogName}</small></div>
+                    <div><strong>{account.displayName || account.email}</strong><small>{account.email} · 最終ログイン {account.lastSignInAt ? new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(account.lastSignInAt)) : "未確認"}</small></div>
                     <b className={account.role}>{account.role.toUpperCase()}</b>
                   </div>
                   <div className="admin-account-actions">
+                    <label className="account-name-field">ユーザー名<span><input value={adminNameDrafts[account.userId] ?? ""} onChange={(event) => setAdminNameDrafts((current) => ({ ...current, [account.userId]: event.target.value }))} placeholder="管理用の名前" maxLength={60} /><button onClick={() => void saveAccountDisplayName(account)} disabled={saving || !(adminNameDrafts[account.userId] ?? "").trim()}>保存</button></span></label>
                     {account.role === "owner" && <label>担当コーチ<select value={account.assignedCoachId ?? ""} onChange={(event) => void assignCustomerToCoach(account, event.target.value)} disabled={saving || !account.dogId}><option value="">{account.dogId ? "未割り当て" : "愛犬未登録"}</option>{coachAccounts.map((coach) => <option key={coach.userId} value={coach.userId}>{coach.email}</option>)}</select></label>}
                     <label>権限<select value={account.role} onChange={(event) => void changeAccountRole(account, event.target.value as UserRole)} disabled={saving || isMe}><option value="owner">飼い主</option><option value="coach">コーチ</option><option value="admin">管理者</option></select></label>
                   </div>
@@ -2436,6 +2482,8 @@ export default function Home() {
               );
             })}
             {!adminAccounts.length && <section className="admin-empty"><h2>{adminAccountsError ? "ユーザー情報を取得できません" : "登録ユーザーはまだいません"}</h2><p>{adminAccountsError || "新規登録されたユーザーがここに表示されます。"}</p></section>}
+            {!!adminAccounts.length && !filteredAdminAccounts.length && <section className="admin-empty"><h2>該当するユーザーはいません</h2><p>別の権限フィルターを選択してください。</p></section>}
+            </div>
           </div>
         )}
         </>}
