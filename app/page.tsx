@@ -367,6 +367,7 @@ export default function Home() {
   const [authError, setAuthError] = useState("");
   const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>([]);
   const [adminAccounts, setAdminAccounts] = useState<AdminAccount[]>([]);
+  const [adminAccountsError, setAdminAccountsError] = useState("");
   const [adminApplications, setAdminApplications] = useState<AdminCoachingApplication[]>([]);
   const [adminApplicationsError, setAdminApplicationsError] = useState("");
   const [adminTab, setAdminTab] = useState<"applications" | "customers" | "accounts">("applications");
@@ -593,7 +594,10 @@ export default function Home() {
         latestMessageAt: item.latest_message_at ? String(item.latest_message_at) : null,
       })));
     }
-    if (!accountResult.error && accountResult.data) {
+    if (accountResult.error) {
+      setAdminAccountsError(accountResult.error.message);
+    } else if (accountResult.data) {
+      setAdminAccountsError("");
       setAdminAccounts(accountResult.data.map((item: Record<string, unknown>) => ({
         userId: String(item.user_id),
         email: String(item.email ?? "メール未確認"),
@@ -2435,7 +2439,7 @@ export default function Home() {
                 </article>
               );
             })}
-            {!adminAccounts.length && <section className="admin-empty"><h2>ユーザー情報を取得できません</h2><p>migration 009を実行すると、この画面から管理できます。</p></section>}
+            {!adminAccounts.length && <section className="admin-empty"><h2>{adminAccountsError ? "ユーザー情報を取得できません" : "登録ユーザーはまだいません"}</h2><p>{adminAccountsError || "新規登録されたユーザーがここに表示されます。"}</p></section>}
           </div>
         )}
         </>}
