@@ -84,6 +84,10 @@ type AdminAccount = {
   assignedCoachId: string | null;
 };
 
+type AdminGoalProgress = CareGoal & {
+  completedCount: number;
+};
+
 const PROFILE_KEY = "wan-tone-profile-v1";
 const RECORDS_KEY = "wan-tone-records-v1";
 const MESSAGES_KEY = "wan-tone-messages-v1";
@@ -319,6 +323,12 @@ export default function Home() {
   const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>([]);
   const [adminAccounts, setAdminAccounts] = useState<AdminAccount[]>([]);
   const [adminTab, setAdminTab] = useState<"customers" | "accounts">("customers");
+  const [selectedAdminCustomer, setSelectedAdminCustomer] = useState<AdminCustomer | null>(null);
+  const [adminDetailRecords, setAdminDetailRecords] = useState<DailyRecord[]>([]);
+  const [adminDetailMessages, setAdminDetailMessages] = useState<CoachMessage[]>([]);
+  const [adminDetailGoals, setAdminDetailGoals] = useState<AdminGoalProgress[]>([]);
+  const [adminDetailLoading, setAdminDetailLoading] = useState(false);
+  const [adminReply, setAdminReply] = useState("");
   const [currentUserId, setCurrentUserId] = useState("");
   const [view, setView] = useState<View>("home");
   const [connection, setConnection] = useState<Connection>("checking");
@@ -853,6 +863,115 @@ export default function Home() {
     if (error) showNotice(`担当を変更できませんでした（${error.message}）`);
     else {
       showNotice(assignedToMe ? `${account.dogName}の担当を解除しました` : `${account.dogName}を担当顧客に追加しました`);
+      await loadAdminWorkspace();
+    }
+    setSaving(false);
+  }
+
+  async function openAdminCustomer(customer: AdminCustomer) {
+    setSelectedAdminCustomer(customer);
+    setAdminDetailLoading(true);
+    setAdminReply("");
+    const since = new Date(Date.now() - 1000 * 60 * 60 * 24 * 29).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+    const [recordResult, messageResult, goalResult, completionResult] = await Promise.all([
+      supabase
+        .from("wt_daily_records")
+        .select("id,category,recorded_on,recorded_time,duration_minutes,behavior_type,behavior_types,behavior_custom_text,behavior_custom_texts,behavior_intensity,mood,appetite,activity,toilet,sleep,behavior_note,good_moment")
+        .eq("dog_id", customer.dogId)
+        .order("recorded_on", { ascending: false })
+        .order("recorded_time", { ascending: false })
+        .limit(100),
+      supabase
+        .from("wt_coach_messages")
+        .select("id,sender,body,created_at")
+        .eq("dog_id", customer.dogId)
+        .order("created_at", { ascending: true })
+        .limit(100),
+      supabase
+        .from("wt_care_goals")
+        .select("id,title,goal_type,target_count,period,reminder_time,created_at")
+        .eq("dog_id", customer.dogId)
+        .eq("active", true)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("wt_care_goal_completions")
+        .select("id,goal_id,completed_on,completed_at")
+        .eq("dog_id", customer.dogId)
+        .gte("completed_on", since),
+    ]);
+
+    if (recordResult.error || messageResult.error || goalResult.error || completionResult.error) {
+      showNotice("顧客データを読み込めませんでした。Supabaseのmigration 008を確認してください");
+      setAdminDetailLoading(false);
+      return;
+    }
+
+    const detailRecords: DailyRecord[] = (recordResult.data ?? []).map((item) => ({
+      id: item.id,
+      category: (item.category as RecordCategory) ?? "daily",
+      recordedOn: item.recorded_on,
+      recordedTime: item.recorded_time?.slice(0, 5) ?? "12:00",
+      durationMinutes: item.duration_minutes ?? null,
+      behaviorTypes: item.behavior_types?.length
+        ? (item.behavior_types as BehaviorType[])
+        : item.category === "barking" ? [((item.behavior_type as BehaviorType | null) ?? "barking")] : [],
+      behaviorCustomText: item.behavior_custom_text ?? "",
+      behaviorCustomTexts: item.behavior_custom_texts?.length
+        ? (item.behavior_custom_texts as string[])
+        : item.behavior_custom_text ? [item.behavior_custom_text] : [],
+      behaviorIntensity: item.behavior_intensity ?? null,
+      mood: item.mood,
+      appetite: item.appetite as Status,
+      activity: item.activity as Status,
+      toilet: item.toilet as Status,
+      sleep: item.sleep as Status,
+      behaviorNote: item.behavior_note ?? "",
+      goodMoment: item.good_moment ?? "",
+    }));
+    const detailMessages: CoachMessage[] = (messageResult.data ?? []).map((item) => ({
+      id: item.id,
+      sender: item.sender as "owner" | "coach",
+      body: item.body,
+      createdAt: item.created_at,
+    }));
+    const completionCounts = new Map<string, number>();
+    (completionResult.data ?? []).forEach((item) => completionCounts.set(item.goal_id, (completionCounts.get(item.goal_id) ?? 0) + 1));
+    const detailGoals: AdminGoalProgress[] = (goalResult.data ?? []).map((item) => ({
+      id: item.id,
+      title: item.title,
+      goalType: item.goal_type as CareGoalType,
+      targetCount: item.target_count,
+      period: item.period as GoalPeriod,
+      reminderTime: item.reminder_time ?? null,
+      createdAt: item.created_at,
+      completedCount: completionCounts.get(item.id) ?? 0,
+    }));
+    setAdminDetailRecords(detailRecords);
+    setAdminDetailMessages(detailMessages);
+    setAdminDetailGoals(detailGoals);
+    setAdminDetailLoading(false);
+  }
+
+  async function sendAdminReply(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedAdminCustomer || !adminReply.trim()) return;
+    setSaving(true);
+    const body = adminReply.trim();
+    const { data, error } = await supabase
+      .from("wt_coach_messages")
+      .insert({
+        owner_id: selectedAdminCustomer.ownerId,
+        dog_id: selectedAdminCustomer.dogId,
+        sender: "coach",
+        body,
+      })
+      .select("id,sender,body,created_at")
+      .single();
+    if (error) showNotice(`返信できませんでした（${error.message}）`);
+    else if (data) {
+      setAdminDetailMessages((current) => [...current, { id: data.id, sender: "coach", body: data.body, createdAt: data.created_at }]);
+      setAdminReply("");
+      showNotice("メッセージを送りました");
       await loadAdminWorkspace();
     }
     setSaving(false);
@@ -1830,10 +1949,72 @@ export default function Home() {
     </div>
   );
 
+  const adminSevenDays = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(`${today()}T00:00:00+09:00`);
+    date.setDate(date.getDate() - (6 - index));
+    const key = date.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+    const dayRecords = adminDetailRecords.filter((record) => record.recordedOn === key);
+    return {
+      key,
+      label: new Intl.DateTimeFormat("ja-JP", { weekday: "short", timeZone: "Asia/Tokyo" }).format(date),
+      total: dayRecords.length,
+      concerns: dayRecords.filter((record) => record.behaviorIntensity && record.behaviorIntensity >= 7).length,
+    };
+  });
+  const adminCategoryCounts = RECORD_CATEGORIES.map((category) => ({
+    ...category,
+    count: adminDetailRecords.filter((record) => record.category === category.id).length,
+  })).filter((category) => category.count > 0);
+  const adminBehaviorRecords = adminDetailRecords.filter((record) => record.category === "barking");
+  const adminAverageIntensity = adminBehaviorRecords.length
+    ? Math.round(adminBehaviorRecords.reduce((sum, record) => sum + (record.behaviorIntensity ?? 0), 0) / adminBehaviorRecords.length * 10) / 10
+    : null;
+  const adminGoodMoments = adminDetailRecords.filter((record) => record.goodMoment.trim()).slice(0, 3);
+
   const adminView = (
     <div className="admin-stage">
       <header className="admin-header"><div><p>WAN TONE</p><strong>Coach Console</strong></div><button onClick={() => void signOut()}>ログアウト</button></header>
       <main className="admin-main">
+        {selectedAdminCustomer ? (
+          <div className="admin-detail">
+            <button className="admin-back" onClick={() => setSelectedAdminCustomer(null)}>← 担当顧客へ戻る</button>
+            <section className="admin-detail-hero">
+              <div className="admin-dog-avatar">{selectedAdminCustomer.dogName.slice(0, 1)}</div>
+              <div><p className="card-label">CUSTOMER DETAIL</p><h1>{selectedAdminCustomer.dogName}</h1><span>{selectedAdminCustomer.breed || "犬種未登録"} · 直近30日</span></div>
+              <b className={selectedAdminCustomer.concerns7d > 0 ? "needs-care" : "stable"}>{selectedAdminCustomer.concerns7d > 0 ? "要確認" : "安定"}</b>
+            </section>
+            {adminDetailLoading ? <section className="admin-empty"><h2>記録を読み込んでいます</h2><p>少しだけお待ちください。</p></section> : (
+              <>
+                <section className="admin-insight-grid">
+                  <article><small>7日間の記録</small><strong>{adminSevenDays.reduce((sum, day) => sum + day.total, 0)}<em>件</em></strong><p>{adminSevenDays.filter((day) => day.total > 0).length}日で記録</p></article>
+                  <article><small>困りごとの平均</small><strong>{adminAverageIntensity ?? "—"}<em>{adminAverageIntensity ? "/10" : ""}</em></strong><p>{adminBehaviorRecords.length ? `${adminBehaviorRecords.length}件から算出` : "記録なし"}</p></article>
+                  <article><small>ケア目標</small><strong>{adminDetailGoals.reduce((sum, goal) => sum + goal.completedCount, 0)}<em>回</em></strong><p>直近30日の達成</p></article>
+                </section>
+                <section className="admin-panel">
+                  <div className="admin-panel-heading"><div><p className="card-label">ACTIVITY</p><h2>記録のリズム</h2></div><span>直近7日</span></div>
+                  <div className="admin-bars">{adminSevenDays.map((day) => <div key={day.key}><span><i style={{ height: `${Math.max(8, Math.min(100, day.total * 22))}%` }} className={day.concerns ? "has-concern" : ""}></i></span><small>{day.label}</small><b>{day.total}</b></div>)}</div>
+                  <div className="admin-category-summary">{adminCategoryCounts.length ? adminCategoryCounts.map((category) => <span key={category.id}><TopicIcon name={category.icon} /><small>{category.label}</small><b>{category.count}</b></span>) : <p>まだ記録がありません。</p>}</div>
+                </section>
+                <div className="admin-detail-columns">
+                  <section className="admin-panel">
+                    <div className="admin-panel-heading"><div><p className="card-label">RECENT RECORDS</p><h2>最近の記録</h2></div></div>
+                    <div className="admin-record-list">{adminDetailRecords.slice(0, 8).map((record) => <article key={record.id}><TopicIcon name={categoryInfo(record.category).icon} /><div><strong>{record.category === "barking" ? [...record.behaviorTypes.filter((type) => type !== "other").map((type) => behaviorInfo(type).label), ...record.behaviorCustomTexts].join("・") || "困りごと" : categoryInfo(record.category).label}</strong><p>{record.behaviorNote || record.goodMoment || "メモなし"}</p></div><time>{formatDate(record.recordedOn)}<br />{record.recordedTime}</time></article>)}{!adminDetailRecords.length && <p className="admin-muted">記録はまだありません。</p>}</div>
+                  </section>
+                  <section className="admin-panel">
+                    <div className="admin-panel-heading"><div><p className="card-label">CARE GOALS</p><h2>ケア目標</h2></div><span>30日</span></div>
+                    <div className="admin-goal-list">{adminDetailGoals.map((goal) => <article key={goal.id}><CareIcon name={goal.goalType} /><div><strong>{goal.title}</strong><p>{goal.period === "day" ? "毎日" : goal.period === "week" ? `週${goal.targetCount}回` : `月${goal.targetCount}回`}</p></div><b>{goal.completedCount}<small>回</small></b></article>)}{!adminDetailGoals.length && <p className="admin-muted">設定された目標はありません。</p>}</div>
+                    {adminGoodMoments.length > 0 && <div className="admin-wins"><small>最近の「できた」</small>{adminGoodMoments.map((record) => <p key={record.id}>“{record.goodMoment}”</p>)}</div>}
+                  </section>
+                </div>
+                <section className="admin-panel admin-chat-panel">
+                  <div className="admin-panel-heading"><div><p className="card-label">CHAT</p><h2>飼い主との会話</h2></div><span>{adminDetailMessages.length}件</span></div>
+                  <div className="admin-chat-history">{adminDetailMessages.map((message) => <article className={message.sender} key={message.id}><small>{message.sender === "coach" ? "コーチ" : "飼い主"}</small><p>{message.body}</p><time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time></article>)}{!adminDetailMessages.length && <p className="admin-muted">まだ相談はありません。コーチから声をかけることもできます。</p>}</div>
+                  <form className="admin-reply" onSubmit={sendAdminReply}><textarea value={adminReply} onChange={(event) => setAdminReply(event.target.value)} placeholder={`${selectedAdminCustomer.dogName}の飼い主へメッセージ`} rows={3} /><button disabled={saving || !adminReply.trim()}>{saving ? "送信中…" : "送信する"}</button></form>
+                </section>
+              </>
+            )}
+          </div>
+        ) : <>
         <section className="admin-welcome"><div><p className="card-label">COACH CONSOLE</p><h1>{adminTab === "customers" ? "担当のお客様" : "ユーザー管理"}</h1><span>{adminTab === "customers" ? "記録の変化を見て、必要なタイミングで声をかける。" : "管理者権限と担当顧客を、この画面で設定できます。"}</span></div><b>{adminTab === "customers" ? adminCustomers.length : adminAccounts.length}<small>件</small></b></section>
         <nav className="admin-tabs" aria-label="管理メニュー"><button className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button className={adminTab === "accounts" ? "is-selected" : ""} onClick={() => setAdminTab("accounts")}>ユーザー管理</button></nav>
         {adminTab === "customers" && (adminCustomers.length ? (
@@ -1843,7 +2024,7 @@ export default function Home() {
                 <div className="customer-profile"><span>{customer.dogName.slice(0, 1)}</span><div><h2>{customer.dogName}</h2><p>{customer.breed}</p></div><b>{customer.concerns7d > 0 ? "要確認" : "安定"}</b></div>
                 <div className="customer-stats"><span><b>{customer.records7d}</b>7日間の記録</span><span><b>{customer.concerns7d}</b>気になる記録</span></div>
                 <div className="customer-message"><small>最新の相談</small><p>{customer.latestMessage || "相談はまだありません"}</p></div>
-                <button disabled>詳細・チャット画面は次のPRで追加</button>
+                <button onClick={() => void openAdminCustomer(customer)}>詳細とチャットを見る →</button>
               </article>
             ))}
           </div>
@@ -1872,7 +2053,9 @@ export default function Home() {
             {!adminAccounts.length && <section className="admin-empty"><h2>ユーザー情報を取得できません</h2><p>migration 009を実行すると、この画面から管理できます。</p></section>}
           </div>
         )}
+        </>}
       </main>
+      <div className={`toast ${notice ? "show" : ""}`} role="status">{notice}</div>
     </div>
   );
 
