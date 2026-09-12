@@ -10,7 +10,7 @@ type RecordCategory = "daily" | "meal" | "barking" | "toilet" | "walk" | "sleep"
 type BehaviorType = "barking" | "nipping" | "toilet_accident" | "jumping" | "pulling" | "other";
 type GoalPeriod = "day" | "week" | "month";
 type CareGoalType = "brush" | "teeth" | "paws" | "bath" | "nails" | "ears" | "training" | "custom";
-type UserRole = "owner" | "admin";
+type UserRole = "owner" | "coach" | "admin";
 type AuthMode = "login" | "signup";
 
 type DogProfile = {
@@ -599,11 +599,11 @@ export default function Home() {
         let role: UserRole = "owner";
         if (!isAnonymous) {
           const roleResult = await supabase.from("wt_user_roles").select("role").eq("user_id", userId).maybeSingle();
-          if (!roleResult.error && roleResult.data?.role === "admin") role = "admin";
+          if (!roleResult.error && (roleResult.data?.role === "admin" || roleResult.data?.role === "coach")) role = roleResult.data.role;
         }
         setUserRole(role);
 
-        if (role === "admin") {
+        if (role === "admin" || role === "coach") {
           await loadAdminWorkspace();
           setConnection("online");
           return;
@@ -844,25 +844,25 @@ export default function Home() {
     const { error } = await supabase.rpc("wt_admin_set_role", { target_user_id: account.userId, next_role: role });
     if (error) showNotice(`権限を変更できませんでした（${error.message}）`);
     else {
-      showNotice(role === "admin" ? `${account.email}を管理者にしました` : `${account.email}を飼い主に戻しました`);
+      showNotice(`${account.email}を${role === "admin" ? "管理者" : role === "coach" ? "コーチ" : "飼い主"}に変更しました`);
       await loadAdminWorkspace();
     }
     setSaving(false);
   }
 
-  async function toggleCustomerAssignment(account: AdminAccount) {
+  async function assignCustomerToCoach(account: AdminAccount, coachId: string) {
     if (!account.dogId) {
       showNotice("愛犬登録後に担当へ追加できます");
       return;
     }
     setSaving(true);
-    const assignedToMe = account.assignedCoachId === currentUserId;
-    const { error } = assignedToMe
+    const { error } = !coachId
       ? await supabase.rpc("wt_admin_remove_assignment", { target_dog_id: account.dogId })
-      : await supabase.rpc("wt_admin_assign_to_me", { target_owner_id: account.userId, target_dog_id: account.dogId });
+      : await supabase.rpc("wt_admin_assign_customer", { target_owner_id: account.userId, target_dog_id: account.dogId, target_coach_id: coachId });
     if (error) showNotice(`担当を変更できませんでした（${error.message}）`);
     else {
-      showNotice(assignedToMe ? `${account.dogName}の担当を解除しました` : `${account.dogName}を担当顧客に追加しました`);
+      const coach = adminAccounts.find((item) => item.userId === coachId);
+      showNotice(coachId ? `${account.dogName}の担当を${coach?.email ?? "コーチ"}に設定しました` : `${account.dogName}の担当を解除しました`);
       await loadAdminWorkspace();
     }
     setSaving(false);
@@ -1973,7 +1973,7 @@ export default function Home() {
 
   const adminView = (
     <div className="admin-stage">
-      <header className="admin-header"><div><p>WAN TONE</p><strong>Coach Console</strong></div><button onClick={() => void signOut()}>ログアウト</button></header>
+      <header className="admin-header"><div><p>WAN TONE</p><strong>{userRole === "admin" ? "Admin Console" : "Coach Console"}</strong></div><button onClick={() => void signOut()}>ログアウト</button></header>
       <main className="admin-main">
         {selectedAdminCustomer ? (
           <div className="admin-detail">
@@ -2015,8 +2015,8 @@ export default function Home() {
             )}
           </div>
         ) : <>
-        <section className="admin-welcome"><div><p className="card-label">COACH CONSOLE</p><h1>{adminTab === "customers" ? "担当のお客様" : "ユーザー管理"}</h1><span>{adminTab === "customers" ? "記録の変化を見て、必要なタイミングで声をかける。" : "管理者権限と担当顧客を、この画面で設定できます。"}</span></div><b>{adminTab === "customers" ? adminCustomers.length : adminAccounts.length}<small>件</small></b></section>
-        <nav className="admin-tabs" aria-label="管理メニュー"><button className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button className={adminTab === "accounts" ? "is-selected" : ""} onClick={() => setAdminTab("accounts")}>ユーザー管理</button></nav>
+        <section className="admin-welcome"><div><p className="card-label">{userRole === "admin" ? "ADMIN CONSOLE" : "COACH CONSOLE"}</p><h1>{adminTab === "customers" ? (userRole === "admin" ? "すべての担当顧客" : "担当のお客様") : "ユーザー管理"}</h1><span>{adminTab === "customers" ? "記録の変化を見て、必要なタイミングで声をかける。" : "権限と担当コーチを、この画面で設定できます。"}</span></div><b>{adminTab === "customers" ? adminCustomers.length : adminAccounts.length}<small>件</small></b></section>
+        {userRole === "admin" && <nav className="admin-tabs" aria-label="管理メニュー"><button className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button className={adminTab === "accounts" ? "is-selected" : ""} onClick={() => setAdminTab("accounts")}>ユーザー管理</button></nav>}
         {adminTab === "customers" && (adminCustomers.length ? (
           <div className="customer-list">
             {adminCustomers.map((customer) => (
@@ -2035,17 +2035,17 @@ export default function Home() {
           <div className="account-list">
             {adminAccounts.map((account) => {
               const isMe = account.userId === currentUserId;
-              const assignedToMe = account.assignedCoachId === currentUserId;
+              const coachAccounts = adminAccounts.filter((item) => item.role === "coach");
               return (
                 <article className="admin-account" key={account.userId}>
                   <div className="admin-account-main">
-                    <span>{account.role === "admin" ? <NavGlyph name="coach" /> : <NavGlyph name="profile" />}</span>
-                    <div><strong>{account.email}</strong><small>{account.role === "admin" ? `管理者${isMe ? "（自分）" : ""}` : `${account.dogName}${account.dogId ? "" : ""}`}</small></div>
-                    <b className={account.role}>{account.role === "admin" ? "ADMIN" : "OWNER"}</b>
+                    <span>{account.role === "owner" ? <NavGlyph name="profile" /> : <NavGlyph name="coach" />}</span>
+                    <div><strong>{account.email}</strong><small>{account.role === "admin" ? `管理者${isMe ? "（自分）" : ""}` : account.role === "coach" ? "コーチ" : account.dogName}</small></div>
+                    <b className={account.role}>{account.role.toUpperCase()}</b>
                   </div>
                   <div className="admin-account-actions">
-                    {account.role === "owner" && <button onClick={() => void toggleCustomerAssignment(account)} disabled={saving || !account.dogId || Boolean(account.assignedCoachId && !assignedToMe)}>{!account.dogId ? "愛犬未登録" : assignedToMe ? "担当を解除" : account.assignedCoachId ? "他の管理者が担当中" : "自分の担当にする"}</button>}
-                    <button onClick={() => void changeAccountRole(account, account.role === "admin" ? "owner" : "admin")} disabled={saving || isMe}>{account.role === "admin" ? "飼い主に戻す" : "管理者にする"}</button>
+                    {account.role === "owner" && <label>担当コーチ<select value={account.assignedCoachId ?? ""} onChange={(event) => void assignCustomerToCoach(account, event.target.value)} disabled={saving || !account.dogId}><option value="">{account.dogId ? "未割り当て" : "愛犬未登録"}</option>{coachAccounts.map((coach) => <option key={coach.userId} value={coach.userId}>{coach.email}</option>)}</select></label>}
+                    <label>権限<select value={account.role} onChange={(event) => void changeAccountRole(account, event.target.value as UserRole)} disabled={saving || isMe}><option value="owner">飼い主</option><option value="coach">コーチ</option><option value="admin">管理者</option></select></label>
                   </div>
                 </article>
               );
@@ -2061,7 +2061,7 @@ export default function Home() {
 
   if (!authReady) return <div className="auth-loading"><span className="loading-paw"><CareIcon name="paws" /></span><p>うちの子の記録を開いています…</p></div>;
   if (!authenticated || anonymousUser) return authView;
-  if (userRole === "admin") return adminView;
+  if (userRole === "admin" || userRole === "coach") return adminView;
 
   return (
     <div className="app-stage">
