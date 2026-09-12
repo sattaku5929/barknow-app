@@ -315,6 +315,7 @@ export default function Home() {
   const [authenticated, setAuthenticated] = useState(false);
   const [anonymousUser, setAnonymousUser] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>("owner");
+  const [staffMode, setStaffMode] = useState<"owner" | "staff">("staff");
   const [userEmail, setUserEmail] = useState("");
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [authEmail, setAuthEmail] = useState("");
@@ -605,8 +606,10 @@ export default function Home() {
 
         if (role === "admin" || role === "coach") {
           await loadAdminWorkspace();
-          setConnection("online");
-          return;
+          if (role === "coach") {
+            setConnection("online");
+            return;
+          }
         }
 
         const [dogResult, recordResult, messageResult] = await Promise.all([
@@ -1973,7 +1976,13 @@ export default function Home() {
 
   const adminView = (
     <div className="admin-stage">
-      <header className="admin-header"><div><p>WAN TONE</p><strong>{userRole === "admin" ? "Admin Console" : "Coach Console"}</strong></div><button onClick={() => void signOut()}>ログアウト</button></header>
+      <header className="admin-header">
+        <div><p>WAN TONE</p><strong>{userRole === "admin" ? "Admin Console" : "Coach Console"}</strong></div>
+        <div className="admin-header-actions">
+          {userRole === "admin" && <button className="mode-switch" onClick={() => { setStaffMode("owner"); setView("home"); }}>飼い主画面へ</button>}
+          <button onClick={() => void signOut()}>ログアウト</button>
+        </div>
+      </header>
       <main className="admin-main">
         {selectedAdminCustomer ? (
           <div className="admin-detail">
@@ -2061,7 +2070,7 @@ export default function Home() {
 
   if (!authReady) return <div className="auth-loading"><span className="loading-paw"><CareIcon name="paws" /></span><p>うちの子の記録を開いています…</p></div>;
   if (!authenticated || anonymousUser) return authView;
-  if (userRole === "admin" || userRole === "coach") return adminView;
+  if (userRole === "coach" || (userRole === "admin" && staffMode === "staff")) return adminView;
 
   return (
     <div className="app-stage">
@@ -2070,7 +2079,10 @@ export default function Home() {
           <button className="wordmark" onClick={() => setView("home")} aria-label="Wan Tone ホームへ">
             <strong>Wan Tone</strong><span>by BarKnow</span>
           </button>
-          <div className="header-status"><span className={connection}></span>{connection === "online" ? "同期中" : connection === "checking" ? "確認中" : "端末保存"}</div>
+          <div className="app-header-actions">
+            {userRole === "admin" && <button className="owner-admin-switch" onClick={() => setStaffMode("staff")}><NavGlyph name="coach" /><span>管理画面</span></button>}
+            <div className="header-status"><span className={connection}></span>{connection === "online" ? "同期中" : connection === "checking" ? "確認中" : "端末保存"}</div>
+          </div>
         </header>
         <main className="app-main">
           {view === "home" && focusedHomeView}
