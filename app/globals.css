@@ -1023,11 +1023,15 @@ body { font-size: 16px; }
 .admin-account-main small { margin-top:4px; color:var(--muted); font-size:11px; }
 .admin-account-main > b { padding:5px 8px; border-radius:8px; font-family:var(--font-display); font-size:9px; letter-spacing:.08em; }
 .admin-account-main > b.admin { background:#e8f6ef; color:var(--green-dark); }
+.admin-account-main > b.coach { background:#fff3d9; color:#916626; }
 .admin-account-main > b.owner { background:var(--soft-blue); color:#477f9c; }
 .admin-account-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:13px; padding-top:12px; border-top:1px solid rgba(27,61,49,.08); }
 .admin-account-actions button { min-height:38px; padding:0 12px; border:1px solid rgba(27,61,49,.12); border-radius:10px; background:#fff; color:var(--green-dark); cursor:pointer; font-size:10px; font-weight:700; }
 .admin-account-actions button:last-child { background:#edf3f0; }
 .admin-account-actions button:disabled { cursor:default; opacity:.48; }
+.admin-account-actions label { display:grid; gap:5px; color:var(--muted); font-size:9px; font-weight:700; }
+.admin-account-actions select { min-height:38px; padding:0 30px 0 10px; border:1px solid rgba(27,61,49,.12); border-radius:10px; background:#fff; color:var(--green-dark); font-size:10px; font-weight:700; }
+.admin-account-actions select:disabled { opacity:.48; }
 .admin-back { margin-bottom:14px; padding:8px 0; border:0; background:transparent; color:var(--green-dark); cursor:pointer; font-size:12px; font-weight:750; }
 .admin-detail-hero { display:grid; grid-template-columns:62px 1fr auto; align-items:center; gap:16px; padding:23px; border-radius:24px; background:linear-gradient(145deg,#174f3e,#087155); color:#fff; }
 .admin-dog-avatar { display:grid; width:62px; height:62px; place-items:center; border:1px solid rgba(255,255,255,.25); border-radius:21px; background:rgba(255,255,255,.13); font-family:var(--font-display); font-size:27px; font-weight:700; }
