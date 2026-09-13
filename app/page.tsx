@@ -118,19 +118,26 @@ type CoachProfile = {
   bio: string;
   credentials: string;
   avatarUrl: string;
+  avatarPreset: string;
   meetUrl: string;
 };
 
 type AvailabilitySlot = { id: string; startsAt: string; endsAt: string };
 type OnlineSession = {
   id: string;
+  ownerId: string;
   ownerEmail: string;
+  ownerName: string;
   dogName: string;
+  coachId: string;
+  coachName: string;
   sessionType: "initial" | "followup";
   status: "booked" | "completed" | "cancelled";
   startsAt: string;
   endsAt: string;
   meetUrl: string;
+  calendarSyncStatus: "pending" | "syncing" | "synced" | "error" | "not_connected";
+  calendarSyncError: string;
 };
 
 const PROFILE_KEY = "wan-tone-profile-v1";
@@ -235,6 +242,13 @@ function goalPeriodStart(period: GoalPeriod) {
 }
 
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+const dateKeyValue = (value: string) => new Date(`${value}T12:00:00Z`);
+const dateKeyFromValue = (value: Date) => value.toISOString().slice(0, 10);
+function addToDateKey(value: string, days: number) {
+  const date = dateKeyValue(value);
+  date.setUTCDate(date.getUTCDate() + days);
+  return dateKeyFromValue(date);
+}
 const currentTime = () =>
   new Date().toLocaleTimeString("ja-JP", {
     hour: "2-digit",
@@ -271,6 +285,20 @@ function formatOnlineDate(value: string) {
     minute: "2-digit",
     timeZone: "Asia/Tokyo",
   }).format(new Date(value));
+}
+
+async function resizeAvatar(file: File) {
+  const bitmap = await createImageBitmap(file);
+  const size = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("画像を処理できませんでした");
+  const crop = Math.min(bitmap.width, bitmap.height);
+  context.drawImage(bitmap, (bitmap.width - crop) / 2, (bitmap.height - crop) / 2, crop, crop, 0, 0, size, size);
+  bitmap.close();
+  return new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("画像を変換できませんでした")), "image/webp", 0.86));
 }
 
 function calculateStreak(records: DailyRecord[]) {
@@ -450,11 +478,16 @@ export default function Home() {
   const [coachingOutcome, setCoachingOutcome] = useState("");
   const [coachingNote, setCoachingNote] = useState("");
   const [assignedCoachProfile, setAssignedCoachProfile] = useState<CoachProfile | null>(null);
-  const [coachProfile, setCoachProfile] = useState<CoachProfile>({ displayName: "", headline: "", bio: "", credentials: "", avatarUrl: "", meetUrl: "" });
+  const [coachProfile, setCoachProfile] = useState<CoachProfile>({ displayName: "", headline: "", bio: "", credentials: "", avatarUrl: "", avatarPreset: "paw-green", meetUrl: "" });
   const [availableSlots, setAvailableSlots] = useState<AvailabilitySlot[]>([]);
   const [onlineSessions, setOnlineSessions] = useState<OnlineSession[]>([]);
   const [slotStart, setSlotStart] = useState("");
   const [slotDuration, setSlotDuration] = useState(60);
+  const [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email: string; status: string; error: string }>({ connected: false, email: "", status: "", error: "" });
+  const [scheduleMode, setScheduleMode] = useState<"day" | "week" | "month">("week");
+  const [scheduleAnchor, setScheduleAnchor] = useState(today());
+  const [scheduleCoachFilter, setScheduleCoachFilter] = useState("all");
+  const [scheduleOwnerFilter, setScheduleOwnerFilter] = useState("all");
   const [calendarMode, setCalendarMode] = useState<"week" | "month">("week");
   const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(today());
@@ -685,26 +718,42 @@ export default function Home() {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return;
     if (userRole === "coach") {
-      const { data } = await supabase.from("wt_coach_profiles").select("display_name,headline,bio,credentials,avatar_url,meet_url").eq("coach_id", userData.user.id).maybeSingle();
-      if (data) setCoachProfile({ displayName: data.display_name ?? "", headline: data.headline ?? "", bio: data.bio ?? "", credentials: data.credentials ?? "", avatarUrl: data.avatar_url ?? "", meetUrl: data.meet_url ?? "" });
+      const { data } = await supabase.from("wt_coach_profiles").select("display_name,headline,bio,credentials,avatar_url,avatar_preset,meet_url").eq("coach_id", userData.user.id).maybeSingle();
+      if (data) setCoachProfile({ displayName: data.display_name ?? "", headline: data.headline ?? "", bio: data.bio ?? "", credentials: data.credentials ?? "", avatarUrl: data.avatar_url ?? "", avatarPreset: data.avatar_preset ?? "paw-green", meetUrl: data.meet_url ?? "" });
       const { data: slots } = await supabase.from("wt_coach_availability_slots").select("id,starts_at,ends_at").eq("coach_id", userData.user.id).eq("active", true).gte("starts_at", new Date().toISOString()).order("starts_at");
       if (slots) setAvailableSlots(slots.map((slot) => ({ id: slot.id, startsAt: slot.starts_at, endsAt: slot.ends_at })));
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData.session?.access_token) {
+        const response = await fetch("/api/google-calendar/status", { headers: { Authorization: `Bearer ${sessionData.session.access_token}` } });
+        const status = await response.json().catch(() => null);
+        if (response.ok && status) setGoogleCalendar({ connected: Boolean(status.connected), email: status.connection?.google_email ?? "", status: status.connection?.sync_status ?? "", error: status.connection?.last_error ?? "" });
+        void fetch("/api/google-calendar/sync", { method: "POST", headers: { Authorization: `Bearer ${sessionData.session.access_token}` } }).catch(() => undefined);
+      }
     }
     const { data: sessions } = await supabase.rpc("wt_staff_online_sessions");
-    if (sessions) setOnlineSessions(sessions.map((session: Record<string, unknown>) => ({ id: String(session.session_id), ownerEmail: String(session.owner_email ?? ""), dogName: String(session.dog_name ?? ""), sessionType: session.session_type === "followup" ? "followup" : "initial", status: String(session.status) as OnlineSession["status"], startsAt: String(session.starts_at), endsAt: String(session.ends_at), meetUrl: String(session.meet_url ?? "") })));
+    if (sessions) setOnlineSessions(sessions.map((session: Record<string, unknown>) => ({ id: String(session.session_id), ownerId: String(session.owner_id ?? ""), ownerEmail: String(session.owner_email ?? ""), ownerName: String(session.owner_name ?? session.owner_email ?? "オーナー"), dogName: String(session.dog_name ?? ""), coachId: String(session.coach_id ?? ""), coachName: String(session.coach_name ?? "コーチ"), sessionType: session.session_type === "followup" ? "followup" : "initial", status: String(session.status) as OnlineSession["status"], startsAt: String(session.starts_at), endsAt: String(session.ends_at), meetUrl: String(session.meet_url ?? ""), calendarSyncStatus: String(session.calendar_sync_status ?? "not_connected") as OnlineSession["calendarSyncStatus"], calendarSyncError: String(session.calendar_sync_error ?? "") })));
   }
 
   async function loadOwnerBookingWorkspace(application: CoachingApplication) {
     if (!application.assignedCoachId) return;
     const [{ data: profileData }, { data: sessions }] = await Promise.all([
-      supabase.from("wt_coach_profiles").select("display_name,headline,bio,credentials,avatar_url,meet_url").eq("coach_id", application.assignedCoachId).maybeSingle(),
-      supabase.from("wt_online_sessions").select("id,session_type,status,starts_at,ends_at,meet_url").eq("application_id", application.id).order("starts_at"),
+      supabase.from("wt_coach_profiles").select("display_name,headline,bio,credentials,avatar_url,avatar_preset,meet_url").eq("coach_id", application.assignedCoachId).maybeSingle(),
+      supabase.from("wt_online_sessions").select("id,session_type,status,starts_at,ends_at,meet_url,calendar_sync_status,calendar_sync_error").eq("application_id", application.id).order("starts_at"),
     ]);
-    if (profileData) setAssignedCoachProfile({ displayName: profileData.display_name ?? "担当コーチ", headline: profileData.headline ?? "", bio: profileData.bio ?? "", credentials: profileData.credentials ?? "", avatarUrl: profileData.avatar_url ?? "", meetUrl: profileData.meet_url ?? "" });
-    if (sessions) setOnlineSessions(sessions.map((session) => ({ id: session.id, ownerEmail: "", dogName, sessionType: session.session_type as "initial" | "followup", status: session.status as OnlineSession["status"], startsAt: session.starts_at, endsAt: session.ends_at, meetUrl: session.meet_url ?? "" })));
+    if (profileData) setAssignedCoachProfile({ displayName: profileData.display_name ?? "担当コーチ", headline: profileData.headline ?? "", bio: profileData.bio ?? "", credentials: profileData.credentials ?? "", avatarUrl: profileData.avatar_url ?? "", avatarPreset: profileData.avatar_preset ?? "paw-green", meetUrl: profileData.meet_url ?? "" });
+    if (sessions) setOnlineSessions(sessions.map((session) => ({ id: session.id, ownerId: "", ownerEmail: "", ownerName: "", dogName, coachId: application.assignedCoachId ?? "", coachName: profileData?.display_name ?? "担当コーチ", sessionType: session.session_type as "initial" | "followup", status: session.status as OnlineSession["status"], startsAt: session.starts_at, endsAt: session.ends_at, meetUrl: session.meet_url ?? "", calendarSyncStatus: (session.calendar_sync_status ?? "not_connected") as OnlineSession["calendarSyncStatus"], calendarSyncError: session.calendar_sync_error ?? "" })));
     if (application.ownerConfirmedAt) {
       const { data: slots } = await supabase.rpc("wt_owner_available_slots", { target_application_id: application.id });
-      if (slots) setAvailableSlots(slots.map((slot: Record<string, unknown>) => ({ id: String(slot.slot_id), startsAt: String(slot.starts_at), endsAt: String(slot.ends_at) })));
+      if (slots) {
+        let mapped: AvailabilitySlot[] = slots.map((slot: Record<string, unknown>) => ({ id: String(slot.slot_id), startsAt: String(slot.starts_at), endsAt: String(slot.ends_at) }));
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (mapped.length && sessionData.session?.access_token) {
+          const response = await fetch("/api/google-calendar/freebusy", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionData.session.access_token}` }, body: JSON.stringify({ applicationId: application.id, timeMin: mapped[0].startsAt, timeMax: mapped[mapped.length - 1].endsAt }) });
+          const result = await response.json().catch(() => null);
+          if (response.ok && Array.isArray(result?.busy)) mapped = mapped.filter((slot) => !result.busy.some((range: { start: string; end: string }) => new Date(range.start) < new Date(slot.endsAt) && new Date(range.end) > new Date(slot.startsAt)));
+        }
+        setAvailableSlots(mapped);
+      }
     }
   }
 
@@ -952,6 +1001,22 @@ export default function Home() {
   }, [authReady, authenticated, currentUserId, userRole, coachingApplication?.id, coachingApplication?.assignedCoachId, coachingApplication?.ownerConfirmedAt]);
 
   useEffect(() => {
+    if (!authReady || userRole !== "coach") return;
+    const result = new URLSearchParams(window.location.search).get("googleCalendar");
+    if (!result) return;
+    const timer = window.setTimeout(() => {
+      if (result === "connected") showNotice("Google Calendarと連携しました");
+      else if (result === "denied") showNotice("Google Calendar連携がキャンセルされました");
+      else showNotice("Google Calendar連携を完了できませんでした");
+      setStaffMode("staff");
+      setAdminTab("coachProfile");
+      window.history.replaceState({}, "", window.location.pathname);
+      void loadStaffBookingWorkspace();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [authReady, userRole]);
+
+  useEffect(() => {
     if (!authReady || !authenticated || anonymousUser) return;
     async function refreshCoachingStatus() {
       const { data: userData } = await supabase.auth.getUser();
@@ -985,6 +1050,12 @@ export default function Home() {
   function showNotice(message: string) {
     setNotice(message);
     window.setTimeout(() => setNotice(""), 3200);
+  }
+
+  async function authorizedFetch(url: string, init: RequestInit = {}) {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session?.access_token) throw new Error("ログイン情報を確認できません");
+    return fetch(url, { ...init, headers: { ...init.headers, Authorization: `Bearer ${data.session.access_token}` } });
   }
 
   function clearOwnerCache() {
@@ -1397,9 +1468,54 @@ export default function Home() {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("wt_coach_profiles").upsert({ coach_id: userData.user.id, display_name: coachProfile.displayName.trim(), headline: coachProfile.headline.trim(), bio: coachProfile.bio.trim(), credentials: coachProfile.credentials.trim(), avatar_url: coachProfile.avatarUrl.trim() || null, meet_url: coachProfile.meetUrl.trim() || null, updated_at: new Date().toISOString() });
+    const { error } = await supabase.from("wt_coach_profiles").upsert({ coach_id: userData.user.id, display_name: coachProfile.displayName.trim(), headline: coachProfile.headline.trim(), bio: coachProfile.bio.trim(), credentials: coachProfile.credentials.trim(), avatar_url: coachProfile.avatarUrl.trim() || null, avatar_preset: coachProfile.avatarPreset, meet_url: coachProfile.meetUrl.trim() || null, updated_at: new Date().toISOString() });
     showNotice(error ? `プロフィールを保存できませんでした（${error.message}）` : "コーチプロフィールを保存しました");
     setSaving(false);
+  }
+
+  async function uploadCoachAvatar(file: File) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) return showNotice("JPEG・PNG・WebP画像を選んでください");
+    if (file.size > 8 * 1024 * 1024) return showNotice("画像は8MB以下にしてください");
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+    setSaving(true);
+    try {
+      const blob = await resizeAvatar(file);
+      const path = `${userData.user.id}/avatar.webp`;
+      const { error } = await supabase.storage.from("coach-avatars").upload(path, blob, { contentType: "image/webp", upsert: true, cacheControl: "3600" });
+      if (error) throw error;
+      const { data } = supabase.storage.from("coach-avatars").getPublicUrl(path);
+      const publicUrl = `${data.publicUrl}?v=${Date.now()}`;
+      const { error: profileError } = await supabase.from("wt_coach_profiles").upsert({ coach_id: userData.user.id, avatar_url: publicUrl, avatar_preset: coachProfile.avatarPreset, updated_at: new Date().toISOString() });
+      if (profileError) throw profileError;
+      setCoachProfile((current) => ({ ...current, avatarUrl: publicUrl }));
+      showNotice("画像を512pxに整えてアップロードしました");
+    } catch (error) {
+      showNotice(`画像を保存できませんでした（${error instanceof Error ? error.message : "処理エラー"}）`);
+    }
+    setSaving(false);
+  }
+
+  async function connectGoogleCalendar() {
+    setSaving(true);
+    try {
+      const response = await authorizedFetch("/api/google-calendar/connect", { method: "POST" });
+      const result = await response.json();
+      if (!response.ok || !result.url) throw new Error(result.error ?? "連携を開始できませんでした");
+      window.location.href = result.url;
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : "Google Calendarへ接続できませんでした");
+      setSaving(false);
+    }
+  }
+
+  async function disconnectGoogleCalendar() {
+    if (!window.confirm("Google Calendar連携を解除しますか？")) return;
+    const response = await authorizedFetch("/api/google-calendar/status", { method: "DELETE" });
+    if (response.ok) {
+      setGoogleCalendar({ connected: false, email: "", status: "", error: "" });
+      showNotice("Google Calendar連携を解除しました");
+    } else showNotice("連携を解除できませんでした");
   }
 
   async function addAvailabilitySlot(event: FormEvent<HTMLFormElement>) {
@@ -1429,9 +1545,10 @@ export default function Home() {
     const label = new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(slot.startsAt));
     if (!window.confirm(`${label}で${sessionType === "initial" ? "初回" : "継続"}オンライン診断を予約しますか？`)) return;
     setSaving(true);
-    const { error } = await supabase.rpc("wt_book_online_session", { target_application_id: coachingApplication.id, target_slot_id: slot.id, requested_session_type: sessionType });
-    showNotice(error ? `予約できませんでした（${error.message}）` : "オンライン診断を予約しました");
-    if (!error) await loadOwnerBookingWorkspace(coachingApplication);
+    const response = await authorizedFetch("/api/online-sessions/book", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applicationId: coachingApplication.id, slotId: slot.id, sessionType }) });
+    const result = await response.json().catch(() => null);
+    showNotice(response.ok ? "オンライン診断を予約しました。Meetを準備しています" : `予約できませんでした（${result?.error ?? "通信エラー"}）`);
+    if (response.ok) await loadOwnerBookingWorkspace(coachingApplication);
     setSaving(false);
   }
 
@@ -1439,7 +1556,20 @@ export default function Home() {
     if (!window.confirm(status === "completed" ? "面談を完了にしますか？" : "この予約をキャンセルしますか？")) return;
     const { error } = await supabase.rpc("wt_staff_update_online_session", { target_session_id: sessionId, next_status: status });
     showNotice(error ? `予約を更新できませんでした（${error.message}）` : status === "completed" ? "面談を完了にしました" : "予約をキャンセルしました");
-    if (!error) await loadStaffBookingWorkspace();
+    if (!error) {
+      void authorizedFetch("/api/google-calendar/sync", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }) }).catch(() => undefined);
+      await loadStaffBookingWorkspace();
+    }
+  }
+
+  function moveSchedule(direction: number) {
+    if (scheduleMode !== "month") {
+      setScheduleAnchor(addToDateKey(scheduleAnchor, direction * (scheduleMode === "week" ? 7 : 1)));
+      return;
+    }
+    const date = dateKeyValue(scheduleAnchor);
+    date.setUTCMonth(date.getUTCMonth() + direction);
+    setScheduleAnchor(dateKeyFromValue(date));
   }
 
   function moveCalendarMonth(delta: number) {
@@ -2416,7 +2546,7 @@ export default function Home() {
       ) : (
         <>
           <section className="coach-assigned-card">
-            <div className="coach-avatar coach-profile-avatar">{assignedCoachProfile?.avatarUrl ? <img src={assignedCoachProfile.avatarUrl} alt="" /> : <NavGlyph name="coach" />}</div>
+            <div className={`coach-avatar coach-profile-avatar preset-${assignedCoachProfile?.avatarPreset ?? "paw-green"}`}>{assignedCoachProfile?.avatarUrl ? <img src={assignedCoachProfile.avatarUrl} alt="" /> : <CareIcon name="paws" />}</div>
             <div><p className="card-label">YOUR COACH</p><h2>{assignedCoachProfile?.displayName || "担当コーチ"}</h2><strong>{assignedCoachProfile?.headline || "愛犬との暮らしを一緒に整えます"}</strong><p>{assignedCoachProfile?.bio || "記録を見ながら、まずは今いちばん気になることから話しましょう。"}</p>{assignedCoachProfile?.credentials && <small>{assignedCoachProfile.credentials}</small>}</div>
             <b>{coachingApplication.ownerConfirmedAt ? "担当確定" : "確認待ち"}</b>
           </section>
@@ -2544,6 +2674,35 @@ export default function Home() {
   const filteredAdminAccounts = adminAccountFilter === "all"
     ? adminAccounts
     : adminAccounts.filter((account) => account.role === adminAccountFilter);
+  const scheduleCoaches = Array.from(new Map(onlineSessions.filter((session) => session.coachId).map((session) => [session.coachId, session.coachName])).entries());
+  const scheduleOwners = Array.from(new Map(onlineSessions.filter((session) => session.ownerId).map((session) => [session.ownerId, session.ownerName])).entries());
+  const scheduleRange = (() => {
+    const anchor = dateKeyValue(scheduleAnchor);
+    let startKey = scheduleAnchor;
+    let endKey = addToDateKey(scheduleAnchor, 1);
+    if (scheduleMode === "week") {
+      const offset = (anchor.getUTCDay() + 6) % 7;
+      startKey = addToDateKey(scheduleAnchor, -offset);
+      endKey = addToDateKey(startKey, 7);
+    } else if (scheduleMode === "month") {
+      startKey = `${scheduleAnchor.slice(0, 7)}-01`;
+      const nextMonth = dateKeyValue(startKey);
+      nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
+      endKey = dateKeyFromValue(nextMonth);
+    }
+    return { startKey, endKey, start: new Date(`${startKey}T00:00:00+09:00`), end: new Date(`${endKey}T00:00:00+09:00`) };
+  })();
+  const filteredScheduleSessions = onlineSessions.filter((session) => {
+    const starts = new Date(session.startsAt);
+    return starts >= scheduleRange.start && starts < scheduleRange.end
+      && (scheduleCoachFilter === "all" || session.coachId === scheduleCoachFilter)
+      && (scheduleOwnerFilter === "all" || session.ownerId === scheduleOwnerFilter);
+  });
+  const scheduleDays = Array.from({ length: Math.ceil((scheduleRange.end.getTime() - scheduleRange.start.getTime()) / 86_400_000) }, (_, index) => {
+    const key = addToDateKey(scheduleRange.startKey, index);
+    const date = dateKeyValue(key);
+    return { key, date, sessions: filteredScheduleSessions.filter((session) => new Date(session.startsAt).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }) === key) };
+  });
   const adminPageMeta: Record<AdminTab, { title: string; description: string; count: number }> = {
     applications: { title: "コーチング申込み", description: "相談内容を確認し、合いそうなコーチへつなぐ。", count: adminApplications.length },
     customers: { title: userRole === "admin" ? "すべての担当顧客" : "担当のお客様", description: "記録の変化を見て、必要なタイミングで声をかける。", count: adminCustomers.length },
@@ -2672,22 +2831,32 @@ export default function Home() {
               </section>
             )}
             <section className="staff-schedule-panel">
-              <div className="admin-panel-heading"><div><p className="card-label">BOOKINGS</p><h2>オンライン診断の予約状況</h2></div><button className="inline-refresh" onClick={() => void loadStaffBookingWorkspace()}>更新</button></div>
-              <div className="staff-session-list">{onlineSessions.length ? onlineSessions.map((session) => <article key={session.id} className={`session-${session.status}`}><time>{formatOnlineDate(session.startsAt)}</time><div><strong>{session.dogName || "愛犬名未登録"}</strong><p>{session.ownerEmail}</p><small>{session.sessionType === "initial" ? "初回オンライン診断" : "継続オンライン診断"} · {session.status === "booked" ? "予約済み" : session.status === "completed" ? "完了" : "キャンセル"}</small></div><div className="staff-session-actions">{session.meetUrl && session.status === "booked" && <a href={session.meetUrl} target="_blank" rel="noreferrer">Meetを開く</a>}{session.status === "booked" && <><button onClick={() => void updateOnlineSessionStatus(session.id, "completed")}>完了</button><button className="danger" onClick={() => void updateOnlineSessionStatus(session.id, "cancelled")}>取消</button></>}</div></article>) : <section className="admin-empty compact"><h2>予約はまだありません</h2><p>オーナーが日時を選ぶと、リアルタイムでここに反映されます。</p></section>}</div>
+              <div className="admin-panel-heading"><div><p className="card-label">BOOKINGS</p><h2>オンライン診断カレンダー</h2></div><button className="inline-refresh" onClick={() => void loadStaffBookingWorkspace()}>更新</button></div>
+              <div className="schedule-toolbar">
+                <div className="schedule-mode">{(["day", "week", "month"] as const).map((mode) => <button key={mode} className={scheduleMode === mode ? "is-selected" : ""} onClick={() => setScheduleMode(mode)}>{mode === "day" ? "日" : mode === "week" ? "週" : "月"}</button>)}</div>
+                <div className="schedule-navigation"><button onClick={() => moveSchedule(-1)}>←</button><input type="date" value={scheduleAnchor} onChange={(event) => setScheduleAnchor(event.target.value)} /><button onClick={() => moveSchedule(1)}>→</button><button onClick={() => setScheduleAnchor(today())}>今日</button></div>
+                <div className="schedule-filters">
+                  {userRole === "admin" && <select value={scheduleCoachFilter} onChange={(event) => setScheduleCoachFilter(event.target.value)}><option value="all">すべてのコーチ</option>{scheduleCoaches.map(([id, name]) => <option value={id} key={id}>{name}</option>)}</select>}
+                  <select value={scheduleOwnerFilter} onChange={(event) => setScheduleOwnerFilter(event.target.value)}><option value="all">すべてのオーナー</option>{scheduleOwners.map(([id, name]) => <option value={id} key={id}>{name}</option>)}</select>
+                </div>
+              </div>
+              <div className={`schedule-calendar mode-${scheduleMode}`}>{scheduleDays.map((day) => <section key={day.key} className={day.key === today() ? "is-today" : ""}><header><strong>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric" }).format(day.date)}</strong><small>{new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(day.date)}</small><b>{day.sessions.length}</b></header><div>{day.sessions.map((session) => <article key={session.id} className={`session-${session.status}`}><time>{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(session.startsAt))}–{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(session.endsAt))}</time><strong>{session.ownerName || session.ownerEmail}</strong><p>{session.dogName} · {session.coachName}</p><small>{session.sessionType === "initial" ? "初回" : "継続"} · {session.status === "booked" ? "確定" : session.status === "completed" ? "完了" : "取消"}</small><div className="calendar-event-actions">{session.meetUrl && session.status === "booked" && <a href={session.meetUrl} target="_blank" rel="noreferrer">Meet</a>}{session.status === "booked" && <><button onClick={() => void updateOnlineSessionStatus(session.id, "completed")}>完了</button><button className="is-danger" onClick={() => void updateOnlineSessionStatus(session.id, "cancelled")}>取消</button></>}</div>{session.calendarSyncStatus !== "synced" && <em className={`sync-${session.calendarSyncStatus}`}>{session.calendarSyncStatus === "error" ? "Google同期エラー" : session.calendarSyncStatus === "not_connected" ? "Google未連携" : "Google同期中"}</em>}</article>)}</div></section>)}</div>
+              {!filteredScheduleSessions.length && <section className="admin-empty compact"><h2>この期間の予約はありません</h2><p>表示期間または絞り込み条件を変更してください。</p></section>}
             </section>
           </div>
         )}
         {adminTab === "coachProfile" && userRole === "coach" && (
           <form className="staff-profile-form" onSubmit={saveCoachProfile}>
-            <div className="staff-profile-preview"><div className="coach-avatar coach-profile-avatar">{coachProfile.avatarUrl ? <img src={coachProfile.avatarUrl} alt="" /> : <NavGlyph name="coach" />}</div><div><p className="card-label">PROFILE PREVIEW</p><h2>{coachProfile.displayName || "コーチ名"}</h2><strong>{coachProfile.headline || "専門分野や大切にしていること"}</strong></div></div>
+            <div className="staff-profile-preview"><div className={`coach-avatar coach-profile-avatar preset-${coachProfile.avatarPreset}`}>{coachProfile.avatarUrl ? <img src={coachProfile.avatarUrl} alt="" /> : <CareIcon name="paws" />}</div><div><p className="card-label">PROFILE PREVIEW</p><h2>{coachProfile.displayName || "コーチ名"}</h2><strong>{coachProfile.headline || "専門分野や大切にしていること"}</strong></div></div>
+            <fieldset className="avatar-settings"><legend>プロフィールアイコン</legend><div className="avatar-presets">{["paw-green", "paw-blue", "paw-coral"].map((preset) => <button type="button" key={preset} className={`preset-${preset} ${!coachProfile.avatarUrl && coachProfile.avatarPreset === preset ? "is-selected" : ""}`} onClick={() => setCoachProfile({ ...coachProfile, avatarUrl: "", avatarPreset: preset })}><CareIcon name="paws" /></button>)}<label className="avatar-upload">画像を選ぶ<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadCoachAvatar(file); }} /></label></div><p>JPEG・PNG・WebPに対応。中央を正方形に切り抜き、512pxへ自動調整します。</p></fieldset>
             <div className="staff-profile-fields">
               <label>表示名<input value={coachProfile.displayName} onChange={(event) => setCoachProfile({ ...coachProfile, displayName: event.target.value })} placeholder="例：三宅コーチ" required /></label>
               <label>肩書き・ひとこと<input value={coachProfile.headline} onChange={(event) => setCoachProfile({ ...coachProfile, headline: event.target.value })} placeholder="例：行動の理由を一緒に考えます" /></label>
-              <label>アイコン画像URL<input type="url" value={coachProfile.avatarUrl} onChange={(event) => setCoachProfile({ ...coachProfile, avatarUrl: event.target.value })} placeholder="https://..." /></label>
               <label>経歴・資格<textarea rows={3} value={coachProfile.credentials} onChange={(event) => setCoachProfile({ ...coachProfile, credentials: event.target.value })} placeholder="保有資格、経験など" /></label>
               <label>自己紹介<textarea rows={5} value={coachProfile.bio} onChange={(event) => setCoachProfile({ ...coachProfile, bio: event.target.value })} placeholder="オーナーへ伝えたいサポート方針など" /></label>
-              <label>Google Meet URL<input type="url" value={coachProfile.meetUrl} onChange={(event) => setCoachProfile({ ...coachProfile, meetUrl: event.target.value })} placeholder="https://meet.google.com/xxx-xxxx-xxx" /><small>予約確定後、オーナーとコーチ双方に表示されます。</small></label>
+              <label>予備のGoogle Meet URL<input type="url" value={coachProfile.meetUrl} onChange={(event) => setCoachProfile({ ...coachProfile, meetUrl: event.target.value })} placeholder="https://meet.google.com/xxx-xxxx-xxx" /><small>Calendar未連携時に使用する予備URLです。</small></label>
             </div>
+            <section className={`google-calendar-card ${googleCalendar.connected ? "is-connected" : ""}`}><div className="google-calendar-mark">G</div><div><p className="card-label">GOOGLE CALENDAR</p><h3>{googleCalendar.connected ? "カレンダー連携済み" : "Google Calendarを連携"}</h3><p>{googleCalendar.connected ? `${googleCalendar.email} · 予約時にMeet予定を自動作成します。` : "予定あり時間を予約枠から除外し、予約確定時にGoogle Meet付き予定を作成します。"}</p>{googleCalendar.error && <small>{googleCalendar.error}</small>}</div>{googleCalendar.connected ? <button type="button" className="secondary" onClick={() => void disconnectGoogleCalendar()}>連携解除</button> : <button type="button" onClick={() => void connectGoogleCalendar()} disabled={saving}>Googleと連携</button>}</section>
             <button className="staff-save-button" disabled={saving}>{saving ? "保存中…" : "プロフィールを保存"}</button>
           </form>
         )}
