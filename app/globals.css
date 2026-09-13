@@ -16,22 +16,25 @@
 }
 
 * { box-sizing: border-box; }
-html { background: #edf3ef; }
+html { max-width:100%; overflow-x:hidden; overflow-x:clip; background: #edf3ef; }
 body {
+  max-width:100%;
+  overflow-x:hidden;
+  overflow-x:clip;
   margin: 0;
   background: #edf3ef;
   color: var(--ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
-button, input, textarea { font: inherit; }
+button, input, textarea, select { max-width:100%; font: inherit; }
 button { color: inherit; }
 button:focus-visible, input:focus-visible, textarea:focus-visible {
   outline: 3px solid rgba(0, 134, 97, 0.22);
   outline-offset: 2px;
 }
 
-.app-stage { min-height: 100svh; }
+.app-stage { min-height: 100svh; max-width:100%; overflow-x:hidden; overflow-x:clip; }
 .app-shell {
   position: relative;
   min-height: 100svh;
@@ -64,7 +67,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .header-status > span.online, .connection-note > span.online { background: #27a77f; box-shadow: 0 0 0 4px rgba(39, 167, 127, 0.1); }
 .header-status > span.local, .connection-note > span.local { background: #d4a64c; }
 
-.app-main { padding: 32px 20px calc(108px + env(safe-area-inset-bottom)); }
+.app-main { width:100%; max-width:100%; min-width:0; padding: 32px 20px calc(108px + env(safe-area-inset-bottom)); }
+.app-main > *, .coach-screen, .staff-booking-workspace, .staff-schedule-panel { min-width:0; max-width:100%; }
 .welcome { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .eyebrow, .section-title > span, .card-label { margin: 0 0 10px; color: var(--green); font-family: var(--font-display); font-size: 10px; font-weight: 600; letter-spacing: 0.18em; }
 .welcome h1 { max-width: 360px; margin: 0; font-family: var(--font-sans); font-size: clamp(27px, 7.6vw, 38px); font-weight: 300; line-height: 1.5; letter-spacing: 0.04em; }
@@ -936,7 +940,11 @@ body { font-size: 16px; }
 .coach-profile-avatar img { width:100%; height:100%; object-fit:cover; }
 .coach-assigned-card > div:nth-child(2) > strong { display:block; margin:3px 0 7px; color:var(--green-dark); font-size:13px; }
 .coach-assigned-card > div:nth-child(2) > small { display:block; margin-top:8px; color:var(--muted); font-size:11px; line-height:1.6; white-space:pre-line; }
+.coach-assigned-card .coach-identity { min-width:0; }
+.coach-assigned-card .coach-role-label { display:flex; align-items:center; gap:7px; margin:0 0 5px; color:var(--green-dark); font-size:11px; font-weight:800; line-height:1.4; letter-spacing:.04em; }
+.coach-role-label > span { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 0 5px rgba(0,134,97,.09); }
 .coach-confirm-card,.owner-booking-card,.owner-session-list { margin-top:16px; padding:22px; border-radius:25px; background:#fff; box-shadow:var(--shadow-card); }
+.coach-confirm-card,.owner-booking-card,.owner-session-list,.meet-guidance { width:100%; max-width:100%; min-width:0; overflow:hidden; }
 .coach-confirm-card { border:1px solid rgba(0,134,97,.13); background:linear-gradient(145deg,#fff,#eff9f4); }
 .coach-confirm-card h2 { margin:7px 0; font-size:21px; }
 .coach-confirm-card > p:not(.card-label) { margin:0 0 18px; color:var(--muted); font-size:13px; line-height:1.75; }
@@ -944,19 +952,22 @@ body { font-size: 16px; }
 .meet-guidance > span { display:grid; width:43px; height:43px; place-items:center; border-radius:13px; background:#fff; color:#1a73e8; font-size:19px; font-weight:800; box-shadow:0 5px 15px rgba(26,115,232,.1); }
 .meet-guidance strong { font-size:13px; }
 .meet-guidance p { margin:4px 0 0; color:#647186; font-size:11px; line-height:1.65; }
-.booking-section-title { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.booking-section-title { display:flex; min-width:0; align-items:flex-start; justify-content:space-between; gap:12px; }
+.booking-section-title > div { min-width:0; }
 .booking-section-title h2 { margin:5px 0 0; font-size:19px; }
 .booking-section-title p { margin:6px 0 0; color:var(--muted); font-size:12px; }
 .booking-section-title > b { min-width:48px; padding:8px 10px; border-radius:12px; background:var(--mint); color:var(--green); font-size:11px; text-align:center; }
 .owner-session-list article { display:grid; grid-template-columns:105px 1fr auto; align-items:center; gap:12px; margin-top:13px; padding:13px 0; border-top:1px solid var(--line); }
+.owner-session-list article > * { min-width:0; }
 .owner-session-list time { color:var(--green-dark); font-size:12px; font-weight:800; line-height:1.5; }
 .owner-session-list article strong,.owner-session-list article small { display:block; }
 .owner-session-list article strong { font-size:13px; }
 .owner-session-list article small { margin-top:3px; color:var(--muted); font-size:10px; }
-.owner-session-list a,.owner-session-list article > span { padding:8px 10px; border-radius:10px; background:var(--green); color:#fff; font-size:10px; font-weight:800; text-decoration:none; }
+.owner-session-list a,.owner-session-list article > span { padding:8px 10px; border-radius:10px; background:var(--green); color:#fff; font-size:10px; font-weight:800; text-decoration:none; white-space:nowrap; }
 .owner-session-list article > span { background:#edf1ef; color:var(--muted); }
 .owner-slot-list { display:grid; gap:8px; margin-top:16px; }
-.owner-slot-list > button { display:flex; min-height:58px; align-items:center; justify-content:space-between; gap:12px; padding:11px 13px; border:1px solid rgba(0,134,97,.13); border-radius:15px; background:#f7fcf9; color:var(--ink); cursor:pointer; text-align:left; }
+.owner-slot-list > button { display:flex; width:100%; max-width:100%; min-width:0; min-height:58px; align-items:center; justify-content:space-between; gap:12px; padding:11px 13px; border:1px solid rgba(0,134,97,.13); border-radius:15px; background:#f7fcf9; color:var(--ink); cursor:pointer; text-align:left; }
+.owner-slot-list > button > span { min-width:0; }
 .owner-slot-list strong,.owner-slot-list small { display:block; }
 .owner-slot-list strong { font-size:13px; }
 .owner-slot-list small { margin-top:3px; color:var(--muted); font-size:10px; }
@@ -967,11 +978,20 @@ body { font-size: 16px; }
 .staff-booking-workspace { display:grid; gap:20px; }
 .staff-schedule-panel,.staff-profile-form { padding:24px; border:1px solid rgba(24,59,47,.08); border-radius:23px; background:#fff; box-shadow:0 12px 35px rgba(28,65,52,.06); }
 .staff-panel-lead { margin:8px 0 17px; color:#738078; font-size:13px; line-height:1.7; }
-.slot-create-form { display:grid; grid-template-columns:minmax(220px,1fr) 150px auto; align-items:end; gap:11px; padding:16px; border-radius:16px; background:#f3f8f5; }
+.slot-create-form { display:grid; grid-template-columns:minmax(160px,1fr) minmax(130px,.8fr) minmax(150px,.9fr) auto; align-items:end; gap:11px; padding:16px; border-radius:16px; background:#f3f8f5; }
 .slot-create-form label,.staff-profile-fields label { color:#45524b; font-size:12px; font-weight:750; }
 .slot-create-form input,.slot-create-form select,.staff-profile-fields input,.staff-profile-fields textarea { display:block; width:100%; margin-top:6px; border:1px solid #d8dfdb; border-radius:11px; background:#fff; color:#1c2923; font:inherit; }
 .slot-create-form input,.slot-create-form select,.staff-profile-fields input { min-height:44px; padding:0 12px; }
 .slot-create-form button,.staff-save-button { min-height:44px; padding:0 18px; border:0; border-radius:11px; background:#176d52; color:#fff; cursor:pointer; font-size:12px; font-weight:800; }
+.slot-duration-picker { min-width:0; margin:0; padding:0; border:0; }
+.slot-duration-picker legend { margin-bottom:6px; color:#45524b; font-size:12px; font-weight:750; }
+.slot-duration-picker > div { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.slot-duration-picker button { min-height:44px; padding:0 10px; border:1px solid #d8dfdb; background:#fff; color:#59665f; }
+.slot-duration-picker button.is-selected { border-color:var(--green); background:var(--green); color:#fff; box-shadow:0 5px 14px rgba(0,134,97,.14); }
+.slot-time-presets { display:flex; grid-column:1/-1; flex-wrap:wrap; gap:7px; }
+.slot-time-presets button { min-width:64px; min-height:40px; padding:0 10px; border:1px solid #d7dfdb; background:#fff; color:#53615a; }
+.slot-time-presets button.is-selected { border-color:#82b9a4; background:#e4f4ec; color:var(--green-dark); }
+.slot-create-form > button:last-child { grid-column:1/-1; justify-self:start; min-width:180px; }
 .staff-slot-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:15px; }
 .staff-slot-list article { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:13px; border:1px solid #e1e7e3; border-radius:14px; }
 .staff-slot-list strong,.staff-slot-list small { display:block; }
@@ -1005,7 +1025,7 @@ body { font-size: 16px; }
 .staff-save-button { min-width:190px; margin-top:20px; }
 
 @media (max-width:720px) {
-  .owner-session-list article { grid-template-columns:1fr auto; }
+  .owner-session-list article { grid-template-columns:minmax(0,1fr) auto; }
   .owner-session-list time { grid-column:1/-1; }
   .slot-create-form,.staff-session-list > article { grid-template-columns:1fr; }
   .staff-slot-list,.staff-profile-fields { grid-template-columns:1fr; }
@@ -1030,6 +1050,7 @@ body { font-size: 16px; }
 .avatar-upload input { position:absolute; width:1px; height:1px; opacity:0; }
 .google-calendar-card { display:grid; grid-template-columns:48px 1fr auto; align-items:center; gap:14px; margin-top:22px; padding:18px; border:1px solid #dce3ed; border-radius:18px; background:#f7f9fc; }
 .google-calendar-card.is-connected { border-color:#c9e4d7; background:#f0f9f5; }
+.google-calendar-card.has-error { border-color:#edc9c1; background:#fff6f3; }
 .google-calendar-mark { display:grid; width:48px; height:48px; place-items:center; border-radius:14px; background:#fff; color:#4285f4; font-size:20px; font-weight:900; box-shadow:0 6px 18px rgba(44,67,100,.09); }
 .google-calendar-card h3 { margin:4px 0; font-size:15px; }
 .google-calendar-card p:not(.card-label) { margin:0; color:#68756e; font-size:11px; line-height:1.55; }
@@ -1047,8 +1068,7 @@ body { font-size: 16px; }
 .schedule-filters { display:flex; justify-content:flex-end; gap:7px; }
 .schedule-filters select { min-width:145px; padding:0 10px; }
 .schedule-calendar { display:grid; gap:8px; margin-top:15px; }
-.schedule-calendar.mode-week { grid-template-columns:repeat(7,minmax(125px,1fr)); overflow-x:auto; padding-bottom:5px; }
-.schedule-calendar.mode-month { grid-template-columns:repeat(7,minmax(105px,1fr)); overflow-x:auto; padding-bottom:5px; }
+.schedule-calendar.mode-week,.schedule-calendar.mode-month { grid-template-columns:repeat(7,minmax(0,1fr)); }
 .schedule-calendar.mode-day { grid-template-columns:1fr; }
 .schedule-calendar > section { min-height:150px; padding:10px; border:1px solid #e2e7e4; border-radius:13px; background:#fafcfb; }
 .schedule-calendar > section.is-today { border-color:#64ae92; background:#f1faf6; }
@@ -1076,11 +1096,22 @@ body { font-size: 16px; }
   .schedule-toolbar { grid-template-columns:1fr; }
   .schedule-filters { justify-content:flex-start; flex-wrap:wrap; }
   .schedule-mode { width:max-content; }
+  .schedule-calendar.mode-week { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .schedule-calendar.mode-month { grid-template-columns:repeat(3,minmax(0,1fr)); }
 }
 @media (max-width:600px) {
   .google-calendar-card { grid-template-columns:48px 1fr; }
   .google-calendar-card > button { grid-column:1/-1; }
   .avatar-presets { flex-wrap:wrap; }
+  .coach-assigned-card { padding:17px; }
+  .booking-section-title { flex-wrap:wrap; }
+  .owner-booking-card,.owner-session-list { padding:18px; }
+  .owner-slot-list > button { align-items:flex-start; }
+  .schedule-calendar.mode-week { grid-template-columns:1fr; }
+  .schedule-calendar.mode-month { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .schedule-navigation,.schedule-filters { width:100%; flex-wrap:wrap; }
+  .schedule-navigation input,.schedule-filters select { flex:1 1 150px; min-width:0; }
+  .slot-time-presets button { flex:1 1 calc(25% - 7px); min-width:58px; }
 }
 
 /* Authentication and coach console */

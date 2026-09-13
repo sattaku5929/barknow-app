@@ -1,26 +1,31 @@
 import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { encryptRefreshToken, exchangeAuthorizationCode, googleAccountEmail } from "@/lib/server/google-calendar";
+import { encryptRefreshToken, exchangeAuthorizationCode, googleAccountEmail, googleOAuthRedirectUri } from "@/lib/server/google-calendar";
 import { serviceSupabase } from "@/lib/server/supabase";
 
 export const runtime = "nodejs";
 
-function appRedirect(request: NextRequest, result: string) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin;
-  return NextResponse.redirect(new URL(`/?googleCalendar=${result}`, appUrl));
+function appRedirect(request: NextRequest, result: string, reason = "") {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || request.nextUrl.origin;
+  const destination = new URL("/", appUrl);
+  destination.searchParams.set("googleCalendar", result);
+  if (reason) destination.searchParams.set("calendarReason", reason);
+  return NextResponse.redirect(destination);
 }
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const state = request.nextUrl.searchParams.get("state");
-  if (!code || !state || request.nextUrl.searchParams.get("error")) return appRedirect(request, "denied");
+  const providerError = request.nextUrl.searchParams.get("error");
+  if (providerError) return appRedirect(request, providerError === "access_denied" ? "denied" : "error", "provider");
+  if (!code || !state) return appRedirect(request, "error", "invalid_callback");
   try {
     const admin = serviceSupabase();
     const stateHash = crypto.createHash("sha256").update(state).digest("hex");
     const { data: storedState } = await admin.from("wt_google_oauth_states").select("coach_id,expires_at").eq("state_hash", stateHash).maybeSingle();
     await admin.from("wt_google_oauth_states").delete().eq("state_hash", stateHash);
-    if (!storedState || new Date(storedState.expires_at).getTime() < Date.now()) throw new Error("OAuth state expired");
-    const tokens = await exchangeAuthorizationCode(code);
+    if (!storedState || new Date(storedState.expires_at).getTime() < Date.now()) return appRedirect(request, "error", "state_expired");
+    const tokens = await exchangeAuthorizationCode(code, googleOAuthRedirectUri(request.nextUrl.origin));
     const email = await googleAccountEmail(tokens.access_token);
     const { data: existing } = await admin.from("wt_google_calendar_connections").select("encrypted_refresh_token,token_iv,token_tag").eq("coach_id", storedState.coach_id).maybeSingle();
     const encrypted = tokens.refresh_token ? encryptRefreshToken(tokens.refresh_token) : existing ? { encrypted: existing.encrypted_refresh_token, iv: existing.token_iv, tag: existing.token_tag } : null;
@@ -40,7 +45,9 @@ export async function GET(request: NextRequest) {
     });
     if (error) throw error;
     return appRedirect(request, "connected");
-  } catch {
-    return appRedirect(request, "error");
+  } catch (error) {
+    console.error("Google Calendar OAuth callback failed", error);
+    const reason = error instanceof Error && error.message.includes("GOOGLE_") ? "configuration" : "token_exchange";
+    return appRedirect(request, "error", reason);
   }
 }
