@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { FormEvent, MouseEvent as ReactMouseEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "./supabase";
 
 type View = "home" | "goals" | "record" | "report" | "coach" | "profile";
@@ -20,6 +21,20 @@ type DogProfile = {
   name: string;
   breed: string;
   birthday: string;
+  isFirstTimeOwner: "yes" | "no" | "";
+  gender: "male_neutered" | "male_intact" | "female_spayed" | "female_intact" | "unknown" | "";
+  daycareFrequency: string;
+  walkFrequency: string;
+  concerns: string;
+  profileCompletedAt: string;
+};
+
+type OwnerProfile = {
+  fullName: string;
+  phoneNumber: string;
+  address: string;
+  birthDate: string;
+  completedAt: string;
 };
 
 type DailyRecord = {
@@ -161,7 +176,8 @@ const CARE_GOALS_KEY = "wan-tone-care-goals-v1";
 const GOAL_COMPLETIONS_KEY = "wan-tone-goal-completions-v1";
 const REMINDER_SENT_KEY = "wan-tone-reminder-sent-v1";
 
-const initialProfile: DogProfile = { name: "", breed: "", birthday: "" };
+const initialProfile: DogProfile = { name: "", breed: "", birthday: "", isFirstTimeOwner: "", gender: "", daycareFrequency: "", walkFrequency: "", concerns: "", profileCompletedAt: "" };
+const initialOwnerProfile: OwnerProfile = { fullName: "", phoneNumber: "", address: "", birthDate: "", completedAt: "" };
 
 type CategoryInfo = {
   readonly id: RecordCategory;
@@ -226,6 +242,10 @@ function coachingStatusLabel(status: CoachingStatus) {
 
 function coachingConcernLabel(id: string) {
   return COACHING_CONCERNS.find((item) => item.id === id)?.label ?? id;
+}
+
+function dogGenderLabel(gender: DogProfile["gender"]) {
+  return { male_neutered: "男の子（去勢済み）", male_intact: "男の子（未去勢）", female_spayed: "女の子（避妊済み）", female_intact: "女の子（未避妊）", unknown: "不明・未回答", "": "未登録" }[gender];
 }
 
 function categoryInfo(category: RecordCategory | undefined): CategoryInfo {
@@ -298,6 +318,23 @@ function formatOnlineDate(value: string) {
     minute: "2-digit",
     timeZone: "Asia/Tokyo",
   }).format(new Date(value));
+}
+
+function timeMinutesJst(value: string) {
+  const parts = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Tokyo" }).formatToParts(new Date(value));
+  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0) % 24;
+  const minute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
+  return hour * 60 + minute;
+}
+
+function ageLabel(birthDate: string) {
+  if (!birthDate) return "";
+  const [birthYear, birthMonth, birthDay] = birthDate.split("-").map(Number);
+  const [year, month, day] = today().split("-").map(Number);
+  if (!birthYear || !birthMonth || !birthDay || birthDate > today()) return "";
+  let months = (year - birthYear) * 12 + month - birthMonth;
+  if (day < birthDay) months -= 1;
+  return `現在 ${Math.floor(months / 12)}歳${months % 12}か月`;
 }
 
 async function resizeAvatar(file: File) {
@@ -433,6 +470,8 @@ function StatusSelector({
 }
 
 export default function Home() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [authReady, setAuthReady] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [anonymousUser, setAnonymousUser] = useState(false);
@@ -457,12 +496,17 @@ export default function Home() {
   const [adminDetailRecords, setAdminDetailRecords] = useState<DailyRecord[]>([]);
   const [adminDetailMessages, setAdminDetailMessages] = useState<CoachMessage[]>([]);
   const [adminDetailGoals, setAdminDetailGoals] = useState<AdminGoalProgress[]>([]);
+  const [adminDetailOwnerProfile, setAdminDetailOwnerProfile] = useState<OwnerProfile | null>(null);
+  const [adminDetailDogProfile, setAdminDetailDogProfile] = useState<DogProfile | null>(null);
   const [adminDetailLoading, setAdminDetailLoading] = useState(false);
   const [adminReply, setAdminReply] = useState("");
   const [currentUserId, setCurrentUserId] = useState("");
   const [view, setView] = useState<View>("home");
   const [connection, setConnection] = useState<Connection>("checking");
   const [profile, setProfile] = useState<DogProfile>(initialProfile);
+  const [ownerProfile, setOwnerProfile] = useState<OwnerProfile>(initialOwnerProfile);
+  const [onboardingRequired, setOnboardingRequired] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState<"owner" | "dog">("owner");
   const [records, setRecords] = useState<DailyRecord[]>([]);
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const [notice, setNotice] = useState("");
@@ -499,6 +543,7 @@ export default function Home() {
   const [slotDuration, setSlotDuration] = useState(60);
   const [slotCoachId, setSlotCoachId] = useState("");
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
+  const [timelineWeekAnchor, setTimelineWeekAnchor] = useState(today());
   const [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email: string; status: string; error: string; configured: boolean; configurationError: string }>({ connected: false, email: "", status: "", error: "", configured: true, configurationError: "" });
   const [scheduleMode, setScheduleMode] = useState<"day" | "week" | "month">("week");
   const [scheduleAnchor, setScheduleAnchor] = useState(today());
@@ -781,7 +826,7 @@ export default function Home() {
   }
 
   useEffect(() => {
-    const localProfile = readLocal(PROFILE_KEY, initialProfile);
+    const localProfile = { ...initialProfile, ...readLocal<Partial<DogProfile>>(PROFILE_KEY, {}) };
     const localRecords: DailyRecord[] = readLocal<DailyRecord[]>(RECORDS_KEY, []).map((record): DailyRecord => ({
       ...record,
       category: record.category ?? "daily",
@@ -838,7 +883,7 @@ export default function Home() {
           await loadAdminWorkspace();
         }
 
-        const [dogResult, recordResult, messageResult] = await Promise.all([
+        const [dogResult, recordResult, messageResult, onboardingResult] = await Promise.all([
           supabase.from("wt_dogs").select("id,name,breed,birthday").eq("owner_id", userId).maybeSingle(),
           supabase
             .from("wt_daily_records")
@@ -853,18 +898,59 @@ export default function Home() {
             .eq("owner_id", userId)
             .order("created_at", { ascending: true })
             .limit(50),
+          supabase.rpc("wt_owner_onboarding_snapshot"),
         ]);
 
         if (dogResult.error || recordResult.error || messageResult.error) throw new Error("Schema unavailable");
         if (dogResult.data) {
-          const remoteProfile = {
+          const remoteProfile: DogProfile = {
             id: dogResult.data.id,
             name: dogResult.data.name,
             breed: dogResult.data.breed ?? "",
             birthday: dogResult.data.birthday ?? "",
+            isFirstTimeOwner: "",
+            gender: "",
+            daycareFrequency: "",
+            walkFrequency: "",
+            concerns: "",
+            profileCompletedAt: "",
           };
           setProfile(remoteProfile);
           writeLocal(PROFILE_KEY, remoteProfile);
+        }
+        if (!onboardingResult.error && onboardingResult.data && role === "owner" && !isAnonymous) {
+          const snapshot = onboardingResult.data as { owner?: Record<string, unknown> | null; dog?: Record<string, unknown> | null };
+          const owner = snapshot.owner;
+          const dog = snapshot.dog;
+          const nextOwner: OwnerProfile = {
+            fullName: String(owner?.full_name ?? ""),
+            phoneNumber: String(owner?.phone_number ?? ""),
+            address: String(owner?.address ?? ""),
+            birthDate: String(owner?.owner_birth_date ?? ""),
+            completedAt: String(owner?.completed_at ?? ""),
+          };
+          setOwnerProfile(nextOwner);
+          if (dog) {
+            setProfile((current) => {
+              const nextProfile: DogProfile = {
+                ...current,
+                id: String(dog.id ?? current.id ?? "") || undefined,
+                birthday: String(dog.birth_date ?? current.birthday ?? ""),
+                isFirstTimeOwner: dog.is_first_time_owner === true ? "yes" : dog.is_first_time_owner === false ? "no" : "",
+                gender: String(dog.gender ?? "") as DogProfile["gender"],
+                daycareFrequency: String(dog.daycare_frequency ?? ""),
+                walkFrequency: String(dog.walk_frequency ?? ""),
+                concerns: String(dog.concerns ?? ""),
+                profileCompletedAt: String(dog.completed_at ?? ""),
+              };
+              writeLocal(PROFILE_KEY, nextProfile);
+              return nextProfile;
+            });
+          }
+          const needsOwner = !owner?.completed_at;
+          const needsDog = !dog?.completed_at;
+          setOnboardingRequired(needsOwner || needsDog);
+          setOnboardingStep(needsOwner ? "owner" : "dog");
         }
         if (recordResult.data) {
           const remoteRecords: DailyRecord[] = recordResult.data.map((item): DailyRecord => ({
@@ -1219,8 +1305,10 @@ export default function Home() {
     setSelectedAdminCustomer(customer);
     setAdminDetailLoading(true);
     setAdminReply("");
+    setAdminDetailOwnerProfile(null);
+    setAdminDetailDogProfile(null);
     const since = new Date(Date.now() - 1000 * 60 * 60 * 24 * 29).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
-    const [recordResult, messageResult, goalResult, completionResult] = await Promise.all([
+    const [recordResult, messageResult, goalResult, completionResult, ownerProfileResult, dogProfileResult] = await Promise.all([
       supabase
         .from("wt_daily_records")
         .select("id,category,recorded_on,recorded_time,duration_minutes,behavior_type,behavior_types,behavior_custom_text,behavior_custom_texts,behavior_intensity,mood,appetite,activity,toilet,sleep,behavior_note,good_moment")
@@ -1245,7 +1333,12 @@ export default function Home() {
         .select("id,goal_id,completed_on,completed_at")
         .eq("dog_id", customer.dogId)
         .gte("completed_on", since),
+      supabase.from("wt_owner_profiles").select("full_name,phone_number,address,owner_birth_date,onboarding_completed_at").eq("user_id", customer.ownerId).maybeSingle(),
+      supabase.from("wt_dogs").select("id,name,breed,birthday,birth_date,is_first_time_owner,gender,daycare_frequency,walk_frequency,concerns,profile_completed_at").eq("id", customer.dogId).maybeSingle(),
     ]);
+
+    if (!ownerProfileResult.error && ownerProfileResult.data) setAdminDetailOwnerProfile({ fullName: ownerProfileResult.data.full_name ?? "", phoneNumber: ownerProfileResult.data.phone_number ?? "", address: ownerProfileResult.data.address ?? "", birthDate: ownerProfileResult.data.owner_birth_date ?? "", completedAt: ownerProfileResult.data.onboarding_completed_at ?? "" });
+    if (!dogProfileResult.error && dogProfileResult.data) setAdminDetailDogProfile({ id: dogProfileResult.data.id, name: dogProfileResult.data.name, breed: dogProfileResult.data.breed ?? "", birthday: dogProfileResult.data.birth_date ?? dogProfileResult.data.birthday ?? "", isFirstTimeOwner: dogProfileResult.data.is_first_time_owner === true ? "yes" : dogProfileResult.data.is_first_time_owner === false ? "no" : "", gender: (dogProfileResult.data.gender ?? "") as DogProfile["gender"], daycareFrequency: dogProfileResult.data.daycare_frequency ?? "", walkFrequency: dogProfileResult.data.walk_frequency ?? "", concerns: dogProfileResult.data.concerns ?? "", profileCompletedAt: dogProfileResult.data.profile_completed_at ?? "" });
 
     if (recordResult.error || messageResult.error || goalResult.error || completionResult.error) {
       showNotice("顧客データを読み込めませんでした。Supabaseのmigration 008を確認してください");
@@ -1555,6 +1648,16 @@ export default function Home() {
     return Boolean(slot.sessionId && slot.sessionStatus !== "cancelled");
   }
 
+  function chooseTimelineTime(day: string, event: ReactMouseEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const minutes = Math.min(23 * 60 + 30, Math.max(0, Math.round(((event.clientY - rect.top) / rect.height * 24 * 60) / 30) * 30));
+    setEditingSlotId(null);
+    setSlotDate(day);
+    setSlotTime(`${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`);
+    window.setTimeout(() => document.querySelector(".slot-create-form")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+  }
+
   function editAvailabilitySlot(slot: AvailabilitySlot) {
     if (availabilitySlotIsLocked(slot)) {
       showNotice("予約済みの枠は直接変更できません。カレンダーで予約をキャンセルするか、個別変更してください");
@@ -1744,20 +1847,11 @@ export default function Home() {
       if (connection === "online") {
         const userId = await getUserId();
         if (!userId) throw new Error("No session");
-        const { data, error } = await supabase
-          .from("wt_dogs")
-          .upsert(
-            {
-              owner_id: userId,
-              name: profile.name,
-              breed: profile.breed || null,
-              birthday: profile.birthday || null,
-            },
-            { onConflict: "owner_id" },
-          )
-          .select("id")
-          .single();
-        if (error) throw error;
+        const [{ data, error }, { error: ownerError }] = await Promise.all([
+          supabase.from("wt_dogs").upsert({ owner_id: userId, name: profile.name, breed: profile.breed || null, birthday: profile.birthday || null, birth_date: profile.birthday || null, is_first_time_owner: profile.isFirstTimeOwner === "yes" ? true : profile.isFirstTimeOwner === "no" ? false : null, gender: profile.gender || null, daycare_frequency: profile.daycareFrequency, walk_frequency: profile.walkFrequency, concerns: profile.concerns, profile_completed_at: profile.profileCompletedAt || new Date().toISOString() }, { onConflict: "owner_id" }).select("id").single(),
+          supabase.from("wt_owner_profiles").upsert({ user_id: userId, full_name: ownerProfile.fullName.trim(), phone_number: ownerProfile.phoneNumber.trim(), address: ownerProfile.address.trim(), owner_birth_date: ownerProfile.birthDate || null, onboarding_completed_at: ownerProfile.completedAt || new Date().toISOString(), updated_at: new Date().toISOString() }),
+        ]);
+        if (error || ownerError) throw error ?? ownerError;
         setProfile((current) => ({ ...current, id: data.id }));
         showNotice("プロフィールを保存しました");
       } else {
@@ -1771,6 +1865,48 @@ export default function Home() {
       setSaving(false);
     }
   }
+
+  async function saveOwnerOnboarding(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const userId = await getUserId();
+    if (!userId) return;
+    setSaving(true);
+    const completedAt = new Date().toISOString();
+    const { error } = await supabase.from("wt_owner_profiles").upsert({ user_id: userId, full_name: ownerProfile.fullName.trim(), phone_number: ownerProfile.phoneNumber.trim(), address: ownerProfile.address.trim(), owner_birth_date: ownerProfile.birthDate || null, onboarding_completed_at: completedAt, updated_at: completedAt });
+    if (error) showNotice(`お客様情報を保存できませんでした（${error.message}）`);
+    else {
+      setOwnerProfile((current) => ({ ...current, completedAt }));
+      setOnboardingStep("dog");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    setSaving(false);
+  }
+
+  async function saveDogOnboarding(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const userId = await getUserId();
+    if (!userId) return;
+    setSaving(true);
+    const completedAt = new Date().toISOString();
+    const { data, error } = await supabase.from("wt_dogs").upsert({ owner_id: userId, name: profile.name.trim(), breed: profile.breed.trim() || null, birthday: profile.birthday || null, birth_date: profile.birthday || null, is_first_time_owner: profile.isFirstTimeOwner === "yes", gender: profile.gender, daycare_frequency: profile.daycareFrequency, walk_frequency: profile.walkFrequency, concerns: profile.concerns.trim(), profile_completed_at: completedAt, updated_at: completedAt }, { onConflict: "owner_id" }).select("id").single();
+    if (error) showNotice(`愛犬情報を保存できませんでした（${error.message}）`);
+    else {
+      const next = { ...profile, id: data.id, profileCompletedAt: completedAt };
+      setProfile(next);
+      writeLocal(PROFILE_KEY, next);
+      setOnboardingRequired(false);
+      setView("home");
+      router.replace("/");
+      showNotice("登録が完了しました。今日から一緒に記録を始めましょう");
+    }
+    setSaving(false);
+  }
+
+  useEffect(() => {
+    if (!authReady || !authenticated || anonymousUser) return;
+    if (userRole === "owner" && onboardingRequired && pathname !== "/onboarding") router.replace("/onboarding");
+    if ((!onboardingRequired || userRole !== "owner") && pathname === "/onboarding") router.replace("/");
+  }, [authReady, authenticated, anonymousUser, onboardingRequired, pathname, router, userRole]);
 
   async function saveRecord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2668,16 +2804,53 @@ export default function Home() {
 
   const profileView = (
     <form className="screen-form" onSubmit={saveProfile}>
-      <SectionTitle eyebrow="PROFILE" title="愛犬プロフィール" />
-      <p className="lead">コーチがその子らしさを理解するための、基本情報です。</p>
-      <div className="profile-symbol">{profile.name ? profile.name.slice(0, 1) : "犬"}</div>
-      <label className="field-label">名前<input value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} placeholder="例：むぎ" required /></label>
-      <label className="field-label">犬種<input value={profile.breed} onChange={(event) => setProfile({ ...profile, breed: event.target.value })} placeholder="例：トイプードル" /></label>
-      <label className="field-label">誕生日<input type="date" value={profile.birthday} onChange={(event) => setProfile({ ...profile, birthday: event.target.value })} /></label>
+      <SectionTitle eyebrow="PROFILE" title="飼い主・愛犬プロフィール" />
+      <p className="lead">担当コーチが、ご家族とその子に合った提案をするための情報です。</p>
+      <section className="profile-form-section"><div className="profile-section-heading"><span>01</span><div><h2>飼い主さまについて</h2><p>連絡とサポートに必要な情報</p></div></div>
+        <label className="field-label">お名前（氏名）<input autoComplete="name" value={ownerProfile.fullName} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullName: event.target.value })} placeholder="例：三宅 太郎" required /></label>
+        <label className="field-label">電話番号<input type="tel" inputMode="tel" autoComplete="tel" value={ownerProfile.phoneNumber} onChange={(event) => setOwnerProfile({ ...ownerProfile, phoneNumber: event.target.value })} placeholder="例：09012345678" required /></label>
+        <label className="field-label">生年月日<input type="date" autoComplete="bday" max={today()} value={ownerProfile.birthDate} onChange={(event) => setOwnerProfile({ ...ownerProfile, birthDate: event.target.value })} required /></label>
+        <label className="field-label">住所<textarea rows={3} autoComplete="street-address" value={ownerProfile.address} onChange={(event) => setOwnerProfile({ ...ownerProfile, address: event.target.value })} placeholder="都道府県から入力してください" required /></label>
+      </section>
+      <section className="profile-form-section"><div className="profile-section-heading"><span>02</span><div><h2>愛犬について</h2><p>生活リズムと気になること</p></div></div>
+        <div className="profile-symbol">{profile.name ? profile.name.slice(0, 1) : "犬"}</div>
+        <label className="field-label">名前<input value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} placeholder="例：むぎ" required /></label>
+        <label className="field-label">犬種<input value={profile.breed} onChange={(event) => setProfile({ ...profile, breed: event.target.value })} placeholder="例：トイプードル" required /></label>
+        <label className="field-label">誕生日<input type="date" max={today()} value={profile.birthday} onChange={(event) => setProfile({ ...profile, birthday: event.target.value })} required />{ageLabel(profile.birthday) && <small className="age-preview">{ageLabel(profile.birthday)}</small>}</label>
+        <label className="field-label">犬を飼うのは初めてですか？<select value={profile.isFirstTimeOwner} onChange={(event) => setProfile({ ...profile, isFirstTimeOwner: event.target.value as DogProfile["isFirstTimeOwner"] })} required><option value="">選択してください</option><option value="yes">はい、初めてです</option><option value="no">いいえ、飼った経験があります</option></select></label>
+        <label className="field-label">性別・避妊去勢<select value={profile.gender} onChange={(event) => setProfile({ ...profile, gender: event.target.value as DogProfile["gender"] })} required><option value="">選択してください</option><option value="male_neutered">男の子（去勢済み）</option><option value="male_intact">男の子（未去勢）</option><option value="female_spayed">女の子（避妊済み）</option><option value="female_intact">女の子（未避妊）</option><option value="unknown">不明・回答しない</option></select></label>
+        <label className="field-label">保育園への頻度<select value={profile.daycareFrequency} onChange={(event) => setProfile({ ...profile, daycareFrequency: event.target.value })} required><option value="">選択してください</option><option>通っていない</option><option>月に数回</option><option>週1回</option><option>週2〜3回</option><option>週4回以上</option></select></label>
+        <label className="field-label">散歩の頻度<select value={profile.walkFrequency} onChange={(event) => setProfile({ ...profile, walkFrequency: event.target.value })} required><option value="">選択してください</option><option>ほとんど行かない</option><option>週に数回</option><option>毎日1回</option><option>毎日2回</option><option>毎日3回以上</option></select></label>
+        <label className="field-label">主な悩み・気になっていること<textarea rows={5} value={profile.concerns} onChange={(event) => setProfile({ ...profile, concerns: event.target.value })} placeholder="例：散歩中に犬を見ると吠える。来客時に落ち着けない。" required /></label>
+      </section>
       <div className="privacy-card"><strong>記録について</strong><p>登録した情報は、あなたと担当コーチのサポートのために使用します。共有範囲は今後プロフィールから管理できるようにします。</p></div>
       <button className="primary-button" disabled={saving}>{saving ? "保存中…" : "プロフィールを保存"}<span>→</span></button>
       <div className="account-card"><span><small>ログイン中</small><strong>{userEmail}</strong></span><button type="button" onClick={() => void signOut()}>ログアウト</button></div>
     </form>
+  );
+
+  const onboardingView = (
+    <div className="onboarding-stage">
+      <header><strong>Wan Tone</strong><span>初期設定</span></header>
+      <main className="onboarding-card">
+        <div className="onboarding-progress"><span className={onboardingStep === "owner" ? "is-current" : "is-done"}>1<b>飼い主情報</b></span><i></i><span className={onboardingStep === "dog" ? "is-current" : ""}>2<b>愛犬情報</b></span></div>
+        {onboardingStep === "owner" ? <form onSubmit={saveOwnerOnboarding}><p className="card-label">WELCOME TO WAN TONE</p><h1>まず、飼い主さまのことを<br />教えてください。</h1><p className="onboarding-lead">担当コーチが安心してご連絡し、ご家族に合ったサポートを始めるための情報です。</p>
+          <label className="field-label">お名前（氏名）<input autoFocus autoComplete="name" value={ownerProfile.fullName} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullName: event.target.value })} placeholder="例：三宅 太郎" required /></label>
+          <label className="field-label">電話番号<input type="tel" inputMode="tel" autoComplete="tel" value={ownerProfile.phoneNumber} onChange={(event) => setOwnerProfile({ ...ownerProfile, phoneNumber: event.target.value })} placeholder="例：09012345678" required /></label>
+          <label className="field-label">生年月日<input type="date" autoComplete="bday" max={today()} value={ownerProfile.birthDate} onChange={(event) => setOwnerProfile({ ...ownerProfile, birthDate: event.target.value })} required /></label>
+          <label className="field-label">住所<textarea rows={3} autoComplete="street-address" value={ownerProfile.address} onChange={(event) => setOwnerProfile({ ...ownerProfile, address: event.target.value })} placeholder="都道府県から入力してください" required /></label>
+          <button className="onboarding-next" disabled={saving}>{saving ? "保存中…" : "愛犬情報へ進む"}<span>→</span></button>
+        </form> : <form onSubmit={saveDogOnboarding}><p className="card-label">ABOUT YOUR DOG</p><h1>次に、愛犬の毎日を<br />教えてください。</h1><p className="onboarding-lead">暮らし方まで分かると、コーチが記録の変化を正しく読み取りやすくなります。</p>
+          <div className="onboarding-grid"><label className="field-label">愛犬の名前<input autoFocus value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} placeholder="例：むぎ" required /></label><label className="field-label">犬種<input value={profile.breed} onChange={(event) => setProfile({ ...profile, breed: event.target.value })} placeholder="例：トイプードル" required /></label></div>
+          <label className="field-label">誕生日<input type="date" max={today()} value={profile.birthday} onChange={(event) => setProfile({ ...profile, birthday: event.target.value })} required />{ageLabel(profile.birthday) && <small className="age-preview">{ageLabel(profile.birthday)}</small>}</label>
+          <div className="onboarding-grid"><label className="field-label">犬を飼うのは初めて？<select value={profile.isFirstTimeOwner} onChange={(event) => setProfile({ ...profile, isFirstTimeOwner: event.target.value as DogProfile["isFirstTimeOwner"] })} required><option value="">選択してください</option><option value="yes">はい</option><option value="no">いいえ</option></select></label><label className="field-label">性別・避妊去勢<select value={profile.gender} onChange={(event) => setProfile({ ...profile, gender: event.target.value as DogProfile["gender"] })} required><option value="">選択してください</option><option value="male_neutered">男の子（去勢済み）</option><option value="male_intact">男の子（未去勢）</option><option value="female_spayed">女の子（避妊済み）</option><option value="female_intact">女の子（未避妊）</option><option value="unknown">不明・回答しない</option></select></label></div>
+          <div className="onboarding-grid"><label className="field-label">保育園への頻度<select value={profile.daycareFrequency} onChange={(event) => setProfile({ ...profile, daycareFrequency: event.target.value })} required><option value="">選択してください</option><option>通っていない</option><option>月に数回</option><option>週1回</option><option>週2〜3回</option><option>週4回以上</option></select></label><label className="field-label">散歩の頻度<select value={profile.walkFrequency} onChange={(event) => setProfile({ ...profile, walkFrequency: event.target.value })} required><option value="">選択してください</option><option>ほとんど行かない</option><option>週に数回</option><option>毎日1回</option><option>毎日2回</option><option>毎日3回以上</option></select></label></div>
+          <label className="field-label">主な悩み・気になっていること<textarea rows={5} value={profile.concerns} onChange={(event) => setProfile({ ...profile, concerns: event.target.value })} placeholder="吠える場面、散歩で困ること、日々気になる様子など" required /></label>
+          <div className="onboarding-actions"><button type="button" onClick={() => setOnboardingStep("owner")}>← 戻る</button><button className="onboarding-next" disabled={saving}>{saving ? "登録中…" : "登録して始める"}<span>→</span></button></div>
+        </form>}
+        <p className="onboarding-privacy">入力情報は担当コーチと管理者だけがサポート目的で確認できます。</p>
+      </main>
+    </div>
   );
 
   const authView = (
@@ -2750,6 +2923,12 @@ export default function Home() {
   const visibleManagedSlots = userRole === "admin" && slotCoachId
     ? availableSlots.filter((slot) => slot.coachId === slotCoachId)
     : availableSlots;
+  const timelineStart = (() => {
+    const anchor = dateKeyValue(timelineWeekAnchor);
+    return addToDateKey(timelineWeekAnchor, -((anchor.getUTCDay() + 6) % 7));
+  })();
+  const timelineDays = Array.from({ length: 7 }, (_, index) => addToDateKey(timelineStart, index));
+  const timelineHours = Array.from({ length: 24 }, (_, hour) => hour);
   const scheduleRange = (() => {
     const anchor = dateKeyValue(scheduleAnchor);
     let startKey = scheduleAnchor;
@@ -2803,6 +2982,7 @@ export default function Home() {
               <div><p className="card-label">CUSTOMER DETAIL</p><h1>{selectedAdminCustomer.dogName}</h1><span>{selectedAdminCustomer.breed || "犬種未登録"} · 直近30日</span></div>
               <b className={selectedAdminCustomer.concerns7d > 0 ? "needs-care" : "stable"}>{selectedAdminCustomer.concerns7d > 0 ? "要確認" : "安定"}</b>
             </section>
+            {(adminDetailOwnerProfile || adminDetailDogProfile) && <section className="customer-context-card"><div><p className="card-label">FAMILY PROFILE</p><h2>ご家族と愛犬の基本情報</h2></div><div className="customer-context-grid"><article><h3>飼い主さま</h3><dl><div><dt>お名前</dt><dd>{adminDetailOwnerProfile?.fullName || "未登録"}</dd></div><div><dt>電話番号</dt><dd>{adminDetailOwnerProfile?.phoneNumber || "未登録"}</dd></div><div><dt>住所</dt><dd>{adminDetailOwnerProfile?.address || "未登録"}</dd></div><div><dt>生年月日</dt><dd>{adminDetailOwnerProfile?.birthDate || "未登録"}</dd></div></dl></article><article><h3>{adminDetailDogProfile?.name || selectedAdminCustomer.dogName}</h3><dl><div><dt>年齢</dt><dd>{ageLabel(adminDetailDogProfile?.birthday ?? "") || "未登録"}</dd></div><div><dt>性別</dt><dd>{dogGenderLabel(adminDetailDogProfile?.gender ?? "")}</dd></div><div><dt>飼育経験</dt><dd>{adminDetailDogProfile?.isFirstTimeOwner === "yes" ? "初めて" : adminDetailDogProfile?.isFirstTimeOwner === "no" ? "経験あり" : "未登録"}</dd></div><div><dt>保育園</dt><dd>{adminDetailDogProfile?.daycareFrequency || "未登録"}</dd></div><div><dt>散歩</dt><dd>{adminDetailDogProfile?.walkFrequency || "未登録"}</dd></div></dl></article></div>{adminDetailDogProfile?.concerns && <div className="customer-concerns"><small>主な悩み・気になっていること</small><p>{adminDetailDogProfile.concerns}</p></div>}</section>}
             {adminDetailLoading ? <section className="admin-empty"><h2>記録を読み込んでいます</h2><p>少しだけお待ちください。</p></section> : (
               <>
                 <section className="admin-insight-grid">
@@ -2902,8 +3082,11 @@ export default function Home() {
                   <label>開始時間<input type="time" step="1800" value={slotTime} onChange={(event) => setSlotTime(event.target.value)} required /></label>
                   <fieldset className="slot-duration-picker"><legend>診断時間</legend><div>{[30, 60].map((minutes) => <button type="button" key={minutes} className={slotDuration === minutes ? "is-selected" : ""} onClick={() => setSlotDuration(minutes)}>{minutes}分</button>)}</div></fieldset>
                   <div className="slot-time-presets" aria-label="開始時間の候補">{["09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"].map((time) => <button type="button" key={time} className={slotTime === time ? "is-selected" : ""} onClick={() => setSlotTime(time)}>{time}</button>)}</div>
-                  <div className="slot-form-actions"><button disabled={saving}>{saving ? "保存中…" : editingSlotId ? "変更を保存" : "空き枠を追加"}</button>{editingSlotId && <button type="button" className="secondary" onClick={resetAvailabilityEditor}>編集をやめる</button>}</div>
+                  <div className="slot-form-actions"><button disabled={saving}>{saving ? "保存中…" : editingSlotId ? "変更を保存" : "空き枠を追加"}</button>{editingSlotId && <><button type="button" className="secondary" onClick={resetAvailabilityEditor}>編集をやめる</button><button type="button" className="delete-slot" onClick={() => { const slot = availableSlots.find((item) => item.id === editingSlotId); if (slot) void removeAvailabilitySlot(slot); }}>この枠を削除</button></>}</div>
                 </form>
+                <section className="availability-timeline"><div className="timeline-toolbar"><div><strong>週間タイムライン</strong><small>空白をタップして30分単位で追加</small></div><div><button onClick={() => setTimelineWeekAnchor(addToDateKey(timelineWeekAnchor, -7))}>←</button><button onClick={() => setTimelineWeekAnchor(today())}>今週</button><button onClick={() => setTimelineWeekAnchor(addToDateKey(timelineWeekAnchor, 7))}>→</button></div></div>
+                  <div className="timeline-scroll"><div className="timeline-grid"><aside><header></header>{timelineHours.map((hour) => <span key={hour}>{String(hour).padStart(2, "0")}:00</span>)}</aside>{timelineDays.map((day) => <section key={day} className={day === today() ? "is-today" : ""}><header><small>{new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(dateKeyValue(day))}</small><strong>{Number(day.slice(-2))}</strong></header><div className="timeline-day-body" onClick={(event) => chooseTimelineTime(day, event)}>{timelineHours.map((hour) => <i key={hour}></i>)}{visibleManagedSlots.filter((slot) => new Date(slot.startsAt).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }) === day).map((slot) => { const start = timeMinutesJst(slot.startsAt); const duration = Math.max(30, (new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60_000); return <button type="button" key={slot.id} className={`timeline-slot ${availabilitySlotIsLocked(slot) ? "is-booked" : ""}`} style={{ top: `${start / 1440 * 100}%`, height: `${duration / 1440 * 100}%` }} onClick={(event) => { event.stopPropagation(); if (availabilitySlotIsLocked(slot)) { setScheduleAnchor(day); setScheduleMode("day"); } else editAvailabilitySlot(slot); }}><b>{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(slot.startsAt))}</b><span>{availabilitySlotIsLocked(slot) ? "予約済" : "空き枠"}</span></button>; })}</div></section>)}</div></div>
+                </section>
                 <div className="staff-slot-list">{visibleManagedSlots.length ? visibleManagedSlots.map((slot) => <article key={slot.id} className={availabilitySlotIsLocked(slot) ? "is-booked" : "is-open"}><div className="slot-date"><span className="slot-status">{slot.sessionStatus === "completed" ? "完了済み" : slot.sessionStatus === "booked" ? "予約済み" : slot.sessionStatus === "cancelled" ? "予約取消済み" : "予約可能"}</span><strong>{formatOnlineDate(slot.startsAt)}</strong><small>{Math.round((new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60000)}分{userRole === "admin" ? ` · ${slot.coachName}` : ""}</small>{slot.ownerName && <em>{slot.ownerName}様</em>}</div><div className="slot-actions">{availabilitySlotIsLocked(slot) ? <button className="view-booking" onClick={() => { setScheduleAnchor(new Date(slot.startsAt).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" })); setScheduleMode("day"); }}>予約を確認</button> : <><button className="edit-slot" onClick={() => editAvailabilitySlot(slot)}>編集</button><button className="delete-slot" onClick={() => void removeAvailabilitySlot(slot)}>削除</button></>}</div></article>) : <p>これから予約できる空き枠はありません。</p>}</div>
               </section>
             )}
@@ -2978,6 +3161,7 @@ export default function Home() {
 
   if (!authReady) return <div className="auth-loading"><span className="loading-paw"><CareIcon name="paws" /></span><p>うちの子の記録を開いています…</p></div>;
   if (!authenticated || anonymousUser) return authView;
+  if (userRole === "owner" && onboardingRequired) return onboardingView;
   if ((userRole === "coach" || userRole === "admin") && staffMode === "staff") return adminView;
 
   return (
