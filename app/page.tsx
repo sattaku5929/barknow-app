@@ -481,9 +481,10 @@ export default function Home() {
   const [coachProfile, setCoachProfile] = useState<CoachProfile>({ displayName: "", headline: "", bio: "", credentials: "", avatarUrl: "", avatarPreset: "paw-green", meetUrl: "" });
   const [availableSlots, setAvailableSlots] = useState<AvailabilitySlot[]>([]);
   const [onlineSessions, setOnlineSessions] = useState<OnlineSession[]>([]);
-  const [slotStart, setSlotStart] = useState("");
+  const [slotDate, setSlotDate] = useState(today());
+  const [slotTime, setSlotTime] = useState("10:00");
   const [slotDuration, setSlotDuration] = useState(60);
-  const [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email: string; status: string; error: string }>({ connected: false, email: "", status: "", error: "" });
+  const [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email: string; status: string; error: string; configured: boolean; configurationError: string }>({ connected: false, email: "", status: "", error: "", configured: true, configurationError: "" });
   const [scheduleMode, setScheduleMode] = useState<"day" | "week" | "month">("week");
   const [scheduleAnchor, setScheduleAnchor] = useState(today());
   const [scheduleCoachFilter, setScheduleCoachFilter] = useState("all");
@@ -726,7 +727,7 @@ export default function Home() {
       if (sessionData.session?.access_token) {
         const response = await fetch("/api/google-calendar/status", { headers: { Authorization: `Bearer ${sessionData.session.access_token}` } });
         const status = await response.json().catch(() => null);
-        if (response.ok && status) setGoogleCalendar({ connected: Boolean(status.connected), email: status.connection?.google_email ?? "", status: status.connection?.sync_status ?? "", error: status.connection?.last_error ?? "" });
+        if (response.ok && status) setGoogleCalendar({ connected: Boolean(status.connected), email: status.connection?.google_email ?? "", status: status.connection?.sync_status ?? "", error: status.connection?.last_error ?? "", configured: status.configuration?.configured !== false, configurationError: status.configuration?.error ?? "" });
         void fetch("/api/google-calendar/sync", { method: "POST", headers: { Authorization: `Bearer ${sessionData.session.access_token}` } }).catch(() => undefined);
       }
     }
@@ -1003,11 +1004,14 @@ export default function Home() {
   useEffect(() => {
     if (!authReady || userRole !== "coach") return;
     const result = new URLSearchParams(window.location.search).get("googleCalendar");
+    const reason = new URLSearchParams(window.location.search).get("calendarReason");
     if (!result) return;
     const timer = window.setTimeout(() => {
       if (result === "connected") showNotice("Google Calendarと連携しました");
       else if (result === "denied") showNotice("Google Calendar連携がキャンセルされました");
-      else showNotice("Google Calendar連携を完了できませんでした");
+      else if (reason === "state_expired") showNotice("認証の有効時間が切れました。もう一度Googleと連携してください");
+      else if (reason === "configuration") showNotice("Google OAuthの環境設定を確認してください");
+      else showNotice("Google Calendar連携を完了できませんでした。Google Cloudの設定を確認してください");
       setStaffMode("staff");
       setAdminTab("coachProfile");
       window.history.replaceState({}, "", window.location.pathname);
@@ -1513,7 +1517,7 @@ export default function Home() {
     if (!window.confirm("Google Calendar連携を解除しますか？")) return;
     const response = await authorizedFetch("/api/google-calendar/status", { method: "DELETE" });
     if (response.ok) {
-      setGoogleCalendar({ connected: false, email: "", status: "", error: "" });
+      setGoogleCalendar({ connected: false, email: "", status: "", error: "", configured: true, configurationError: "" });
       showNotice("Google Calendar連携を解除しました");
     } else showNotice("連携を解除できませんでした");
   }
@@ -1521,13 +1525,14 @@ export default function Home() {
   async function addAvailabilitySlot(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user || !slotStart) return;
-    const startsAt = new Date(slotStart);
+    if (!userData.user || !slotDate || !slotTime) return;
+    const startsAt = new Date(`${slotDate}T${slotTime}:00+09:00`);
+    if (Number.isNaN(startsAt.getTime()) || startsAt.getTime() <= Date.now()) return showNotice("現在より後の日時を選んでください");
     const endsAt = new Date(startsAt.getTime() + slotDuration * 60_000);
     setSaving(true);
     const { error } = await supabase.from("wt_coach_availability_slots").insert({ coach_id: userData.user.id, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString() });
     if (error) showNotice(`空き枠を追加できませんでした（${error.message}）`);
-    else { setSlotStart(""); showNotice("オンライン対応枠を追加しました"); await loadStaffBookingWorkspace(); }
+    else { showNotice("オンライン対応枠を追加しました"); await loadStaffBookingWorkspace(); }
     setSaving(false);
   }
 
@@ -2547,7 +2552,7 @@ export default function Home() {
         <>
           <section className="coach-assigned-card">
             <div className={`coach-avatar coach-profile-avatar preset-${assignedCoachProfile?.avatarPreset ?? "paw-green"}`}>{assignedCoachProfile?.avatarUrl ? <img src={assignedCoachProfile.avatarUrl} alt="" /> : <CareIcon name="paws" />}</div>
-            <div><p className="card-label">YOUR COACH</p><h2>{assignedCoachProfile?.displayName || "担当コーチ"}</h2><strong>{assignedCoachProfile?.headline || "愛犬との暮らしを一緒に整えます"}</strong><p>{assignedCoachProfile?.bio || "記録を見ながら、まずは今いちばん気になることから話しましょう。"}</p>{assignedCoachProfile?.credentials && <small>{assignedCoachProfile.credentials}</small>}</div>
+            <div className="coach-identity"><p className="coach-role-label"><span></span>あなたの担当コーチ</p><h2>{assignedCoachProfile?.displayName || "担当コーチ"}</h2><strong>{assignedCoachProfile?.headline || "愛犬との暮らしを一緒に整えます"}</strong><p>{assignedCoachProfile?.bio || "記録を見ながら、まずは今いちばん気になることから話しましょう。"}</p>{assignedCoachProfile?.credentials && <small>{assignedCoachProfile.credentials}</small>}</div>
             <b>{coachingApplication.ownerConfirmedAt ? "担当確定" : "確認待ち"}</b>
           </section>
           {!coachingApplication.ownerConfirmedAt ? (
@@ -2792,7 +2797,7 @@ export default function Home() {
                   <div className="application-topics">{application.concernCategories.map((concern) => <span key={concern}>{coachingConcernLabel(concern)}</span>)}</div>
                   <div className="application-goal"><small>目指したい状態</small><p>{application.desiredOutcome}</p>{application.note && <><small>補足</small><p>{application.note}</p></>}</div>
                   <div className="application-actions">
-                    <label>担当コーチ<select value={application.assignedCoachId ?? ""} onChange={(event) => void assignCoachingApplication(application, event.target.value)} disabled={saving}><option value="">選択してください</option>{coaches.map((coach) => <option value={coach.userId} key={coach.userId}>{coach.email}</option>)}</select></label>
+                    <label>担当コーチ<select value={application.assignedCoachId ?? ""} onChange={(event) => void assignCoachingApplication(application, event.target.value)} disabled={saving}><option value="">選択してください</option>{coaches.map((coach) => <option value={coach.userId} key={coach.userId}>{coach.displayName ? `${coach.displayName}（${coach.email}）` : `名前未設定（${coach.email}）`}</option>)}</select></label>
                     <label>進行状況<select value={application.status} onChange={(event) => void updateCoachingStatus(application, event.target.value as CoachingStatus)} disabled={saving}><option value="submitted">受付中</option><option value="offered" disabled>コーチ確認中</option><option value="assigned" disabled>担当決定</option><option value="consulting" disabled={!application.assignedCoachId}>初回相談中</option><option value="payment_pending" disabled={!application.assignedCoachId}>お支払い待ち</option><option value="active" disabled={!application.assignedCoachId}>利用中</option><option value="closed">終了</option></select></label>
                   </div>
                   {assignmentErrors[application.id] && <p className="application-error">担当設定エラー：{assignmentErrors[application.id]}</p>}
@@ -2823,8 +2828,10 @@ export default function Home() {
                 <div className="admin-panel-heading"><div><p className="card-label">AVAILABILITY</p><h2>オンライン対応枠を追加</h2></div><span>日本時間</span></div>
                 <p className="staff-panel-lead">初回・継続診断で共通の空き枠です。予約が入った枠は自動で選択できなくなります。</p>
                 <form className="slot-create-form" onSubmit={addAvailabilitySlot}>
-                  <label>開始日時<input type="datetime-local" value={slotStart} min={new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }) + "T00:00"} onChange={(event) => setSlotStart(event.target.value)} required /></label>
-                  <label>所要時間<select value={slotDuration} onChange={(event) => setSlotDuration(Number(event.target.value))}><option value={30}>30分</option><option value={45}>45分</option><option value={60}>60分</option><option value={90}>90分</option></select></label>
+                  <label>日付<input type="date" value={slotDate} min={today()} onChange={(event) => setSlotDate(event.target.value)} required /></label>
+                  <label>開始時間<input type="time" step="1800" value={slotTime} onChange={(event) => setSlotTime(event.target.value)} required /></label>
+                  <fieldset className="slot-duration-picker"><legend>診断時間</legend><div>{[30, 60].map((minutes) => <button type="button" key={minutes} className={slotDuration === minutes ? "is-selected" : ""} onClick={() => setSlotDuration(minutes)}>{minutes}分</button>)}</div></fieldset>
+                  <div className="slot-time-presets" aria-label="開始時間の候補">{["09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"].map((time) => <button type="button" key={time} className={slotTime === time ? "is-selected" : ""} onClick={() => setSlotTime(time)}>{time}</button>)}</div>
                   <button disabled={saving}>{saving ? "追加中…" : "空き枠を追加"}</button>
                 </form>
                 <div className="staff-slot-list">{availableSlots.length ? availableSlots.map((slot) => <article key={slot.id}><div><strong>{formatOnlineDate(slot.startsAt)}</strong><small>{Math.round((new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60000)}分</small></div><button onClick={() => void removeAvailabilitySlot(slot.id)}>削除</button></article>) : <p>これから予約できる空き枠はありません。</p>}</div>
@@ -2856,7 +2863,7 @@ export default function Home() {
               <label>自己紹介<textarea rows={5} value={coachProfile.bio} onChange={(event) => setCoachProfile({ ...coachProfile, bio: event.target.value })} placeholder="オーナーへ伝えたいサポート方針など" /></label>
               <label>予備のGoogle Meet URL<input type="url" value={coachProfile.meetUrl} onChange={(event) => setCoachProfile({ ...coachProfile, meetUrl: event.target.value })} placeholder="https://meet.google.com/xxx-xxxx-xxx" /><small>Calendar未連携時に使用する予備URLです。</small></label>
             </div>
-            <section className={`google-calendar-card ${googleCalendar.connected ? "is-connected" : ""}`}><div className="google-calendar-mark">G</div><div><p className="card-label">GOOGLE CALENDAR</p><h3>{googleCalendar.connected ? "カレンダー連携済み" : "Google Calendarを連携"}</h3><p>{googleCalendar.connected ? `${googleCalendar.email} · 予約時にMeet予定を自動作成します。` : "予定あり時間を予約枠から除外し、予約確定時にGoogle Meet付き予定を作成します。"}</p>{googleCalendar.error && <small>{googleCalendar.error}</small>}</div>{googleCalendar.connected ? <button type="button" className="secondary" onClick={() => void disconnectGoogleCalendar()}>連携解除</button> : <button type="button" onClick={() => void connectGoogleCalendar()} disabled={saving}>Googleと連携</button>}</section>
+            <section className={`google-calendar-card ${googleCalendar.connected ? "is-connected" : ""} ${!googleCalendar.configured ? "has-error" : ""}`}><div className="google-calendar-mark">G</div><div><p className="card-label">GOOGLE CALENDAR</p><h3>{googleCalendar.connected ? "カレンダー連携済み" : !googleCalendar.configured ? "連携設定を確認してください" : "Google Calendarを連携"}</h3><p>{googleCalendar.connected ? `${googleCalendar.email} · 予約時にMeet予定を自動作成します。` : "予定あり時間を予約枠から除外し、予約確定時にGoogle Meet付き予定を作成します。"}</p>{googleCalendar.configurationError && <small>設定確認：{googleCalendar.configurationError}</small>}{googleCalendar.error && <small>同期エラー：{googleCalendar.error}</small>}</div>{googleCalendar.connected ? <button type="button" className="secondary" onClick={() => void disconnectGoogleCalendar()}>連携解除</button> : <button type="button" onClick={() => void connectGoogleCalendar()} disabled={saving || !googleCalendar.configured}>Googleと連携</button>}</section>
             <button className="staff-save-button" disabled={saving}>{saving ? "保存中…" : "プロフィールを保存"}</button>
           </form>
         )}
