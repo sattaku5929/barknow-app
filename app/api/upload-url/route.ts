@@ -1,7 +1,7 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { NextRequest, NextResponse } from "next/server";
-import { serviceSupabase } from "@/lib/server/supabase";
+import { authenticatedSupabase } from "@/lib/server/supabase";
 import { assertR2Configuration, R2ConfigurationError, r2BucketName, r2Client, r2PublicUrl } from "@/lib/r2";
 
 export const runtime = "nodejs";
@@ -30,15 +30,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ code: "auth_required", error: "ログイン情報を確認できませんでした。再度ログインしてください" }, { status: 401 });
   }
 
-  let admin: ReturnType<typeof serviceSupabase>;
+  let userClient: ReturnType<typeof authenticatedSupabase>;
   try {
-    admin = serviceSupabase();
+    userClient = authenticatedSupabase(token);
   } catch (error) {
-    console.error("Supabase server configuration error", error);
-    return NextResponse.json({ code: "supabase_server_not_configured", error: "サーバーの認証設定を確認してください" }, { status: 503 });
+    console.error("Supabase public configuration error", error);
+    return NextResponse.json({ code: "supabase_public_not_configured", error: "Supabaseの公開接続設定を確認してください" }, { status: 503 });
   }
 
-  const { data: authData, error: authError } = await admin.auth.getUser(token);
+  const { data: authData, error: authError } = await userClient.auth.getUser(token);
   const user = authData.user;
   if (authError || !user) {
     console.warn("Media upload authentication failed", authError?.message ?? "User not found");
@@ -59,13 +59,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { data: dog, error: dogError } = await admin.from("wt_dogs").select("id,owner_id").eq("id", dogId).eq("owner_id", ownerId).maybeSingle();
+    const { data: dog, error: dogError } = await userClient.from("wt_dogs").select("id,owner_id").eq("id", dogId).eq("owner_id", ownerId).maybeSingle();
     if (dogError) throw dogError;
     if (!dog) return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
     if (user.id !== ownerId) {
       const [{ data: role, error: roleError }, { data: assignment, error: assignmentError }] = await Promise.all([
-        admin.from("wt_user_roles").select("role").eq("user_id", user.id).maybeSingle(),
-        admin.from("wt_coach_assignments").select("id").eq("coach_id", user.id).eq("owner_id", ownerId).eq("dog_id", dogId).maybeSingle(),
+        userClient.from("wt_user_roles").select("role").eq("user_id", user.id).maybeSingle(),
+        userClient.from("wt_coach_assignments").select("id").eq("coach_id", user.id).eq("owner_id", ownerId).eq("dog_id", dogId).maybeSingle(),
       ]);
       if (roleError) throw roleError;
       if (assignmentError) throw assignmentError;
