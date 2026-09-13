@@ -24,6 +24,14 @@ type ChatInputProps = {
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 
+type UploadUrlResponse = {
+  uploadUrl?: string;
+  publicUrl?: string;
+  key?: string;
+  code?: string;
+  error?: string;
+};
+
 export default function ChatInput({ ownerId, dogId, sender, placeholder = "メッセージを入力", onSent }: ChatInputProps) {
   const [body, setBody] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -48,6 +56,27 @@ export default function ChatInput({ ownerId, dogId, sender, placeholder = "メ�
     setFile(next);
   }
 
+  async function accessToken(forceRefresh = false): Promise<string> {
+    if (forceRefresh) {
+      const { data, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError || !data.session?.access_token) throw new Error("ログインの有効期限が切れました。再度ログインしてください");
+      return data.session.access_token;
+    }
+    const { data, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !data.session?.access_token) throw new Error("ログイン情報を確認できませんでした。再度ログインしてください");
+    const expiresSoon = (data.session.expires_at ?? 0) * 1000 < Date.now() + 60_000;
+    return expiresSoon ? accessToken(true) : data.session.access_token;
+  }
+
+  async function requestUploadUrl(currentFile: File, token: string) {
+    return fetch("/api/upload-url", {
+      method: "POST",
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName: currentFile.name, fileType: currentFile.type, fileSize: currentFile.size, ownerId, dogId }),
+    });
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const text = body.trim();
@@ -55,24 +84,28 @@ export default function ChatInput({ ownerId, dogId, sender, placeholder = "メ�
     setBusy(true);
     setError("");
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) throw new Error("ログイン情報を確認できませんでした");
+      let token = await accessToken();
 
       let mediaUrl = "";
       let mediaKey = "";
       let mediaType: "image" | "video" | "" = "";
       if (file) {
         mediaType = file.type.startsWith("image/") ? "image" : "video";
-        const signedResponse = await fetch("/api/upload-url", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ fileName: file.name, fileType: file.type, fileSize: file.size, ownerId, dogId }),
-        });
-        const signed = await signedResponse.json().catch(() => null) as { uploadUrl?: string; publicUrl?: string; key?: string; error?: string } | null;
+        let signedResponse = await requestUploadUrl(file, token);
+        if (signedResponse.status === 401) {
+          token = await accessToken(true);
+          signedResponse = await requestUploadUrl(file, token);
+        }
+        const signed = await signedResponse.json().catch(() => null) as UploadUrlResponse | null;
         if (!signedResponse.ok || !signed?.uploadUrl || !signed.publicUrl) throw new Error(signed?.error || "アップロードを準備できませんでした");
         const uploadResponse = await fetch(signed.uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-        if (!uploadResponse.ok) throw new Error("メディアをアップロードできませんでした");
+        if (!uploadResponse.ok) {
+          const detail = await uploadResponse.text().catch(() => "");
+          console.error("R2 upload failed", uploadResponse.status, detail.slice(0, 300));
+          throw new Error(uploadResponse.status === 401 || uploadResponse.status === 403
+            ? "R2へのアップロードが拒否されました。R2の認証情報とCORS設定を確認してください"
+            : "メディアをアップロードできませんでした");
+        }
         mediaUrl = signed.publicUrl;
         mediaKey = signed.key ?? "";
       }
