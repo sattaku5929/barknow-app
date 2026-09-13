@@ -122,7 +122,18 @@ type CoachProfile = {
   meetUrl: string;
 };
 
-type AvailabilitySlot = { id: string; startsAt: string; endsAt: string };
+type AvailabilitySlot = {
+  id: string;
+  coachId: string;
+  coachName: string;
+  coachEmail: string;
+  startsAt: string;
+  endsAt: string;
+  active: boolean;
+  sessionId: string;
+  sessionStatus: OnlineSession["status"] | "";
+  ownerName: string;
+};
 type OnlineSession = {
   id: string;
   ownerId: string;
@@ -131,6 +142,8 @@ type OnlineSession = {
   dogName: string;
   coachId: string;
   coachName: string;
+  coachAvatarUrl: string;
+  coachHeadline: string;
   sessionType: "initial" | "followup";
   status: "booked" | "completed" | "cancelled";
   startsAt: string;
@@ -484,6 +497,8 @@ export default function Home() {
   const [slotDate, setSlotDate] = useState(today());
   const [slotTime, setSlotTime] = useState("10:00");
   const [slotDuration, setSlotDuration] = useState(60);
+  const [slotCoachId, setSlotCoachId] = useState("");
+  const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
   const [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email: string; status: string; error: string; configured: boolean; configurationError: string }>({ connected: false, email: "", status: "", error: "", configured: true, configurationError: "" });
   const [scheduleMode, setScheduleMode] = useState<"day" | "week" | "month">("week");
   const [scheduleAnchor, setScheduleAnchor] = useState(today());
@@ -721,8 +736,6 @@ export default function Home() {
     if (userRole === "coach") {
       const { data } = await supabase.from("wt_coach_profiles").select("display_name,headline,bio,credentials,avatar_url,avatar_preset,meet_url").eq("coach_id", userData.user.id).maybeSingle();
       if (data) setCoachProfile({ displayName: data.display_name ?? "", headline: data.headline ?? "", bio: data.bio ?? "", credentials: data.credentials ?? "", avatarUrl: data.avatar_url ?? "", avatarPreset: data.avatar_preset ?? "paw-green", meetUrl: data.meet_url ?? "" });
-      const { data: slots } = await supabase.from("wt_coach_availability_slots").select("id,starts_at,ends_at").eq("coach_id", userData.user.id).eq("active", true).gte("starts_at", new Date().toISOString()).order("starts_at");
-      if (slots) setAvailableSlots(slots.map((slot) => ({ id: slot.id, startsAt: slot.starts_at, endsAt: slot.ends_at })));
       const { data: sessionData } = await supabase.auth.getSession();
       if (sessionData.session?.access_token) {
         const response = await fetch("/api/google-calendar/status", { headers: { Authorization: `Bearer ${sessionData.session.access_token}` } });
@@ -731,8 +744,17 @@ export default function Home() {
         void fetch("/api/google-calendar/sync", { method: "POST", headers: { Authorization: `Bearer ${sessionData.session.access_token}` } }).catch(() => undefined);
       }
     }
-    const { data: sessions } = await supabase.rpc("wt_staff_online_sessions");
-    if (sessions) setOnlineSessions(sessions.map((session: Record<string, unknown>) => ({ id: String(session.session_id), ownerId: String(session.owner_id ?? ""), ownerEmail: String(session.owner_email ?? ""), ownerName: String(session.owner_name ?? session.owner_email ?? "オーナー"), dogName: String(session.dog_name ?? ""), coachId: String(session.coach_id ?? ""), coachName: String(session.coach_name ?? "コーチ"), sessionType: session.session_type === "followup" ? "followup" : "initial", status: String(session.status) as OnlineSession["status"], startsAt: String(session.starts_at), endsAt: String(session.ends_at), meetUrl: String(session.meet_url ?? ""), calendarSyncStatus: String(session.calendar_sync_status ?? "not_connected") as OnlineSession["calendarSyncStatus"], calendarSyncError: String(session.calendar_sync_error ?? "") })));
+    const [{ data: slots }, { data: sessions }] = await Promise.all([
+      supabase.rpc("wt_staff_availability_slots"),
+      supabase.rpc("wt_staff_online_sessions"),
+    ]);
+    if (slots) setAvailableSlots(slots.map((slot: Record<string, unknown>) => ({
+      id: String(slot.slot_id), coachId: String(slot.coach_id), coachName: String(slot.coach_name ?? "コーチ"),
+      coachEmail: String(slot.coach_email ?? ""), startsAt: String(slot.starts_at), endsAt: String(slot.ends_at),
+      active: Boolean(slot.active), sessionId: String(slot.session_id ?? ""),
+      sessionStatus: String(slot.session_status ?? "") as AvailabilitySlot["sessionStatus"], ownerName: String(slot.owner_name ?? ""),
+    })));
+    if (sessions) setOnlineSessions(sessions.map((session: Record<string, unknown>) => ({ id: String(session.session_id), ownerId: String(session.owner_id ?? ""), ownerEmail: String(session.owner_email ?? ""), ownerName: String(session.owner_name ?? session.owner_email ?? "オーナー"), dogName: String(session.dog_name ?? ""), coachId: String(session.coach_id ?? ""), coachName: String(session.coach_name ?? "コーチ"), coachAvatarUrl: String(session.coach_avatar_url ?? ""), coachHeadline: String(session.coach_headline ?? ""), sessionType: session.session_type === "followup" ? "followup" : "initial", status: String(session.status) as OnlineSession["status"], startsAt: String(session.starts_at), endsAt: String(session.ends_at), meetUrl: String(session.meet_url ?? ""), calendarSyncStatus: String(session.calendar_sync_status ?? "not_connected") as OnlineSession["calendarSyncStatus"], calendarSyncError: String(session.calendar_sync_error ?? "") })));
   }
 
   async function loadOwnerBookingWorkspace(application: CoachingApplication) {
@@ -742,11 +764,11 @@ export default function Home() {
       supabase.from("wt_online_sessions").select("id,session_type,status,starts_at,ends_at,meet_url,calendar_sync_status,calendar_sync_error").eq("application_id", application.id).order("starts_at"),
     ]);
     if (profileData) setAssignedCoachProfile({ displayName: profileData.display_name ?? "担当コーチ", headline: profileData.headline ?? "", bio: profileData.bio ?? "", credentials: profileData.credentials ?? "", avatarUrl: profileData.avatar_url ?? "", avatarPreset: profileData.avatar_preset ?? "paw-green", meetUrl: profileData.meet_url ?? "" });
-    if (sessions) setOnlineSessions(sessions.map((session) => ({ id: session.id, ownerId: "", ownerEmail: "", ownerName: "", dogName, coachId: application.assignedCoachId ?? "", coachName: profileData?.display_name ?? "担当コーチ", sessionType: session.session_type as "initial" | "followup", status: session.status as OnlineSession["status"], startsAt: session.starts_at, endsAt: session.ends_at, meetUrl: session.meet_url ?? "", calendarSyncStatus: (session.calendar_sync_status ?? "not_connected") as OnlineSession["calendarSyncStatus"], calendarSyncError: session.calendar_sync_error ?? "" })));
+    if (sessions) setOnlineSessions(sessions.map((session) => ({ id: session.id, ownerId: "", ownerEmail: "", ownerName: "", dogName, coachId: application.assignedCoachId ?? "", coachName: profileData?.display_name ?? "担当コーチ", coachAvatarUrl: profileData?.avatar_url ?? "", coachHeadline: profileData?.headline ?? "", sessionType: session.session_type as "initial" | "followup", status: session.status as OnlineSession["status"], startsAt: session.starts_at, endsAt: session.ends_at, meetUrl: session.meet_url ?? "", calendarSyncStatus: (session.calendar_sync_status ?? "not_connected") as OnlineSession["calendarSyncStatus"], calendarSyncError: session.calendar_sync_error ?? "" })));
     if (application.ownerConfirmedAt) {
       const { data: slots } = await supabase.rpc("wt_owner_available_slots", { target_application_id: application.id });
       if (slots) {
-        let mapped: AvailabilitySlot[] = slots.map((slot: Record<string, unknown>) => ({ id: String(slot.slot_id), startsAt: String(slot.starts_at), endsAt: String(slot.ends_at) }));
+        let mapped: AvailabilitySlot[] = slots.map((slot: Record<string, unknown>) => ({ id: String(slot.slot_id), coachId: application.assignedCoachId ?? "", coachName: profileData?.display_name ?? "担当コーチ", coachEmail: "", startsAt: String(slot.starts_at), endsAt: String(slot.ends_at), active: true, sessionId: "", sessionStatus: "", ownerName: "" }));
         const { data: sessionData } = await supabase.auth.getSession();
         if (mapped.length && sessionData.session?.access_token) {
           const response = await fetch("/api/google-calendar/freebusy", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionData.session.access_token}` }, body: JSON.stringify({ applicationId: application.id, timeMin: mapped[0].startsAt, timeMax: mapped[mapped.length - 1].endsAt }) });
@@ -1522,25 +1544,68 @@ export default function Home() {
     } else showNotice("連携を解除できませんでした");
   }
 
-  async function addAvailabilitySlot(event: FormEvent<HTMLFormElement>) {
+  function resetAvailabilityEditor() {
+    setEditingSlotId(null);
+    setSlotDate(today());
+    setSlotTime("10:00");
+    setSlotDuration(60);
+  }
+
+  function availabilitySlotIsLocked(slot: AvailabilitySlot) {
+    return Boolean(slot.sessionId && slot.sessionStatus !== "cancelled");
+  }
+
+  function editAvailabilitySlot(slot: AvailabilitySlot) {
+    if (availabilitySlotIsLocked(slot)) {
+      showNotice("予約済みの枠は直接変更できません。カレンダーで予約をキャンセルするか、個別変更してください");
+      setScheduleAnchor(new Date(slot.startsAt).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }));
+      setScheduleMode("day");
+      return;
+    }
+    const startsAt = new Date(slot.startsAt);
+    setEditingSlotId(slot.id);
+    setSlotCoachId(slot.coachId);
+    setSlotDate(startsAt.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }));
+    setSlotTime(new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Tokyo" }).format(startsAt));
+    setSlotDuration(Math.round((new Date(slot.endsAt).getTime() - startsAt.getTime()) / 60_000));
+  }
+
+  async function saveAvailabilitySlot(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user || !slotDate || !slotTime) return;
+    const targetCoachId = userRole === "admin" ? slotCoachId : userData.user.id;
+    if (!targetCoachId) return showNotice("対応枠を登録するコーチを選択してください");
     const startsAt = new Date(`${slotDate}T${slotTime}:00+09:00`);
     if (Number.isNaN(startsAt.getTime()) || startsAt.getTime() <= Date.now()) return showNotice("現在より後の日時を選んでください");
     const endsAt = new Date(startsAt.getTime() + slotDuration * 60_000);
     setSaving(true);
-    const { error } = await supabase.from("wt_coach_availability_slots").insert({ coach_id: userData.user.id, starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString() });
-    if (error) showNotice(`空き枠を追加できませんでした（${error.message}）`);
-    else { showNotice("オンライン対応枠を追加しました"); await loadStaffBookingWorkspace(); }
+    const { error } = editingSlotId
+      ? await supabase.rpc("wt_staff_update_availability_slot", { target_slot_id: editingSlotId, next_starts_at: startsAt.toISOString(), next_ends_at: endsAt.toISOString() })
+      : await supabase.rpc("wt_staff_create_availability_slot", { target_coach_id: targetCoachId, next_starts_at: startsAt.toISOString(), next_ends_at: endsAt.toISOString() });
+    if (error) showNotice(`${editingSlotId ? "空き枠を変更" : "空き枠を追加"}できませんでした（${error.message}）`);
+    else {
+      showNotice(editingSlotId ? "オンライン対応枠を変更しました" : "オンライン対応枠を追加しました");
+      resetAvailabilityEditor();
+      await loadStaffBookingWorkspace();
+    }
     setSaving(false);
   }
 
-  async function removeAvailabilitySlot(slotId: string) {
-    if (!window.confirm("この対応枠を削除しますか？")) return;
-    const { error } = await supabase.from("wt_coach_availability_slots").delete().eq("id", slotId);
+  async function removeAvailabilitySlot(slot: AvailabilitySlot) {
+    if (availabilitySlotIsLocked(slot)) {
+      showNotice(`この枠は${slot.ownerName || "オーナー"}が予約済みです。先に予約をキャンセルするか、個別変更してください`);
+      setScheduleAnchor(new Date(slot.startsAt).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }));
+      setScheduleMode("day");
+      return;
+    }
+    if (!window.confirm(`${formatOnlineDate(slot.startsAt)}の対応枠を削除しますか？`)) return;
+    const { error } = await supabase.rpc("wt_staff_delete_availability_slot", { target_slot_id: slot.id });
     showNotice(error ? `削除できませんでした（${error.message}）` : "対応枠を削除しました");
-    if (!error) await loadStaffBookingWorkspace();
+    if (!error) {
+      if (editingSlotId === slot.id) resetAvailabilityEditor();
+      await loadStaffBookingWorkspace();
+    }
   }
 
   async function bookOnlineSession(slot: AvailabilitySlot) {
@@ -2681,6 +2746,10 @@ export default function Home() {
     : adminAccounts.filter((account) => account.role === adminAccountFilter);
   const scheduleCoaches = Array.from(new Map(onlineSessions.filter((session) => session.coachId).map((session) => [session.coachId, session.coachName])).entries());
   const scheduleOwners = Array.from(new Map(onlineSessions.filter((session) => session.ownerId).map((session) => [session.ownerId, session.ownerName])).entries());
+  const slotCoachOptions = adminAccounts.filter((account) => account.role === "coach");
+  const visibleManagedSlots = userRole === "admin" && slotCoachId
+    ? availableSlots.filter((slot) => slot.coachId === slotCoachId)
+    : availableSlots;
   const scheduleRange = (() => {
     const anchor = dateKeyValue(scheduleAnchor);
     let startKey = scheduleAnchor;
@@ -2823,18 +2892,19 @@ export default function Home() {
         ))}
         {adminTab === "schedule" && (
           <div className="staff-booking-workspace">
-            {userRole === "coach" && (
+            {(userRole === "coach" || userRole === "admin") && (
               <section className="staff-schedule-panel">
-                <div className="admin-panel-heading"><div><p className="card-label">AVAILABILITY</p><h2>オンライン対応枠を追加</h2></div><span>日本時間</span></div>
-                <p className="staff-panel-lead">初回・継続診断で共通の空き枠です。予約が入った枠は自動で選択できなくなります。</p>
-                <form className="slot-create-form" onSubmit={addAvailabilitySlot}>
+                <div className="admin-panel-heading"><div><p className="card-label">AVAILABILITY</p><h2>{editingSlotId ? "オンライン対応枠を編集" : "オンライン対応枠を登録"}</h2></div><span>日本時間</span></div>
+                <p className="staff-panel-lead">30分／60分単位で登録できます。予約済みの枠は、お客様との約束を守るため直接変更・削除できません。</p>
+                <form className={`slot-create-form ${editingSlotId ? "is-editing" : ""}`} onSubmit={saveAvailabilitySlot}>
+                  {userRole === "admin" && <label className="slot-coach-select">担当コーチ<select value={slotCoachId} onChange={(event) => { setSlotCoachId(event.target.value); setEditingSlotId(null); }} required><option value="">選択してください</option>{slotCoachOptions.map((coach) => <option key={coach.userId} value={coach.userId}>{coach.displayName ? `${coach.displayName}（${coach.email}）` : `名前未設定（${coach.email}）`}</option>)}</select></label>}
                   <label>日付<input type="date" value={slotDate} min={today()} onChange={(event) => setSlotDate(event.target.value)} required /></label>
                   <label>開始時間<input type="time" step="1800" value={slotTime} onChange={(event) => setSlotTime(event.target.value)} required /></label>
                   <fieldset className="slot-duration-picker"><legend>診断時間</legend><div>{[30, 60].map((minutes) => <button type="button" key={minutes} className={slotDuration === minutes ? "is-selected" : ""} onClick={() => setSlotDuration(minutes)}>{minutes}分</button>)}</div></fieldset>
                   <div className="slot-time-presets" aria-label="開始時間の候補">{["09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"].map((time) => <button type="button" key={time} className={slotTime === time ? "is-selected" : ""} onClick={() => setSlotTime(time)}>{time}</button>)}</div>
-                  <button disabled={saving}>{saving ? "追加中…" : "空き枠を追加"}</button>
+                  <div className="slot-form-actions"><button disabled={saving}>{saving ? "保存中…" : editingSlotId ? "変更を保存" : "空き枠を追加"}</button>{editingSlotId && <button type="button" className="secondary" onClick={resetAvailabilityEditor}>編集をやめる</button>}</div>
                 </form>
-                <div className="staff-slot-list">{availableSlots.length ? availableSlots.map((slot) => <article key={slot.id}><div><strong>{formatOnlineDate(slot.startsAt)}</strong><small>{Math.round((new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60000)}分</small></div><button onClick={() => void removeAvailabilitySlot(slot.id)}>削除</button></article>) : <p>これから予約できる空き枠はありません。</p>}</div>
+                <div className="staff-slot-list">{visibleManagedSlots.length ? visibleManagedSlots.map((slot) => <article key={slot.id} className={availabilitySlotIsLocked(slot) ? "is-booked" : "is-open"}><div className="slot-date"><span className="slot-status">{slot.sessionStatus === "completed" ? "完了済み" : slot.sessionStatus === "booked" ? "予約済み" : slot.sessionStatus === "cancelled" ? "予約取消済み" : "予約可能"}</span><strong>{formatOnlineDate(slot.startsAt)}</strong><small>{Math.round((new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60000)}分{userRole === "admin" ? ` · ${slot.coachName}` : ""}</small>{slot.ownerName && <em>{slot.ownerName}様</em>}</div><div className="slot-actions">{availabilitySlotIsLocked(slot) ? <button className="view-booking" onClick={() => { setScheduleAnchor(new Date(slot.startsAt).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" })); setScheduleMode("day"); }}>予約を確認</button> : <><button className="edit-slot" onClick={() => editAvailabilitySlot(slot)}>編集</button><button className="delete-slot" onClick={() => void removeAvailabilitySlot(slot)}>削除</button></>}</div></article>) : <p>これから予約できる空き枠はありません。</p>}</div>
               </section>
             )}
             <section className="staff-schedule-panel">
@@ -2847,7 +2917,7 @@ export default function Home() {
                   <select value={scheduleOwnerFilter} onChange={(event) => setScheduleOwnerFilter(event.target.value)}><option value="all">すべてのオーナー</option>{scheduleOwners.map(([id, name]) => <option value={id} key={id}>{name}</option>)}</select>
                 </div>
               </div>
-              <div className={`schedule-calendar mode-${scheduleMode}`}>{scheduleDays.map((day) => <section key={day.key} className={day.key === today() ? "is-today" : ""}><header><strong>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric" }).format(day.date)}</strong><small>{new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(day.date)}</small><b>{day.sessions.length}</b></header><div>{day.sessions.map((session) => <article key={session.id} className={`session-${session.status}`}><time>{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(session.startsAt))}–{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(session.endsAt))}</time><strong>{session.ownerName || session.ownerEmail}</strong><p>{session.dogName} · {session.coachName}</p><small>{session.sessionType === "initial" ? "初回" : "継続"} · {session.status === "booked" ? "確定" : session.status === "completed" ? "完了" : "取消"}</small><div className="calendar-event-actions">{session.meetUrl && session.status === "booked" && <a href={session.meetUrl} target="_blank" rel="noreferrer">Meet</a>}{session.status === "booked" && <><button onClick={() => void updateOnlineSessionStatus(session.id, "completed")}>完了</button><button className="is-danger" onClick={() => void updateOnlineSessionStatus(session.id, "cancelled")}>取消</button></>}</div>{session.calendarSyncStatus !== "synced" && <em className={`sync-${session.calendarSyncStatus}`}>{session.calendarSyncStatus === "error" ? "Google同期エラー" : session.calendarSyncStatus === "not_connected" ? "Google未連携" : "Google同期中"}</em>}</article>)}</div></section>)}</div>
+              <div className={`schedule-calendar mode-${scheduleMode}`}>{scheduleDays.map((day) => <section key={day.key} className={day.key === today() ? "is-today" : ""}><header><strong>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric" }).format(day.date)}</strong><small>{new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(day.date)}</small><b>{day.sessions.length}</b></header><div>{day.sessions.map((session) => <article key={session.id} className={`session-${session.status}`}><time>{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(session.startsAt))}–{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(session.endsAt))}</time><strong>{session.ownerName || session.ownerEmail}</strong><p>{session.dogName}</p><div className="calendar-coach-card"><span>{session.coachAvatarUrl ? <img src={session.coachAvatarUrl} alt="" /> : session.coachName.slice(0, 1)}</span><div><small>担当コーチ</small><b>{session.coachName}</b>{session.coachHeadline && <em>{session.coachHeadline}</em>}</div></div><small>{session.sessionType === "initial" ? "初回" : "継続"} · {session.status === "booked" ? "確定" : session.status === "completed" ? "完了" : "取消"}</small><div className="calendar-event-actions">{session.meetUrl && session.status === "booked" && <a href={session.meetUrl} target="_blank" rel="noreferrer">Meet</a>}{session.status === "booked" && <><button onClick={() => void updateOnlineSessionStatus(session.id, "completed")}>完了</button><button className="is-danger" onClick={() => void updateOnlineSessionStatus(session.id, "cancelled")}>取消</button></>}</div>{session.calendarSyncStatus !== "synced" && <em className={`sync-${session.calendarSyncStatus}`}>{session.calendarSyncStatus === "error" ? "Google同期エラー" : session.calendarSyncStatus === "not_connected" ? "Google未連携" : "Google同期中"}</em>}</article>)}</div></section>)}</div>
               {!filteredScheduleSessions.length && <section className="admin-empty compact"><h2>この期間の予約はありません</h2><p>表示期間または絞り込み条件を変更してください。</p></section>}
             </section>
           </div>
