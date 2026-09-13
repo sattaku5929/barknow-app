@@ -2,6 +2,7 @@
 
 import { FormEvent, MouseEvent as ReactMouseEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import ChatInput, { SentChatMessage } from "@/components/ChatInput";
 import { supabase } from "./supabase";
 
 type View = "home" | "goals" | "record" | "report" | "coach" | "profile";
@@ -60,8 +61,30 @@ type CoachMessage = {
   id: string;
   sender: "owner" | "coach";
   body: string;
+  mediaUrl: string;
+  mediaType: "image" | "video" | "";
+  mediaName: string;
   createdAt: string;
 };
+
+function mapCoachMessage(item: Record<string, unknown>): CoachMessage {
+  return {
+    id: String(item.id),
+    sender: item.sender === "coach" ? "coach" : "owner",
+    body: String(item.body ?? ""),
+    mediaUrl: String(item.media_url ?? ""),
+    mediaType: item.media_type === "image" || item.media_type === "video" ? item.media_type : "",
+    mediaName: String(item.media_name ?? ""),
+    createdAt: String(item.created_at),
+  };
+}
+
+function MessageMedia({ message }: { message: CoachMessage }) {
+  if (!message.mediaUrl || !message.mediaType) return null;
+  return message.mediaType === "image"
+    ? <a className="message-media" href={message.mediaUrl} target="_blank" rel="noreferrer"><img src={message.mediaUrl} alt={message.mediaName || "共有された画像"} loading="lazy" /></a>
+    : <div className="message-media"><video src={message.mediaUrl} controls playsInline preload="metadata">動画を再生できません。</video></div>;
+}
 
 type CareGoal = {
   id: string;
@@ -499,7 +522,6 @@ export default function Home() {
   const [adminDetailOwnerProfile, setAdminDetailOwnerProfile] = useState<OwnerProfile | null>(null);
   const [adminDetailDogProfile, setAdminDetailDogProfile] = useState<DogProfile | null>(null);
   const [adminDetailLoading, setAdminDetailLoading] = useState(false);
-  const [adminReply, setAdminReply] = useState("");
   const [currentUserId, setCurrentUserId] = useState("");
   const [view, setView] = useState<View>("home");
   const [connection, setConnection] = useState<Connection>("checking");
@@ -529,7 +551,6 @@ export default function Home() {
   const [sleep, setSleep] = useState<Status>("ふつう");
   const [behaviorNote, setBehaviorNote] = useState("");
   const [goodMoment, setGoodMoment] = useState("");
-  const [draftMessage, setDraftMessage] = useState("");
   const [coachingApplication, setCoachingApplication] = useState<CoachingApplication | null>(null);
   const [coachingConcerns, setCoachingConcerns] = useState<string[]>([]);
   const [coachingOutcome, setCoachingOutcome] = useState("");
@@ -837,7 +858,7 @@ export default function Home() {
       behaviorCustomTexts: record.behaviorCustomTexts?.length ? record.behaviorCustomTexts : record.behaviorCustomText ? [record.behaviorCustomText] : [],
       behaviorIntensity: record.behaviorIntensity ?? null,
     }));
-    const localMessages = readLocal<CoachMessage[]>(MESSAGES_KEY, []);
+    const localMessages = readLocal<CoachMessage[]>(MESSAGES_KEY, []).map((message) => ({ ...message, mediaUrl: message.mediaUrl ?? "", mediaType: message.mediaType ?? "", mediaName: message.mediaName ?? "" }));
     const localCareGoals = readLocal<CareGoal[]>(CARE_GOALS_KEY, []).map((goal) => ({ ...goal, reminderTime: goal.reminderTime ?? null }));
     const localGoalCompletions = readLocal<GoalCompletion[]>(GOAL_COMPLETIONS_KEY, []);
     const savedCustomBehaviors = readLocal<string[]>(CUSTOM_BEHAVIORS_KEY, []);
@@ -894,7 +915,7 @@ export default function Home() {
             .limit(100),
           supabase
             .from("wt_coach_messages")
-            .select("id,sender,body,created_at")
+            .select("*")
             .eq("owner_id", userId)
             .order("created_at", { ascending: true })
             .limit(50),
@@ -986,12 +1007,7 @@ export default function Home() {
           writeLocal(CUSTOM_BEHAVIORS_KEY, mergedCustomBehaviors);
         }
         if (messageResult.data) {
-          const remoteMessages = messageResult.data.map((item) => ({
-            id: item.id,
-            sender: item.sender as "owner" | "coach",
-            body: item.body,
-            createdAt: item.created_at,
-          }));
+          const remoteMessages = messageResult.data.map((item) => mapCoachMessage(item));
           setMessages(remoteMessages);
           writeLocal(MESSAGES_KEY, remoteMessages);
         }
@@ -1304,7 +1320,6 @@ export default function Home() {
   async function openAdminCustomer(customer: AdminCustomer) {
     setSelectedAdminCustomer(customer);
     setAdminDetailLoading(true);
-    setAdminReply("");
     setAdminDetailOwnerProfile(null);
     setAdminDetailDogProfile(null);
     const since = new Date(Date.now() - 1000 * 60 * 60 * 24 * 29).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
@@ -1318,7 +1333,7 @@ export default function Home() {
         .limit(100),
       supabase
         .from("wt_coach_messages")
-        .select("id,sender,body,created_at")
+        .select("*")
         .eq("dog_id", customer.dogId)
         .order("created_at", { ascending: true })
         .limit(100),
@@ -1368,12 +1383,7 @@ export default function Home() {
       behaviorNote: item.behavior_note ?? "",
       goodMoment: item.good_moment ?? "",
     }));
-    const detailMessages: CoachMessage[] = (messageResult.data ?? []).map((item) => ({
-      id: item.id,
-      sender: item.sender as "owner" | "coach",
-      body: item.body,
-      createdAt: item.created_at,
-    }));
+    const detailMessages: CoachMessage[] = (messageResult.data ?? []).map((item) => mapCoachMessage(item));
     const completionCounts = new Map<string, number>();
     (completionResult.data ?? []).forEach((item) => completionCounts.set(item.goal_id, (completionCounts.get(item.goal_id) ?? 0) + 1));
     const detailGoals: AdminGoalProgress[] = (goalResult.data ?? []).map((item) => ({
@@ -1390,31 +1400,6 @@ export default function Home() {
     setAdminDetailMessages(detailMessages);
     setAdminDetailGoals(detailGoals);
     setAdminDetailLoading(false);
-  }
-
-  async function sendAdminReply(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedAdminCustomer || !adminReply.trim()) return;
-    setSaving(true);
-    const body = adminReply.trim();
-    const { data, error } = await supabase
-      .from("wt_coach_messages")
-      .insert({
-        owner_id: selectedAdminCustomer.ownerId,
-        dog_id: selectedAdminCustomer.dogId,
-        sender: "coach",
-        body,
-      })
-      .select("id,sender,body,created_at")
-      .single();
-    if (error) showNotice(`返信できませんでした（${error.message}）`);
-    else if (data) {
-      setAdminDetailMessages((current) => [...current, { id: data.id, sender: "coach", body: data.body, createdAt: data.created_at }]);
-      setAdminReply("");
-      showNotice("メッセージを送りました");
-      await loadAdminWorkspace();
-    }
-    setSaving(false);
   }
 
   function toggleCoachingConcern(concern: string) {
@@ -1908,6 +1893,36 @@ export default function Home() {
     if ((!onboardingRequired || userRole !== "owner") && pathname === "/onboarding") router.replace("/");
   }, [authReady, authenticated, anonymousUser, onboardingRequired, pathname, router, userRole]);
 
+  useEffect(() => {
+    if (!authenticated || !currentUserId) return;
+    const channel = supabase
+      .channel(`owner-chat-${currentUserId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wt_coach_messages", filter: `owner_id=eq.${currentUserId}` }, (payload) => {
+        const message = mapCoachMessage(payload.new);
+        setMessages((current) => {
+          if (current.some((item) => item.id === message.id)) return current;
+          const next = [...current, message];
+          writeLocal(MESSAGES_KEY, next);
+          return next;
+        });
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [authenticated, currentUserId]);
+
+  useEffect(() => {
+    if (!selectedAdminCustomer?.dogId || (userRole !== "admin" && userRole !== "coach")) return;
+    const dogId = selectedAdminCustomer.dogId;
+    const channel = supabase
+      .channel(`staff-chat-${dogId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wt_coach_messages", filter: `dog_id=eq.${dogId}` }, (payload) => {
+        const message = mapCoachMessage(payload.new);
+        setAdminDetailMessages((current) => current.some((item) => item.id === message.id) ? current : [...current, message]);
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [selectedAdminCustomer?.dogId, userRole]);
+
   async function saveRecord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -1992,43 +2007,17 @@ export default function Home() {
     }
   }
 
-  async function sendMessage(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const body = draftMessage.trim();
-    if (!body) return;
-    setSaving(true);
-    let nextMessage: CoachMessage = {
-      id: crypto.randomUUID(),
-      sender: "owner",
-      body,
-      createdAt: new Date().toISOString(),
-    };
-    try {
-      if (connection === "online") {
-        const userId = await getUserId();
-        if (!userId) throw new Error("No session");
-        const dogId = await ensureRemoteDog(userId);
-        const { data, error } = await supabase
-          .from("wt_coach_messages")
-          .insert({ owner_id: userId, dog_id: dogId, sender: "owner", body })
-          .select("id,created_at")
-          .single();
-        if (error) throw error;
-        nextMessage = { ...nextMessage, id: data.id, createdAt: data.created_at };
-        showNotice("コーチに相談を送信しました");
-      } else {
-        showNotice("相談メモを保存しました。接続後に送信できます");
-      }
-    } catch {
-      setConnection("local");
-      showNotice("相談メモを端末に保存しました");
-    } finally {
-      const nextMessages = [...messages, nextMessage];
-      setMessages(nextMessages);
-      writeLocal(MESSAGES_KEY, nextMessages);
-      setDraftMessage("");
-      setSaving(false);
-    }
+  function addOwnerMessage(message: SentChatMessage | CoachMessage) {
+    setMessages((current) => {
+      if (current.some((item) => item.id === message.id)) return current;
+      const next = [...current, message];
+      writeLocal(MESSAGES_KEY, next);
+      return next;
+    });
+  }
+
+  function addAdminMessage(message: SentChatMessage | CoachMessage) {
+    setAdminDetailMessages((current) => current.some((item) => item.id === message.id) ? current : [...current, message]);
   }
 
   async function addCareGoal(template: Omit<CareGoal, "id" | "createdAt">) {
@@ -2786,16 +2775,15 @@ export default function Home() {
             {messages.length ? messages.map((message) => (
               <div key={message.id} className={`message ${message.sender}`}>
                 <span>{message.sender === "coach" ? "COACH" : "YOU"}</span>
-                <p>{message.body}</p>
+                <MessageMedia message={message} />
+                {message.body && <p>{message.body}</p>}
                 <time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time>
               </div>
             )) : <div className="coach-empty"><div className="coach-avatar"><NavGlyph name="coach" /></div><h3>担当コーチへ、最初のメッセージを。</h3><p>例：いちばん困っているのは散歩中の引っ張りです。記録のどこを見ればよいですか？</p></div>}
           </div>
-          <form className="message-form" onSubmit={sendMessage}>
-            <label htmlFor="coach-message">相談内容</label>
-            <textarea id="coach-message" rows={4} value={draftMessage} onChange={(event) => setDraftMessage(event.target.value)} placeholder="困っている場面や、試したことを書いてください" required />
-            <button className="primary-button" disabled={saving}>{saving ? "送信中…" : connection === "online" ? "コーチに送る" : "相談メモを保存"}<span>→</span></button>
-          </form>
+          {connection === "online" && currentUserId && profile.id
+            ? <ChatInput ownerId={currentUserId} dogId={profile.id} sender="owner" placeholder="困っている場面や、写真・動画を共有してください" onSent={addOwnerMessage} />
+            : <p className="media-chat-unavailable">オンライン接続後にメッセージや画像・動画を送信できます。</p>}
           </>}
         </>
       )}
@@ -3008,8 +2996,8 @@ export default function Home() {
                 </div>
                 <section className="admin-panel admin-chat-panel">
                   <div className="admin-panel-heading"><div><p className="card-label">CHAT</p><h2>飼い主との会話</h2></div><span>{adminDetailMessages.length}件</span></div>
-                  <div className="admin-chat-history">{adminDetailMessages.map((message) => <article className={message.sender} key={message.id}><small>{message.sender === "coach" ? "コーチ" : "飼い主"}</small><p>{message.body}</p><time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time></article>)}{!adminDetailMessages.length && <p className="admin-muted">まだ相談はありません。コーチから声をかけることもできます。</p>}</div>
-                  <form className="admin-reply" onSubmit={sendAdminReply}><textarea value={adminReply} onChange={(event) => setAdminReply(event.target.value)} placeholder={`${selectedAdminCustomer.dogName}の飼い主へメッセージ`} rows={3} /><button disabled={saving || !adminReply.trim()}>{saving ? "送信中…" : "送信する"}</button></form>
+                  <div className="admin-chat-history">{adminDetailMessages.map((message) => <article className={message.sender} key={message.id}><small>{message.sender === "coach" ? "コーチ" : "飼い主"}</small><MessageMedia message={message} />{message.body && <p>{message.body}</p>}<time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time></article>)}{!adminDetailMessages.length && <p className="admin-muted">まだ相談はありません。コーチから声をかけることもできます。</p>}</div>
+                  <ChatInput ownerId={selectedAdminCustomer.ownerId} dogId={selectedAdminCustomer.dogId} sender="coach" placeholder={`${selectedAdminCustomer.dogName}の飼い主へメッセージ`} onSent={addAdminMessage} />
                 </section>
               </>
             )}

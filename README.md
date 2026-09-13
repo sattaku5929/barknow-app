@@ -45,3 +45,32 @@ Never expose `GOOGLE_CLIENT_SECRET`, `GOOGLE_TOKEN_ENCRYPTION_KEY`, or `SUPABASE
 The app database is authoritative. Booking uses the database lock and unique constraint, while Google Calendar synchronization runs after the response through a durable sync queue. Google busy intervals are checked when showing availability and immediately before booking.
 
 If Google returns `redirect_uri_mismatch`, check **Google Cloud → APIs & Services → Credentials → OAuth 2.0 Client → Authorized redirect URIs**. If the consent screen is still in Testing, register every coach account under **OAuth consent screen → Test users**.
+
+## Cloudflare R2 media chat
+
+1. Run `supabase/migrations/021_r2_media_chat.sql` after migration 020.
+2. Add the following server-only environment variables to Vercel Production and Preview, then redeploy:
+
+```text
+R2_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+R2_ACCESS_KEY_ID
+R2_SECRET_ACCESS_KEY
+R2_BUCKET_NAME
+R2_PUBLIC_URL=https://<PUBLIC_BUCKET_OR_CUSTOM_DOMAIN>
+```
+
+3. Configure the R2 bucket CORS policy so the browser can upload directly from Wan Tone:
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://barknow-app.vercel.app"],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["Content-Type"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+Add the Vercel Preview origin while testing a Preview deployment. Never prefix R2 credentials with `NEXT_PUBLIC_`. The API issues five-minute upload URLs, while the browser uploads the file directly to R2.

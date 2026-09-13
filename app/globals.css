@@ -1448,6 +1448,25 @@ body { font-size: 16px; }
 .admin-reply button { border:0; border-radius:13px; background:var(--green); color:#fff; cursor:pointer; font-size:11px; font-weight:750; }
 .admin-reply button:disabled { opacity:.45; }
 .admin-muted { margin:18px 0 4px; color:var(--muted); font-size:11px; text-align:center; }
+
+/* Owner/coach media chat */
+.message-media { display:block; width:min(100%,360px); margin:8px 0; overflow:hidden; border-radius:14px; background:#edf1ef; }
+.message-media img,.message-media video { display:block; width:100%; max-width:100%; max-height:360px; object-fit:contain; }
+.media-chat-input { display:grid; gap:10px; margin-top:12px; padding:14px; border:1px solid rgba(0,134,97,.14); border-radius:18px; background:#fff; box-shadow:0 8px 24px rgba(31,65,52,.06); }
+.media-chat-input textarea { width:100%; min-height:82px; padding:13px; resize:vertical; border:1px solid rgba(27,61,49,.14); border-radius:13px; background:#fbfcfb; color:var(--ink); font:inherit; font-size:14px; line-height:1.65; }
+.media-chat-actions { display:flex; align-items:center; gap:9px; }
+.media-chat-actions label { display:inline-flex; min-height:40px; align-items:center; padding:0 13px; border:1px solid rgba(0,134,97,.22); border-radius:11px; background:var(--mint); color:var(--green-dark); cursor:pointer; font-size:11px; font-weight:800; }
+.media-chat-actions label input { position:absolute; width:1px; height:1px; overflow:hidden; opacity:0; }
+.media-chat-actions small { flex:1; color:var(--muted); font-size:9px; }
+.media-chat-actions > button { min-height:40px; padding:0 17px; border:0; border-radius:11px; background:var(--green); color:#fff; cursor:pointer; font-size:11px; font-weight:800; }
+.media-chat-actions > button:disabled { cursor:not-allowed; opacity:.45; }
+.media-file-chip { display:flex; min-width:0; align-items:center; gap:8px; padding:9px 10px; border-radius:11px; background:#edf7f2; }
+.media-file-chip span { padding:3px 6px; border-radius:6px; background:var(--green); color:#fff; font-size:8px; font-weight:800; }
+.media-file-chip b { overflow:hidden; flex:1; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+.media-file-chip button { border:0; background:transparent; color:#69766f; cursor:pointer; font-size:17px; }
+.media-chat-error { margin:0; color:#a64f46; font-size:11px; line-height:1.5; }
+.media-chat-unavailable { margin:12px 0 0; padding:13px; border-radius:12px; background:#f2f4f3; color:var(--muted); font-size:11px; text-align:center; }
+.admin-chat-history .message-media { width:min(100%,300px); }
 @media (max-width:700px) {
   .admin-detail-hero { grid-template-columns:52px 1fr; padding:18px; }
   .admin-dog-avatar { width:52px; height:52px; border-radius:17px; font-size:22px; }
@@ -1458,6 +1477,9 @@ body { font-size: 16px; }
   .admin-detail-columns { grid-template-columns:1fr; }
   .admin-reply { grid-template-columns:1fr; }
   .admin-reply button { min-height:44px; }
+  .media-chat-actions { align-items:stretch; flex-wrap:wrap; }
+  .media-chat-actions small { flex:1 1 100%; order:3; }
+  .media-chat-actions label,.media-chat-actions > button { flex:1; justify-content:center; }
 }
 
 /* Focused daily experience */
