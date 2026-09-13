@@ -33,6 +33,7 @@ type DogProfile = {
 type OwnerProfile = {
   fullName: string;
   phoneNumber: string;
+  prefecture: string;
   address: string;
   birthDate: string;
   completedAt: string;
@@ -106,6 +107,11 @@ type GoalCompletion = {
 type AdminCustomer = {
   assignmentId: string;
   ownerId: string;
+  ownerName: string;
+  ownerPhoneNumber: string;
+  ownerPrefecture: string;
+  ownerAddress: string;
+  ownerBirthDate: string;
   dogId: string;
   dogName: string;
   breed: string;
@@ -200,7 +206,17 @@ const GOAL_COMPLETIONS_KEY = "wan-tone-goal-completions-v1";
 const REMINDER_SENT_KEY = "wan-tone-reminder-sent-v1";
 
 const initialProfile: DogProfile = { name: "", breed: "", birthday: "", isFirstTimeOwner: "", gender: "", daycareFrequency: "", walkFrequency: "", concerns: "", profileCompletedAt: "" };
-const initialOwnerProfile: OwnerProfile = { fullName: "", phoneNumber: "", address: "", birthDate: "", completedAt: "" };
+const initialOwnerProfile: OwnerProfile = { fullName: "", phoneNumber: "", prefecture: "", address: "", birthDate: "", completedAt: "" };
+
+const PREFECTURES = [
+  "北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
+  "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "東京都", "神奈川県",
+  "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県", "岐阜県",
+  "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県",
+  "奈良県", "和歌山県", "鳥取県", "島根県", "岡山県", "広島県", "山口県",
+  "徳島県", "香川県", "愛媛県", "高知県", "福岡県", "佐賀県", "長崎県",
+  "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県",
+] as const;
 
 type CategoryInfo = {
   readonly id: RecordCategory;
@@ -746,6 +762,11 @@ export default function Home() {
       setAdminCustomers(customerResult.data.map((item: Record<string, unknown>) => ({
         assignmentId: String(item.assignment_id),
         ownerId: String(item.owner_id),
+        ownerName: String(item.owner_name ?? ""),
+        ownerPhoneNumber: String(item.owner_phone_number ?? ""),
+        ownerPrefecture: String(item.owner_prefecture ?? ""),
+        ownerAddress: String(item.owner_address ?? ""),
+        ownerBirthDate: String(item.owner_birth_date ?? ""),
         dogId: String(item.dog_id),
         dogName: String(item.dog_name ?? "名前未登録"),
         breed: String(item.breed ?? "犬種未登録"),
@@ -780,6 +801,11 @@ export default function Home() {
       setAdminApplications(applicationResult.data.map((item: Record<string, unknown>) => ({
         id: String(item.application_id),
         ownerId: String(item.owner_id),
+        ownerName: String(item.owner_name ?? ""),
+        ownerPhoneNumber: String(item.owner_phone_number ?? ""),
+        ownerPrefecture: String(item.owner_prefecture ?? ""),
+        ownerAddress: String(item.owner_address ?? ""),
+        ownerBirthDate: String(item.owner_birth_date ?? ""),
         dogId: String(item.dog_id),
         dogName: String(item.dog_name ?? "名前未登録"),
         ownerEmail: String(item.owner_email ?? "メール未確認"),
@@ -946,6 +972,7 @@ export default function Home() {
           const nextOwner: OwnerProfile = {
             fullName: String(owner?.full_name ?? ""),
             phoneNumber: String(owner?.phone_number ?? ""),
+            prefecture: String(owner?.prefecture ?? ""),
             address: String(owner?.address ?? ""),
             birthDate: String(owner?.owner_birth_date ?? ""),
             completedAt: String(owner?.completed_at ?? ""),
@@ -1348,11 +1375,12 @@ export default function Home() {
         .select("id,goal_id,completed_on,completed_at")
         .eq("dog_id", customer.dogId)
         .gte("completed_on", since),
-      supabase.from("wt_owner_profiles").select("full_name,phone_number,address,owner_birth_date,onboarding_completed_at").eq("user_id", customer.ownerId).maybeSingle(),
+      supabase.from("wt_owner_profiles").select("full_name,phone_number,prefecture,address,owner_birth_date,onboarding_completed_at").eq("user_id", customer.ownerId).maybeSingle(),
       supabase.from("wt_dogs").select("id,name,breed,birthday,birth_date,is_first_time_owner,gender,daycare_frequency,walk_frequency,concerns,profile_completed_at").eq("id", customer.dogId).maybeSingle(),
     ]);
 
-    if (!ownerProfileResult.error && ownerProfileResult.data) setAdminDetailOwnerProfile({ fullName: ownerProfileResult.data.full_name ?? "", phoneNumber: ownerProfileResult.data.phone_number ?? "", address: ownerProfileResult.data.address ?? "", birthDate: ownerProfileResult.data.owner_birth_date ?? "", completedAt: ownerProfileResult.data.onboarding_completed_at ?? "" });
+    if (!ownerProfileResult.error && ownerProfileResult.data) setAdminDetailOwnerProfile({ fullName: ownerProfileResult.data.full_name ?? "", phoneNumber: ownerProfileResult.data.phone_number ?? "", prefecture: ownerProfileResult.data.prefecture ?? "", address: ownerProfileResult.data.address ?? "", birthDate: ownerProfileResult.data.owner_birth_date ?? "", completedAt: ownerProfileResult.data.onboarding_completed_at ?? "" });
+    else setAdminDetailOwnerProfile({ fullName: customer.ownerName, phoneNumber: customer.ownerPhoneNumber, prefecture: customer.ownerPrefecture, address: customer.ownerAddress, birthDate: customer.ownerBirthDate, completedAt: "" });
     if (!dogProfileResult.error && dogProfileResult.data) setAdminDetailDogProfile({ id: dogProfileResult.data.id, name: dogProfileResult.data.name, breed: dogProfileResult.data.breed ?? "", birthday: dogProfileResult.data.birth_date ?? dogProfileResult.data.birthday ?? "", isFirstTimeOwner: dogProfileResult.data.is_first_time_owner === true ? "yes" : dogProfileResult.data.is_first_time_owner === false ? "no" : "", gender: (dogProfileResult.data.gender ?? "") as DogProfile["gender"], daycareFrequency: dogProfileResult.data.daycare_frequency ?? "", walkFrequency: dogProfileResult.data.walk_frequency ?? "", concerns: dogProfileResult.data.concerns ?? "", profileCompletedAt: dogProfileResult.data.profile_completed_at ?? "" });
 
     if (recordResult.error || messageResult.error || goalResult.error || completionResult.error) {
@@ -1834,7 +1862,7 @@ export default function Home() {
         if (!userId) throw new Error("No session");
         const [{ data, error }, { error: ownerError }] = await Promise.all([
           supabase.from("wt_dogs").upsert({ owner_id: userId, name: profile.name, breed: profile.breed || null, birthday: profile.birthday || null, birth_date: profile.birthday || null, is_first_time_owner: profile.isFirstTimeOwner === "yes" ? true : profile.isFirstTimeOwner === "no" ? false : null, gender: profile.gender || null, daycare_frequency: profile.daycareFrequency, walk_frequency: profile.walkFrequency, concerns: profile.concerns, profile_completed_at: profile.profileCompletedAt || new Date().toISOString() }, { onConflict: "owner_id" }).select("id").single(),
-          supabase.from("wt_owner_profiles").upsert({ user_id: userId, full_name: ownerProfile.fullName.trim(), phone_number: ownerProfile.phoneNumber.trim(), address: ownerProfile.address.trim(), owner_birth_date: ownerProfile.birthDate || null, onboarding_completed_at: ownerProfile.completedAt || new Date().toISOString(), updated_at: new Date().toISOString() }),
+          supabase.from("wt_owner_profiles").upsert({ user_id: userId, full_name: ownerProfile.fullName.trim(), phone_number: ownerProfile.phoneNumber.trim(), prefecture: ownerProfile.prefecture, address: ownerProfile.address.trim(), owner_birth_date: ownerProfile.birthDate || null, onboarding_completed_at: ownerProfile.completedAt || new Date().toISOString(), updated_at: new Date().toISOString() }),
         ]);
         if (error || ownerError) throw error ?? ownerError;
         setProfile((current) => ({ ...current, id: data.id }));
@@ -1857,7 +1885,7 @@ export default function Home() {
     if (!userId) return;
     setSaving(true);
     const completedAt = new Date().toISOString();
-    const { error } = await supabase.from("wt_owner_profiles").upsert({ user_id: userId, full_name: ownerProfile.fullName.trim(), phone_number: ownerProfile.phoneNumber.trim(), address: ownerProfile.address.trim(), owner_birth_date: ownerProfile.birthDate || null, onboarding_completed_at: completedAt, updated_at: completedAt });
+    const { error } = await supabase.from("wt_owner_profiles").upsert({ user_id: userId, full_name: ownerProfile.fullName.trim(), phone_number: ownerProfile.phoneNumber.trim(), prefecture: ownerProfile.prefecture, address: ownerProfile.address.trim(), owner_birth_date: ownerProfile.birthDate || null, onboarding_completed_at: completedAt, updated_at: completedAt });
     if (error) showNotice(`お客様情報を保存できませんでした（${error.message}）`);
     else {
       setOwnerProfile((current) => ({ ...current, completedAt }));
@@ -2798,7 +2826,8 @@ export default function Home() {
         <label className="field-label">お名前（氏名）<input autoComplete="name" value={ownerProfile.fullName} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullName: event.target.value })} placeholder="例：三宅 太郎" required /></label>
         <label className="field-label">電話番号<input type="tel" inputMode="tel" autoComplete="tel" value={ownerProfile.phoneNumber} onChange={(event) => setOwnerProfile({ ...ownerProfile, phoneNumber: event.target.value })} placeholder="例：09012345678" required /></label>
         <label className="field-label">生年月日<input type="date" autoComplete="bday" max={today()} value={ownerProfile.birthDate} onChange={(event) => setOwnerProfile({ ...ownerProfile, birthDate: event.target.value })} required /></label>
-        <label className="field-label">住所<textarea rows={3} autoComplete="street-address" value={ownerProfile.address} onChange={(event) => setOwnerProfile({ ...ownerProfile, address: event.target.value })} placeholder="都道府県から入力してください" required /></label>
+        <label className="field-label">都道府県<select value={ownerProfile.prefecture} onChange={(event) => setOwnerProfile({ ...ownerProfile, prefecture: event.target.value })} required><option value="">選択してください</option>{PREFECTURES.map((prefecture) => <option key={prefecture} value={prefecture}>{prefecture}</option>)}</select></label>
+        <label className="field-label">市区町村・番地・建物名<textarea rows={3} autoComplete="street-address" value={ownerProfile.address} onChange={(event) => setOwnerProfile({ ...ownerProfile, address: event.target.value })} placeholder="例：目黒区〇〇1-2-3 Wan Toneマンション101" required /></label>
       </section>
       <section className="profile-form-section"><div className="profile-section-heading"><span>02</span><div><h2>愛犬について</h2><p>生活リズムと気になること</p></div></div>
         <div className="profile-symbol">{profile.name ? profile.name.slice(0, 1) : "犬"}</div>
@@ -2826,7 +2855,8 @@ export default function Home() {
           <label className="field-label">お名前（氏名）<input autoFocus autoComplete="name" value={ownerProfile.fullName} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullName: event.target.value })} placeholder="例：三宅 太郎" required /></label>
           <label className="field-label">電話番号<input type="tel" inputMode="tel" autoComplete="tel" value={ownerProfile.phoneNumber} onChange={(event) => setOwnerProfile({ ...ownerProfile, phoneNumber: event.target.value })} placeholder="例：09012345678" required /></label>
           <label className="field-label">生年月日<input type="date" autoComplete="bday" max={today()} value={ownerProfile.birthDate} onChange={(event) => setOwnerProfile({ ...ownerProfile, birthDate: event.target.value })} required /></label>
-          <label className="field-label">住所<textarea rows={3} autoComplete="street-address" value={ownerProfile.address} onChange={(event) => setOwnerProfile({ ...ownerProfile, address: event.target.value })} placeholder="都道府県から入力してください" required /></label>
+          <label className="field-label">都道府県<select value={ownerProfile.prefecture} onChange={(event) => setOwnerProfile({ ...ownerProfile, prefecture: event.target.value })} required><option value="">選択してください</option>{PREFECTURES.map((prefecture) => <option key={prefecture} value={prefecture}>{prefecture}</option>)}</select></label>
+        <label className="field-label">市区町村・番地・建物名<textarea rows={3} autoComplete="street-address" value={ownerProfile.address} onChange={(event) => setOwnerProfile({ ...ownerProfile, address: event.target.value })} placeholder="例：目黒区〇〇1-2-3 Wan Toneマンション101" required /></label>
           <button className="onboarding-next" disabled={saving}>{saving ? "保存中…" : "愛犬情報へ進む"}<span>→</span></button>
         </form> : <form onSubmit={saveDogOnboarding}><p className="card-label">ABOUT YOUR DOG</p><h1>次に、愛犬の毎日を<br />教えてください。</h1><p className="onboarding-lead">暮らし方まで分かると、コーチが記録の変化を正しく読み取りやすくなります。</p>
           <div className="onboarding-grid"><label className="field-label">愛犬の名前<input autoFocus value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} placeholder="例：むぎ" required /></label><label className="field-label">犬種<input value={profile.breed} onChange={(event) => setProfile({ ...profile, breed: event.target.value })} placeholder="例：トイプードル" required /></label></div>
@@ -2970,7 +3000,7 @@ export default function Home() {
               <div><p className="card-label">CUSTOMER DETAIL</p><h1>{selectedAdminCustomer.dogName}</h1><span>{selectedAdminCustomer.breed || "犬種未登録"} · 直近30日</span></div>
               <b className={selectedAdminCustomer.concerns7d > 0 ? "needs-care" : "stable"}>{selectedAdminCustomer.concerns7d > 0 ? "要確認" : "安定"}</b>
             </section>
-            {(adminDetailOwnerProfile || adminDetailDogProfile) && <section className="customer-context-card"><div><p className="card-label">FAMILY PROFILE</p><h2>ご家族と愛犬の基本情報</h2></div><div className="customer-context-grid"><article><h3>飼い主さま</h3><dl><div><dt>お名前</dt><dd>{adminDetailOwnerProfile?.fullName || "未登録"}</dd></div><div><dt>電話番号</dt><dd>{adminDetailOwnerProfile?.phoneNumber || "未登録"}</dd></div><div><dt>住所</dt><dd>{adminDetailOwnerProfile?.address || "未登録"}</dd></div><div><dt>生年月日</dt><dd>{adminDetailOwnerProfile?.birthDate || "未登録"}</dd></div></dl></article><article><h3>{adminDetailDogProfile?.name || selectedAdminCustomer.dogName}</h3><dl><div><dt>年齢</dt><dd>{ageLabel(adminDetailDogProfile?.birthday ?? "") || "未登録"}</dd></div><div><dt>性別</dt><dd>{dogGenderLabel(adminDetailDogProfile?.gender ?? "")}</dd></div><div><dt>飼育経験</dt><dd>{adminDetailDogProfile?.isFirstTimeOwner === "yes" ? "初めて" : adminDetailDogProfile?.isFirstTimeOwner === "no" ? "経験あり" : "未登録"}</dd></div><div><dt>保育園</dt><dd>{adminDetailDogProfile?.daycareFrequency || "未登録"}</dd></div><div><dt>散歩</dt><dd>{adminDetailDogProfile?.walkFrequency || "未登録"}</dd></div></dl></article></div>{adminDetailDogProfile?.concerns && <div className="customer-concerns"><small>主な悩み・気になっていること</small><p>{adminDetailDogProfile.concerns}</p></div>}</section>}
+            {(adminDetailOwnerProfile || adminDetailDogProfile) && <section className="customer-context-card"><div><p className="card-label">FAMILY PROFILE</p><h2>ご家族と愛犬の基本情報</h2></div><div className="customer-context-grid"><article><h3>飼い主さま</h3><dl><div><dt>お名前</dt><dd>{adminDetailOwnerProfile?.fullName || "未登録"}</dd></div><div><dt>電話番号</dt><dd>{adminDetailOwnerProfile?.phoneNumber || "未登録"}</dd></div><div><dt>都道府県</dt><dd>{adminDetailOwnerProfile?.prefecture || "未登録"}</dd></div><div><dt>住所</dt><dd>{adminDetailOwnerProfile?.address || "未登録"}</dd></div><div><dt>生年月日</dt><dd>{adminDetailOwnerProfile?.birthDate || "未登録"}</dd></div></dl></article><article><h3>{adminDetailDogProfile?.name || selectedAdminCustomer.dogName}</h3><dl><div><dt>年齢</dt><dd>{ageLabel(adminDetailDogProfile?.birthday ?? "") || "未登録"}</dd></div><div><dt>性別</dt><dd>{dogGenderLabel(adminDetailDogProfile?.gender ?? "")}</dd></div><div><dt>飼育経験</dt><dd>{adminDetailDogProfile?.isFirstTimeOwner === "yes" ? "初めて" : adminDetailDogProfile?.isFirstTimeOwner === "no" ? "経験あり" : "未登録"}</dd></div><div><dt>保育園</dt><dd>{adminDetailDogProfile?.daycareFrequency || "未登録"}</dd></div><div><dt>散歩</dt><dd>{adminDetailDogProfile?.walkFrequency || "未登録"}</dd></div></dl></article></div>{adminDetailDogProfile?.concerns && <div className="customer-concerns"><small>主な悩み・気になっていること</small><p>{adminDetailDogProfile.concerns}</p></div>}</section>}
             {adminDetailLoading ? <section className="admin-empty"><h2>記録を読み込んでいます</h2><p>少しだけお待ちください。</p></section> : (
               <>
                 <section className="admin-insight-grid">
@@ -3049,6 +3079,7 @@ export default function Home() {
             {adminCustomers.map((customer) => (
               <article className="customer-card" key={customer.assignmentId}>
                 <div className="customer-profile"><span>{customer.dogName.slice(0, 1)}</span><div><h2>{customer.dogName}</h2><p>{customer.breed}</p></div><b>{customer.concerns7d > 0 ? "要確認" : "安定"}</b></div>
+                <div className="customer-owner-summary"><small>飼い主さま</small><strong>{customer.ownerName || "お名前未登録"}</strong><span>{customer.ownerPrefecture || "都道府県未登録"}</span></div>
                 <div className="customer-stats"><span><b>{customer.records7d}</b>7日間の記録</span><span><b>{customer.concerns7d}</b>気になる記録</span></div>
                 <div className="customer-message"><small>最新の相談</small><p>{customer.latestMessage || "相談はまだありません"}</p></div>
                 <button onClick={() => void openAdminCustomer(customer)}>詳細とチャットを見る →</button>
