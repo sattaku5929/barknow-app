@@ -1576,6 +1576,68 @@ body { font-size: 16px; }
 }
 
 
+/* Flat owner home */
+.app-shell:has(.home-flat) { background:#f6f7f3; box-shadow:none; }
+.app-shell:has(.home-flat) .app-header { background:#f6f7f3; backdrop-filter:none; }
+.app-shell:has(.home-flat) .bottom-nav { box-shadow:none; }
+.home-flat { background:#f6f7f3; }
+.home-flat .focused-welcome .avatar,
+.home-flat .profile-nudge,
+.home-flat .today-mission,
+.home-flat .quick-log-grid > button,
+.home-flat .insight-spotlight,
+.home-flat .coach-bridge { box-shadow:none; }
+.home-flat .focused-welcome h1 { font-weight:650; letter-spacing:0; }
+.home-flat .profile-nudge { border-color:#d9e5df; border-radius:16px; background:#fff; }
+
+.home-flat .today-mission { overflow:hidden; margin-top:24px; padding:20px; border:1px solid #cfe3d9; border-radius:20px; background:#e8f4ee; color:var(--ink); }
+.home-flat .today-mission::after { display:none; }
+.home-flat .today-mission .card-label { color:var(--green); }
+.home-flat .mission-score strong { color:var(--green-dark); }
+.home-flat .mission-score span { color:#728078; }
+.daily-care-art { position:relative; z-index:1; overflow:hidden; margin:15px 0 14px; border:1px solid #d4e7dd; border-radius:15px; background:#f8fcfa; }
+.daily-care-art p { margin:0; padding:9px 13px 11px; border-top:1px solid #dcebe3; color:#557066; font-size:11px; font-weight:650; line-height:1.5; }
+.daily-care-illustration { display:block; width:100%; height:auto; }
+.daily-care-illustration * { vector-effect:non-scaling-stroke; }
+.care-ground,.care-plant,.care-arm,.care-dog-detail,.care-bowl { fill:none; stroke:#43866f; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.care-ground { stroke:#b9d8ca; }
+.care-sun { fill:#f4c85b; }
+.care-person-head { fill:#efb49a; }
+.care-person { fill:#7ab49e; stroke:#43866f; stroke-width:2; stroke-linejoin:round; }
+.care-dog { fill:#e9b76a; stroke:#7d633d; stroke-width:2; stroke-linejoin:round; }
+.care-dog-detail { stroke:#7d633d; }
+.care-dog-eye { fill:#50442f; }
+.care-heart { fill:#dd806c; stroke:#b45d4f; stroke-width:1.5; }
+.home-flat .mission-list { gap:7px; margin-top:0; }
+.home-flat .mission-list > button { border-color:#d7e5de; border-radius:14px; background:#fff; }
+.home-flat .mission-list > button > b { border:1px solid var(--green); border-radius:10px; background:#fff; color:var(--green-dark); }
+.home-flat .mission-list > button.is-done { opacity:1; background:#f3f8f5; }
+.home-flat .mission-list > button.is-done > b { border-color:#b8dacb; background:#dff0e8; }
+.home-flat .mission-empty { margin-top:0; border-color:#d7e5de; border-radius:14px; }
+.home-flat .mission-manage { color:var(--green-dark); }
+
+.home-flat .quick-log { margin-top:30px; }
+.home-flat .quick-log-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+.home-flat .quick-log-grid > button { min-height:72px; flex-direction:row; justify-content:flex-start; gap:11px; padding:11px 12px; border:1px solid color-mix(in srgb,var(--category) 25%,white); border-radius:15px; background:var(--category-soft); text-align:left; }
+.home-flat .quick-log-grid > button:last-child { grid-column:1 / -1; }
+.home-flat .quick-log-grid .topic-mark { width:43px; height:43px; flex:0 0 auto; border:1px solid color-mix(in srgb,var(--category) 18%,white); border-radius:12px; background:#fff; }
+.home-flat .quick-log-grid svg { width:25px; height:25px; stroke-width:1.8; }
+.home-flat .quick-log-grid strong { font-size:13px; }
+.home-flat .quick-log-grid > button > b { top:8px; right:8px; border:2px solid var(--category-soft); box-shadow:none; }
+
+.home-flat .insight-spotlight { border:1px solid #ead9b7; border-radius:18px; background:#fbf3e3; }
+.home-flat .insight-spark { border:1px solid #ead9b7; border-radius:12px; background:#fffaf0; }
+.home-flat .coach-bridge { border-color:#cbdde2; border-radius:18px; background:#edf4f5; }
+.home-flat .coach-bridge-icon { border:1px solid #d3e3e6; border-radius:12px; }
+
+@media (min-width:480px) {
+  .home-flat .quick-log-grid { grid-template-columns:repeat(5,minmax(0,1fr)); }
+  .home-flat .quick-log-grid > button { min-height:91px; flex-direction:column; justify-content:center; padding:9px 4px; text-align:center; }
+  .home-flat .quick-log-grid > button:last-child { grid-column:auto; }
+}
+
+
+
 /* Owner and dog onboarding */
 .profile-form-section { margin-top:22px; padding:20px; border:1px solid rgba(0,134,97,.1); border-radius:22px; background:#fff; box-shadow:0 10px 28px rgba(31,65,52,.05); }
 .profile-section-heading { display:flex; align-items:center; gap:12px; margin-bottom:18px; }

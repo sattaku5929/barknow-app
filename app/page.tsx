@@ -467,17 +467,35 @@ function CareIcon({ name }: { name: CareGoalType }) {
 function TopicIcon({ name }: { name: RecordCategory }) {
   const paths: Record<RecordCategory, ReactNode> = {
     daily: <><rect x="4" y="5" width="16" height="15" rx="3" /><path d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h6" /></>,
-    meal: <><path d="M4 11h16c-.6 5.2-3.2 8-8 8s-7.4-2.8-8-8Z" /><path d="M7 8c1.2-1.3 2.9-2 5-2s3.8.7 5 2M9 4c.8-.7 1.8-1 3-1s2.2.3 3 1" /></>,
-    barking: <><path d="m5 9-2-3v7c0 4 3 7 7 7s7-3 7-7V6l-2 3" /><circle cx="8" cy="12" r=".7" fill="currentColor" stroke="none" /><circle cx="13" cy="12" r=".7" fill="currentColor" stroke="none" /><path d="M8 16c1.3 1 2.7 1 4 0M20 9c1 1 1 3 0 4" /></>,
-    toilet: <><path d="M12 3c-2.8 4-5 6.8-5 10a5 5 0 0 0 10 0c0-3.2-2.2-6-5-10Z" /><path d="M10 15c.7.7 1.3 1 2 1s1.3-.3 2-1" /></>,
+    meal: <><path d="M4 12h16c-.5 4.5-3 7-8 7s-7.5-2.5-8-7Z" /><path d="M6.5 12 8 9h8l1.5 3" /><circle cx="10" cy="7" r="1" /><circle cx="14" cy="6.5" r="1" /></>,
+    barking: <><path d="m5 9-2-3v7c0 4 3 7 7 7s7-3 7-7V6l-2 3" /><circle cx="8" cy="12" r=".7" fill="currentColor" stroke="none" /><circle cx="13" cy="12" r=".7" fill="currentColor" stroke="none" /><path d="M8.5 16h3M20 7l2-1M20.5 11H23M20 15l2 1" /></>,
+    toilet: <><path d="M8 18h9a3 3 0 0 0 0-6c.5-2.2-1-4-3.2-4 .2-2-1.2-3.5-3.1-3.5-2 0-3.2 1.5-3.1 3.5C5.5 8.3 4.4 10 5 12a3 3 0 0 0 3 6Z" /><path d="M9 13h4.5M10 9h3" /></>,
     walk: <><ellipse cx="12" cy="15.5" rx="4.7" ry="4" /><ellipse cx="6.8" cy="10" rx="2" ry="2.6" transform="rotate(-25 6.8 10)" /><ellipse cx="11" cy="7.5" rx="2" ry="2.6" /><ellipse cx="16" cy="9" rx="2" ry="2.6" transform="rotate(25 16 9)" /></>,
     sleep: <path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z" />,
-    win: <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" />,
+    win: <><circle cx="12" cy="12" r="8" /><path d="m8.5 12 2.2 2.2 4.8-5" /><path d="M18.5 4.5 20 3m.5 5H23M5.5 4.5 4 3" /></>,
   };
 
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
       {paths[name]}
+    </svg>
+  );
+}
+
+function DailyCareIllustration() {
+  return (
+    <svg className="daily-care-illustration" viewBox="0 0 320 118" role="img" aria-label="愛犬と穏やかに過ごす日常のイラスト">
+      <circle className="care-sun" cx="274" cy="25" r="13" />
+      <path className="care-ground" d="M18 99h284" />
+      <path className="care-plant" d="M48 98V69m0 12c-12-2-17-9-16-19 10 1 16 7 16 19Zm0 7c11-2 17-8 17-18-10 0-16 6-17 18Z" />
+      <circle className="care-person-head" cx="142" cy="40" r="15" />
+      <path className="care-person" d="M127 60c7-7 24-7 31 0l12 24h-53l10-24Z" />
+      <path className="care-arm" d="m128 64-22 16m48-16 17 15" />
+      <path className="care-dog" d="M184 76c0-13 10-22 24-22h17l10-12 6 19c6 4 9 10 9 18v19h-66V76Z" />
+      <path className="care-dog-detail" d="M207 55c-1-10 5-16 13-18l5 17m17 20h10m-54 24V86m39 12V86" />
+      <circle className="care-dog-eye" cx="234" cy="64" r="2" />
+      <path className="care-heart" d="M175 44c-5-6-14 1 0 11 14-10 5-17 0-11Z" />
+      <path className="care-bowl" d="M72 84h31c-1 10-6 14-15 14s-14-4-16-14Z" />
     </svg>
   );
 }
@@ -2424,6 +2442,7 @@ export default function Home() {
           <div><p className="card-label">TODAY</p><h2 id="today-mission-title">今日のお世話</h2></div>
           <div className="mission-score"><strong>{completedGoalCount}</strong><span>/{careGoals.length || "–"}</span></div>
         </div>
+        <div className="daily-care-art"><DailyCareIllustration /><p>小さなお世話が、今日の心地よさをつくります。</p></div>
         {careGoals.length === 0 ? (
           <button className="mission-empty" onClick={() => setView("goals")}>
             <span><CareIcon name="paws" /></span>
@@ -3238,7 +3257,7 @@ export default function Home() {
             <div className="header-status"><span className={connection}></span>{connection === "online" ? "同期中" : connection === "checking" ? "確認中" : "端末保存"}</div>
           </div>
         </header>
-        <main className="app-main">
+        <main className={`app-main ${view === "home" ? "home-flat" : ""}`}>
           {view === "home" && focusedHomeView}
           {view === "goals" && goalsView}
           {view === "record" && recordView}
