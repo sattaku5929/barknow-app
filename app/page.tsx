@@ -883,12 +883,24 @@ export default function Home() {
 
   async function loadOwnerBookingWorkspace(application: CoachingApplication) {
     if (!application.assignedCoachId) return;
-    const [{ data: profileData }, { data: sessions }] = await Promise.all([
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+    const [{ data: profileData }, { data: sessions, error: sessionsError }] = await Promise.all([
       supabase.from("wt_coach_profiles").select("display_name,headline,bio,credentials,avatar_url,avatar_preset,meet_url").eq("coach_id", application.assignedCoachId).maybeSingle(),
-      supabase.from("wt_online_sessions").select("id,session_type,status,starts_at,ends_at,meet_url,calendar_sync_status,calendar_sync_error").eq("application_id", application.id).order("starts_at"),
+      supabase.from("wt_online_sessions").select("id,coach_id,session_type,status,starts_at,ends_at,meet_url,calendar_sync_status,calendar_sync_error").eq("owner_id", userData.user.id).order("starts_at", { ascending: false }),
     ]);
     if (profileData) setAssignedCoachProfile({ displayName: profileData.display_name ?? "担当コーチ", headline: profileData.headline ?? "", bio: profileData.bio ?? "", credentials: profileData.credentials ?? "", avatarUrl: profileData.avatar_url ?? "", avatarPreset: profileData.avatar_preset ?? "paw-green", meetUrl: profileData.meet_url ?? "" });
-    if (sessions) setOnlineSessions(sessions.map((session) => ({ id: session.id, ownerId: "", ownerEmail: "", ownerName: "", dogName, coachId: application.assignedCoachId ?? "", coachName: profileData?.display_name ?? "担当コーチ", coachAvatarUrl: profileData?.avatar_url ?? "", coachHeadline: profileData?.headline ?? "", sessionType: session.session_type as "initial" | "followup", status: session.status as OnlineSession["status"], startsAt: session.starts_at, endsAt: session.ends_at, meetUrl: session.meet_url ?? "", calendarSyncStatus: (session.calendar_sync_status ?? "not_connected") as OnlineSession["calendarSyncStatus"], calendarSyncError: session.calendar_sync_error ?? "" })));
+    if (!sessionsError && sessions) {
+      const coachIds = Array.from(new Set(sessions.map((session) => session.coach_id).filter(Boolean)));
+      const { data: coachProfiles } = coachIds.length
+        ? await supabase.from("wt_coach_profiles").select("coach_id,display_name,headline,avatar_url").in("coach_id", coachIds)
+        : { data: [] };
+      const profilesByCoach = new Map((coachProfiles ?? []).map((coach) => [coach.coach_id, coach]));
+      setOnlineSessions(sessions.map((session) => {
+        const sessionCoach = profilesByCoach.get(session.coach_id);
+        return { id: session.id, ownerId: userData.user.id, ownerEmail: "", ownerName: "", dogName, coachId: session.coach_id ?? "", coachName: sessionCoach?.display_name || (session.coach_id === application.assignedCoachId ? profileData?.display_name : "") || "担当コーチ", coachAvatarUrl: sessionCoach?.avatar_url ?? "", coachHeadline: sessionCoach?.headline ?? "", sessionType: session.session_type as "initial" | "followup", status: session.status as OnlineSession["status"], startsAt: session.starts_at, endsAt: session.ends_at, meetUrl: session.meet_url ?? "", calendarSyncStatus: (session.calendar_sync_status ?? "not_connected") as OnlineSession["calendarSyncStatus"], calendarSyncError: session.calendar_sync_error ?? "" };
+      }));
+    }
     if (application.ownerConfirmedAt) {
       const { data: slots } = await supabase.rpc("wt_owner_available_slots", { target_application_id: application.id });
       if (slots) {
@@ -1767,11 +1779,20 @@ export default function Home() {
     const label = new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(slot.startsAt));
     if (!window.confirm(`${label}で${sessionType === "initial" ? "初回" : "継続"}オンライン診断を予約しますか？`)) return;
     setSaving(true);
-    const response = await authorizedFetch("/api/online-sessions/book", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applicationId: coachingApplication.id, slotId: slot.id, sessionType }) });
-    const result = await response.json().catch(() => null);
-    showNotice(response.ok ? "オンライン診断を予約しました。Meetを準備しています" : `予約できませんでした（${result?.error ?? "通信エラー"}）`);
-    if (response.ok) await loadOwnerBookingWorkspace(coachingApplication);
-    setSaving(false);
+    try {
+      const response = await authorizedFetch("/api/online-sessions/book", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applicationId: coachingApplication.id, slotId: slot.id, sessionType }) });
+      const result = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) {
+        showNotice(`予約できませんでした（${result?.error ?? `サーバーエラー ${response.status}`}）`);
+        return;
+      }
+      showNotice("オンライン診断を予約しました。Meetを準備しています");
+      await loadOwnerBookingWorkspace(coachingApplication);
+    } catch (error) {
+      showNotice(`予約できませんでした（${error instanceof Error ? error.message : "ネットワーク接続を確認してください"}）`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function updateOnlineSessionStatus(sessionId: string, status: "completed" | "cancelled") {
@@ -2764,7 +2785,8 @@ export default function Home() {
   );
 
   const coachingChatOpen = Boolean(coachingApplication?.ownerConfirmedAt) && Boolean(coachingApplication && ["assigned", "consulting", "payment_pending", "active"].includes(coachingApplication.status));
-  const ownerBookedSessions = onlineSessions.filter((session) => session.status === "booked");
+  const ownerBookedSessions = onlineSessions.filter((session) => session.status === "booked").sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+  const ownerCompletedSessions = onlineSessions.filter((session) => session.status === "completed").sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
   const ownerHasInitialSession = onlineSessions.some((session) => session.sessionType === "initial" && session.status !== "cancelled");
   const coachView = (
     <section className="coach-screen">
@@ -2828,6 +2850,16 @@ export default function Home() {
                   {ownerBookedSessions.map((session) => <article key={session.id}><time>{formatOnlineDate(session.startsAt)}</time><div><strong>{session.sessionType === "initial" ? "初回オンライン診断" : "継続オンライン診断"}</strong><small>{Math.round((new Date(session.endsAt).getTime() - new Date(session.startsAt).getTime()) / 60000)}分</small></div>{session.meetUrl ? <a href={session.meetUrl} target="_blank" rel="noreferrer">Meetを開く</a> : <span>URL準備中</span>}</article>)}
                 </section>
               )}
+              <section className="owner-session-list owner-session-history">
+                <div className="booking-section-title"><div><p className="card-label">SESSION HISTORY</p><h2>オンライン診断の履歴</h2><p>これまでに実施した診断を確認できます。</p></div><b>{ownerCompletedSessions.length}回</b></div>
+                {ownerCompletedSessions.length ? ownerCompletedSessions.map((session) => (
+                  <article key={session.id}>
+                    <time>{formatOnlineDate(session.startsAt)}</time>
+                    <div><strong>{session.coachName || "担当コーチ"}</strong><small>{session.sessionType === "initial" ? "初回" : "継続"}オンライン診断 · {Math.round((new Date(session.endsAt).getTime() - new Date(session.startsAt).getTime()) / 60000)}分</small></div>
+                    <span className="history-completed">実施済み</span>
+                  </article>
+                )) : <p className="owner-history-empty">実施済みのオンライン診断はまだありません。</p>}
+              </section>
               <section className="owner-booking-card">
                 <div className="booking-section-title"><div><p className="card-label">BOOK ONLINE</p><h2>{ownerHasInitialSession ? "次回のオンライン診断を予約" : "初回オンライン診断を予約"}</h2><p>担当コーチが登録した空き枠から選べます。</p></div><b>{availableSlots.length}枠</b></div>
                 <div className="owner-slot-list">{availableSlots.length ? availableSlots.slice(0, 12).map((slot) => <button key={slot.id} onClick={() => void bookOnlineSession(slot)} disabled={saving}><span><strong>{formatOnlineDate(slot.startsAt)}</strong><small>{Math.round((new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60000)}分</small></span><b>選ぶ →</b></button>) : <p>現在予約できる日時はありません。担当コーチが枠を追加すると、ここへ自動で反映されます。</p>}</div>
