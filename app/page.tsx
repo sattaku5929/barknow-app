@@ -833,11 +833,6 @@ export default function Home() {
       setAdminApplications(applicationResult.data.map((item: Record<string, unknown>) => ({
         id: String(item.application_id),
         ownerId: String(item.owner_id),
-        ownerName: String(item.owner_name ?? ""),
-        ownerPhoneNumber: String(item.owner_phone_number ?? ""),
-        ownerPrefecture: String(item.owner_prefecture ?? ""),
-        ownerAddress: String(item.owner_address ?? ""),
-        ownerBirthDate: String(item.owner_birth_date ?? ""),
         dogId: String(item.dog_id),
         dogName: String(item.dog_name ?? "名前未登録"),
         ownerEmail: String(item.owner_email ?? "メール未確認"),
@@ -883,12 +878,24 @@ export default function Home() {
 
   async function loadOwnerBookingWorkspace(application: CoachingApplication) {
     if (!application.assignedCoachId) return;
-    const [{ data: profileData }, { data: sessions }] = await Promise.all([
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return;
+    const [{ data: profileData }, { data: sessions, error: sessionsError }] = await Promise.all([
       supabase.from("wt_coach_profiles").select("display_name,headline,bio,credentials,avatar_url,avatar_preset,meet_url").eq("coach_id", application.assignedCoachId).maybeSingle(),
-      supabase.from("wt_online_sessions").select("id,session_type,status,starts_at,ends_at,meet_url,calendar_sync_status,calendar_sync_error").eq("application_id", application.id).order("starts_at"),
+      supabase.from("wt_online_sessions").select("id,coach_id,session_type,status,starts_at,ends_at,meet_url,calendar_sync_status,calendar_sync_error").eq("owner_id", userData.user.id).order("starts_at", { ascending: false }),
     ]);
     if (profileData) setAssignedCoachProfile({ displayName: profileData.display_name ?? "担当コーチ", headline: profileData.headline ?? "", bio: profileData.bio ?? "", credentials: profileData.credentials ?? "", avatarUrl: profileData.avatar_url ?? "", avatarPreset: profileData.avatar_preset ?? "paw-green", meetUrl: profileData.meet_url ?? "" });
-    if (sessions) setOnlineSessions(sessions.map((session) => ({ id: session.id, ownerId: "", ownerEmail: "", ownerName: "", dogName, coachId: application.assignedCoachId ?? "", coachName: profileData?.display_name ?? "担当コーチ", coachAvatarUrl: profileData?.avatar_url ?? "", coachHeadline: profileData?.headline ?? "", sessionType: session.session_type as "initial" | "followup", status: session.status as OnlineSession["status"], startsAt: session.starts_at, endsAt: session.ends_at, meetUrl: session.meet_url ?? "", calendarSyncStatus: (session.calendar_sync_status ?? "not_connected") as OnlineSession["calendarSyncStatus"], calendarSyncError: session.calendar_sync_error ?? "" })));
+    if (!sessionsError && sessions) {
+      const coachIds = Array.from(new Set(sessions.map((session) => session.coach_id).filter(Boolean)));
+      const { data: coachProfiles } = coachIds.length
+        ? await supabase.from("wt_coach_profiles").select("coach_id,display_name,headline,avatar_url").in("coach_id", coachIds)
+        : { data: [] };
+      const profilesByCoach = new Map((coachProfiles ?? []).map((coach) => [coach.coach_id, coach]));
+      setOnlineSessions(sessions.map((session) => {
+        const sessionCoach = profilesByCoach.get(session.coach_id);
+        return { id: session.id, ownerId: userData.user.id, ownerEmail: "", ownerName: "", dogName, coachId: session.coach_id ?? "", coachName: sessionCoach?.display_name || (session.coach_id === application.assignedCoachId ? profileData?.display_name : "") || "担当コーチ", coachAvatarUrl: sessionCoach?.avatar_url ?? "", coachHeadline: sessionCoach?.headline ?? "", sessionType: session.session_type as "initial" | "followup", status: session.status as OnlineSession["status"], startsAt: session.starts_at, endsAt: session.ends_at, meetUrl: session.meet_url ?? "", calendarSyncStatus: (session.calendar_sync_status ?? "not_connected") as OnlineSession["calendarSyncStatus"], calendarSyncError: session.calendar_sync_error ?? "" };
+      }));
+    }
     if (application.ownerConfirmedAt) {
       const { data: slots } = await supabase.rpc("wt_owner_available_slots", { target_application_id: application.id });
       if (slots) {
@@ -1767,11 +1774,20 @@ export default function Home() {
     const label = new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(slot.startsAt));
     if (!window.confirm(`${label}で${sessionType === "initial" ? "初回" : "継続"}オンライン診断を予約しますか？`)) return;
     setSaving(true);
-    const response = await authorizedFetch("/api/online-sessions/book", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applicationId: coachingApplication.id, slotId: slot.id, sessionType }) });
-    const result = await response.json().catch(() => null);
-    showNotice(response.ok ? "オンライン診断を予約しました。Meetを準備しています" : `予約できませんでした（${result?.error ?? "通信エラー"}）`);
-    if (response.ok) await loadOwnerBookingWorkspace(coachingApplication);
-    setSaving(false);
+    try {
+      const response = await authorizedFetch("/api/online-sessions/book", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applicationId: coachingApplication.id, slotId: slot.id, sessionType }) });
+      const result = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) {
+        showNotice(`予約できませんでした（${result?.error ?? `サーバーエラー ${response.status}`}）`);
+        return;
+      }
+      showNotice("オンライン診断を予約しました。Meetを準備しています");
+      await loadOwnerBookingWorkspace(coachingApplication);
+    } catch (error) {
+      showNotice(`予約できませんでした（${error instanceof Error ? error.message : "ネットワーク接続を確認してください"}）`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function updateOnlineSessionStatus(sessionId: string, status: "completed" | "cancelled") {
@@ -2764,7 +2780,8 @@ export default function Home() {
   );
 
   const coachingChatOpen = Boolean(coachingApplication?.ownerConfirmedAt) && Boolean(coachingApplication && ["assigned", "consulting", "payment_pending", "active"].includes(coachingApplication.status));
-  const ownerBookedSessions = onlineSessions.filter((session) => session.status === "booked");
+  const ownerBookedSessions = onlineSessions.filter((session) => session.status === "booked").sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+  const ownerCompletedSessions = onlineSessions.filter((session) => session.status === "completed").sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
   const ownerHasInitialSession = onlineSessions.some((session) => session.sessionType === "initial" && session.status !== "cancelled");
   const coachView = (
     <section className="coach-screen">
@@ -2828,6 +2845,16 @@ export default function Home() {
                   {ownerBookedSessions.map((session) => <article key={session.id}><time>{formatOnlineDate(session.startsAt)}</time><div><strong>{session.sessionType === "initial" ? "初回オンライン診断" : "継続オンライン診断"}</strong><small>{Math.round((new Date(session.endsAt).getTime() - new Date(session.startsAt).getTime()) / 60000)}分</small></div>{session.meetUrl ? <a href={session.meetUrl} target="_blank" rel="noreferrer">Meetを開く</a> : <span>URL準備中</span>}</article>)}
                 </section>
               )}
+              <section className="owner-session-list owner-session-history">
+                <div className="booking-section-title"><div><p className="card-label">SESSION HISTORY</p><h2>オンライン診断の履歴</h2><p>これまでに実施した診断を確認できます。</p></div><b>{ownerCompletedSessions.length}回</b></div>
+                {ownerCompletedSessions.length ? ownerCompletedSessions.map((session) => (
+                  <article key={session.id}>
+                    <time>{formatOnlineDate(session.startsAt)}</time>
+                    <div><strong>{session.coachName || "担当コーチ"}</strong><small>{session.sessionType === "initial" ? "初回" : "継続"}オンライン診断 · {Math.round((new Date(session.endsAt).getTime() - new Date(session.startsAt).getTime()) / 60000)}分</small></div>
+                    <span className="history-completed">実施済み</span>
+                  </article>
+                )) : <p className="owner-history-empty">実施済みのオンライン診断はまだありません。</p>}
+              </section>
               <section className="owner-booking-card">
                 <div className="booking-section-title"><div><p className="card-label">BOOK ONLINE</p><h2>{ownerHasInitialSession ? "次回のオンライン診断を予約" : "初回オンライン診断を予約"}</h2><p>担当コーチが登録した空き枠から選べます。</p></div><b>{availableSlots.length}枠</b></div>
                 <div className="owner-slot-list">{availableSlots.length ? availableSlots.slice(0, 12).map((slot) => <button key={slot.id} onClick={() => void bookOnlineSession(slot)} disabled={saving}><span><strong>{formatOnlineDate(slot.startsAt)}</strong><small>{Math.round((new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60000)}分</small></span><b>選ぶ →</b></button>) : <p>現在予約できる日時はありません。担当コーチが枠を追加すると、ここへ自動で反映されます。</p>}</div>
@@ -2896,7 +2923,7 @@ export default function Home() {
           <label className="field-label">電話番号<input type="tel" inputMode="tel" autoComplete="tel" value={ownerProfile.phoneNumber} onChange={(event) => setOwnerProfile({ ...ownerProfile, phoneNumber: event.target.value })} placeholder="例：09012345678" required /></label>
           <label className="field-label">生年月日<input type="date" autoComplete="bday" max={today()} value={ownerProfile.birthDate} onChange={(event) => setOwnerProfile({ ...ownerProfile, birthDate: event.target.value })} required /></label>
           <label className="field-label">都道府県<select value={ownerProfile.prefecture} onChange={(event) => setOwnerProfile({ ...ownerProfile, prefecture: event.target.value })} required><option value="">選択してください</option>{PREFECTURES.map((prefecture) => <option key={prefecture} value={prefecture}>{prefecture}</option>)}</select></label>
-        <label className="field-label">市区町村・番地・建物名<textarea rows={3} autoComplete="street-address" value={ownerProfile.address} onChange={(event) => setOwnerProfile({ ...ownerProfile, address: event.target.value })} placeholder="例：目黒区〇〇1-2-3 Wan Toneマンション101" required /></label>
+          <label className="field-label">市区町村・番地・建物名<textarea rows={3} autoComplete="street-address" value={ownerProfile.address} onChange={(event) => setOwnerProfile({ ...ownerProfile, address: event.target.value })} placeholder="例：目黒区〇〇1-2-3 Wan Toneマンション101" required /></label>
           <button className="onboarding-next" disabled={saving}>{saving ? "保存中…" : "愛犬情報へ進む"}<span>→</span></button>
         </form> : <form onSubmit={saveDogOnboarding}><p className="card-label">ABOUT YOUR DOG</p><h1>次に、愛犬の毎日を<br />教えてください。</h1><p className="onboarding-lead">暮らし方まで分かると、コーチが記録の変化を正しく読み取りやすくなります。</p>
           <div className="onboarding-grid"><label className="field-label">愛犬の名前<input autoFocus value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} placeholder="例：むぎ" required /></label><label className="field-label">犬種<input value={profile.breed} onChange={(event) => setProfile({ ...profile, breed: event.target.value })} placeholder="例：トイプードル" required /></label></div>
