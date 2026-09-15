@@ -1578,6 +1578,7 @@ body { font-size: 16px; }
   .quick-log-grid strong { font-size:10px; }
 }
 
+
 /* Flat owner home */
 .app-shell:has(.home-flat) { background:#f6f7f3; box-shadow:none; }
 .app-shell:has(.home-flat) .app-header { background:#f6f7f3; backdrop-filter:none; }
@@ -1637,6 +1638,7 @@ body { font-size: 16px; }
   .home-flat .quick-log-grid > button { min-height:91px; flex-direction:column; justify-content:center; padding:9px 4px; text-align:center; }
   .home-flat .quick-log-grid > button:last-child { grid-column:auto; }
 }
+
 
 
 /* Owner and dog onboarding */
