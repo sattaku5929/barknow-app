@@ -663,6 +663,7 @@ export default function Home() {
   const [coachingConcerns, setCoachingConcerns] = useState<string[]>([]);
   const [coachingOutcome, setCoachingOutcome] = useState("");
   const [coachingNote, setCoachingNote] = useState("");
+  const [ownerCoachTab, setOwnerCoachTab] = useState<"sessions" | "chat">("sessions");
   const [assignedCoachProfile, setAssignedCoachProfile] = useState<CoachProfile | null>(null);
   const [coachProfile, setCoachProfile] = useState<CoachProfile>({ displayName: "", headline: "", bio: "", credentials: "", avatarUrl: "", avatarPreset: "paw-green", meetUrl: "" });
   const [availableSlots, setAvailableSlots] = useState<AvailabilitySlot[]>([]);
@@ -2906,47 +2907,82 @@ export default function Home() {
             </section>
           ) : (
             <>
-              <section className="meet-guidance">
-                <span>G</span><div><strong>Google Meetを使用します</strong><p>オンライン診断はGoogle Meetで行います。開始前にGoogleアカウントをご用意ください。</p></div>
-              </section>
-              {ownerBookedSessions.length > 0 && (
-                <section className="owner-session-list">
-                  <div className="booking-section-title"><div><p className="card-label">NEXT SESSION</p><h2>予約済みのオンライン診断</h2></div></div>
-                  {ownerBookedSessions.map((session) => <article key={session.id}><time>{formatOnlineDate(session.startsAt)}</time><div><strong>{session.sessionType === "initial" ? "初回オンライン診断" : "継続オンライン診断"}</strong><small>{Math.round((new Date(session.endsAt).getTime() - new Date(session.startsAt).getTime()) / 60000)}分</small></div>{session.meetUrl ? <a href={session.meetUrl} target="_blank" rel="noreferrer">Meetを開く</a> : <span>URL準備中</span>}</article>)}
-                </section>
+              <div className="owner-coach-tabs" role="tablist" aria-label="コーチメニュー">
+                <button type="button" role="tab" aria-selected={ownerCoachTab === "sessions"} className={ownerCoachTab === "sessions" ? "is-active" : ""} onClick={() => setOwnerCoachTab("sessions")}><span className="owner-tab-icon"><NavGlyph name="goals" /></span><span><strong>オンライン診断</strong><small>{ownerBookedSessions.length ? `予約 ${ownerBookedSessions.length}件` : "予約・履歴"}</small></span></button>
+                <button type="button" role="tab" aria-selected={ownerCoachTab === "chat"} className={ownerCoachTab === "chat" ? "is-active" : ""} onClick={() => setOwnerCoachTab("chat")}><span className="owner-tab-icon"><NavGlyph name="coach" /></span><span><strong>チャット</strong><small>{messages.length ? `${messages.length}件のやりとり` : "コーチに相談"}</small></span></button>
+              </div>
+
+              {ownerCoachTab === "sessions" ? (
+                <div className="owner-coach-panel" role="tabpanel" aria-label="オンライン診断">
+                  <header className="owner-panel-heading"><div><p className="card-label">ONLINE SESSION</p><h2>オンライン診断</h2></div><span className="meet-mini-mark">Meet</span></header>
+
+                  {ownerBookedSessions.length ? (
+                    <section className="owner-next-sessions" aria-label="予約済みのオンライン診断">
+                      {ownerBookedSessions.map((session, index) => (
+                        <details className={`owner-session-disclosure ${index === 0 ? "is-next" : ""}`} key={session.id}>
+                          <summary>
+                            <span className="session-when"><small>{index === 0 ? "次回" : "予約済み"}</small><time>{formatOnlineDate(session.startsAt)}</time></span>
+                            {session.meetUrl ? <a href={session.meetUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()}>Meetを開く</a> : <span className="meet-preparing">URL準備中</span>}
+                            <i aria-hidden="true">⌄</i>
+                          </summary>
+                          <div className="session-expanded-detail">
+                            <dl>
+                              <div><dt>内容</dt><dd>{session.sessionType === "initial" ? "初回オンライン診断" : "継続オンライン診断"}</dd></div>
+                              <div><dt>所要時間</dt><dd>{Math.round((new Date(session.endsAt).getTime() - new Date(session.startsAt).getTime()) / 60000)}分</dd></div>
+                              <div><dt>担当</dt><dd>{session.coachName || assignedCoachProfile?.displayName || "担当コーチ"}</dd></div>
+                            </dl>
+                            <p>Google Meetで実施します。開始時刻になったら上のボタンからご参加ください。</p>
+                          </div>
+                        </details>
+                      ))}
+                    </section>
+                  ) : (
+                    <section className="owner-next-empty"><span><NavGlyph name="goals" /></span><div><strong>予約中のオンライン診断はありません</strong><p>下の「新しく予約する」から空き日時を選べます。</p></div></section>
+                  )}
+
+                  <details className="owner-panel-disclosure">
+                    <summary><span><strong>{ownerHasInitialSession ? "新しく予約する" : "初回診断を予約する"}</strong><small>担当コーチの空き日時から選択</small></span><b>{availableSlots.length}枠</b><i aria-hidden="true">⌄</i></summary>
+                    <div className="owner-disclosure-body">
+                      <div className="owner-slot-list">{availableSlots.length ? availableSlots.slice(0, 12).map((slot) => <button key={slot.id} onClick={() => void bookOnlineSession(slot)} disabled={saving}><span><strong>{formatOnlineDate(slot.startsAt)}</strong><small>{Math.round((new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60000)}分</small></span><b>選ぶ →</b></button>) : <p>現在予約できる日時はありません。担当コーチが枠を追加すると、ここへ自動で反映されます。</p>}</div>
+                    </div>
+                  </details>
+
+                  <details className="owner-panel-disclosure owner-history-disclosure">
+                    <summary><span><strong>オンライン診断の履歴</strong><small>過去の診断を確認</small></span><b>{ownerCompletedSessions.length}回</b><i aria-hidden="true">⌄</i></summary>
+                    <div className="owner-disclosure-body">
+                      {ownerCompletedSessions.length ? ownerCompletedSessions.map((session) => (
+                        <details className="owner-history-row" key={session.id}>
+                          <summary><time>{formatOnlineDate(session.startsAt)}</time><span>実施済み</span><i aria-hidden="true">⌄</i></summary>
+                          <dl>
+                            <div><dt>内容</dt><dd>{session.sessionType === "initial" ? "初回オンライン診断" : "継続オンライン診断"}</dd></div>
+                            <div><dt>所要時間</dt><dd>{Math.round((new Date(session.endsAt).getTime() - new Date(session.startsAt).getTime()) / 60000)}分</dd></div>
+                            <div><dt>担当</dt><dd>{session.coachName || "担当コーチ"}</dd></div>
+                          </dl>
+                        </details>
+                      )) : <p className="owner-history-empty">実施済みのオンライン診断はまだありません。</p>}
+                    </div>
+                  </details>
+                </div>
+              ) : (
+                <div className="owner-coach-panel owner-chat-panel" role="tabpanel" aria-label="チャット">
+                  <div className="connection-note"><span className={connection}></span>{connection === "online" ? "コーチルームに接続中" : connection === "checking" ? "接続を確認しています" : "端末保存モード"}</div>
+                  <div className="message-list" aria-live="polite">
+                    {messages.length ? messages.map((message) => (
+                      <div key={message.id} className={`message ${message.sender}`}>
+                        <span>{message.sender === "coach" ? "COACH" : "YOU"}</span>
+                        <MessageMedia message={message} />
+                        {message.body && <p>{message.body}</p>}
+                        <time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time>
+                      </div>
+                    )) : <div className="coach-empty"><div className="coach-avatar"><NavGlyph name="coach" /></div><h3>担当コーチへ、最初のメッセージを。</h3><p>例：いちばん困っているのは散歩中の引っ張りです。記録のどこを見ればよいですか？</p></div>}
+                  </div>
+                  {connection === "online" && currentUserId && profile.id
+                    ? <ChatInput ownerId={currentUserId} dogId={profile.id} sender="owner" placeholder="困っている場面や、写真・動画を共有してください" onSent={addOwnerMessage} />
+                    : <p className="media-chat-unavailable">オンライン接続後にメッセージや画像・動画を送信できます。</p>}
+                </div>
               )}
-              <section className="owner-session-list owner-session-history">
-                <div className="booking-section-title"><div><p className="card-label">SESSION HISTORY</p><h2>オンライン診断の履歴</h2><p>これまでに実施した診断を確認できます。</p></div><b>{ownerCompletedSessions.length}回</b></div>
-                {ownerCompletedSessions.length ? ownerCompletedSessions.map((session) => (
-                  <article key={session.id}>
-                    <time>{formatOnlineDate(session.startsAt)}</time>
-                    <div><strong>{session.coachName || "担当コーチ"}</strong><small>{session.sessionType === "initial" ? "初回" : "継続"}オンライン診断 · {Math.round((new Date(session.endsAt).getTime() - new Date(session.startsAt).getTime()) / 60000)}分</small></div>
-                    <span className="history-completed">実施済み</span>
-                  </article>
-                )) : <p className="owner-history-empty">実施済みのオンライン診断はまだありません。</p>}
-              </section>
-              <section className="owner-booking-card">
-                <div className="booking-section-title"><div><p className="card-label">BOOK ONLINE</p><h2>{ownerHasInitialSession ? "次回のオンライン診断を予約" : "初回オンライン診断を予約"}</h2><p>担当コーチが登録した空き枠から選べます。</p></div><b>{availableSlots.length}枠</b></div>
-                <div className="owner-slot-list">{availableSlots.length ? availableSlots.slice(0, 12).map((slot) => <button key={slot.id} onClick={() => void bookOnlineSession(slot)} disabled={saving}><span><strong>{formatOnlineDate(slot.startsAt)}</strong><small>{Math.round((new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60000)}分</small></span><b>選ぶ →</b></button>) : <p>現在予約できる日時はありません。担当コーチが枠を追加すると、ここへ自動で反映されます。</p>}</div>
-              </section>
             </>
           )}
-          {coachingApplication.ownerConfirmedAt && <>
-          <div className="connection-note"><span className={connection}></span>{connection === "online" ? "コーチルームに接続中" : connection === "checking" ? "接続を確認しています" : "端末保存モード"}</div>
-          <div className="message-list" aria-live="polite">
-            {messages.length ? messages.map((message) => (
-              <div key={message.id} className={`message ${message.sender}`}>
-                <span>{message.sender === "coach" ? "COACH" : "YOU"}</span>
-                <MessageMedia message={message} />
-                {message.body && <p>{message.body}</p>}
-                <time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time>
-              </div>
-            )) : <div className="coach-empty"><div className="coach-avatar"><NavGlyph name="coach" /></div><h3>担当コーチへ、最初のメッセージを。</h3><p>例：いちばん困っているのは散歩中の引っ張りです。記録のどこを見ればよいですか？</p></div>}
-          </div>
-          {connection === "online" && currentUserId && profile.id
-            ? <ChatInput ownerId={currentUserId} dogId={profile.id} sender="owner" placeholder="困っている場面や、写真・動画を共有してください" onSent={addOwnerMessage} />
-            : <p className="media-chat-unavailable">オンライン接続後にメッセージや画像・動画を送信できます。</p>}
-          </>}
         </>
       )}
     </section>
