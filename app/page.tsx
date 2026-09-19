@@ -3056,7 +3056,6 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="owner-coach-panel owner-chat-panel" role="tabpanel" aria-label="チャット">
-                  <div className="connection-note"><span className={connection}></span>{connection === "online" ? "コーチルームに接続中" : connection === "checking" ? "接続を確認しています" : "端末保存モード"}</div>
                   <div className="message-list" aria-live="polite" ref={ownerMessageListRef}>
                     {chronologicalMessages.length ? chronologicalMessages.map((message) => (
                       <div key={message.id} className={`message ${message.sender}`}>
@@ -3498,7 +3497,6 @@ export default function Home() {
           </button>
           <div className="app-header-actions">
             {(userRole === "admin" || userRole === "coach") && <button className="owner-admin-switch" onClick={() => setStaffMode("staff")}><NavGlyph name="coach" /><span>{userRole === "admin" ? "管理画面" : "コーチ画面"}</span></button>}
-            <div className="header-status"><span className={connection}></span>{connection === "online" ? "同期中" : connection === "checking" ? "確認中" : "端末保存"}</div>
           </div>
         </header>
         <main className={`app-main ${view === "home" ? "home-flat" : ""}`}>
