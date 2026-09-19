@@ -440,43 +440,43 @@ function Icon({ children }: { children: ReactNode }) {
 
 function NavGlyph({ name }: { name: "home" | "goals" | "report" | "record" | "coach" | "profile" }) {
   const paths: Record<typeof name, ReactNode> = {
-    home: <><path d="m4 11 8-7 8 7" /><path d="M6.5 10v9h11v-9M10 19v-5h4v5" /></>,
-    goals: <><rect x="4" y="4" width="16" height="16" rx="3" /><path d="m8 10 2 2 4-4M8 16h8" /></>,
-    report: <><path d="M5 19V9M12 19V5M19 19v-7" /><path d="M3 19h18" /></>,
-    record: <><path d="M12 5v14M5 12h14" /></>,
-    coach: <><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-4.5 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" /><path d="M8 10h8M8 13h5" /></>,
-    profile: <><circle cx="12" cy="8" r="3.2" /><path d="M5.5 20c.7-4 2.8-6 6.5-6s5.8 2 6.5 6" /></>,
+    home: <path d="M3.3 11.1 12 3.8l8.7 7.3-1.7 2-1.2-1v7.2H6.2v-7.2l-1.2 1-1.7-2Zm5.7-.4v6.1h2v-3.9h2v3.9h2v-6.1L12 8.2l-3 2.5Z" />,
+    goals: <><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><path className="icon-negative" d="m7.8 10.9 2.2 2.2 5-5M8 16.2h8" /></>,
+    report: <><rect x="3.5" y="12" width="4" height="8" rx="2" /><rect x="10" y="5" width="4" height="15" rx="2" /><rect x="16.5" y="8.5" width="4" height="11.5" rx="2" /></>,
+    record: <><circle cx="12" cy="12" r="9" /><path className="icon-negative" d="M12 7.8v8.4M7.8 12h8.4" /></>,
+    coach: <><path d="M4.2 4.5h15.6c1.2 0 2.2 1 2.2 2.2v8.1c0 1.2-1 2.2-2.2 2.2h-8.1L6 21v-4H4.2A2.2 2.2 0 0 1 2 14.8V6.7c0-1.2 1-2.2 2.2-2.2Z" /><circle className="flat-icon-detail" cx="8" cy="10.8" r="1.2" /><circle className="flat-icon-detail" cx="12" cy="10.8" r="1.2" /><circle className="flat-icon-detail" cx="16" cy="10.8" r="1.2" /></>,
+    profile: <><circle cx="12" cy="8" r="4" /><path d="M4.2 20.2c.7-4.7 3.4-7.1 7.8-7.1s7.1 2.4 7.8 7.1H4.2Z" /></>,
   };
-  return <svg viewBox="0 0 24 24">{paths[name]}</svg>;
+  return <svg className="flat-icon-svg" viewBox="0 0 24 24">{paths[name]}</svg>;
 }
 
 function CareIcon({ name }: { name: CareGoalType }) {
   const paths: Record<CareGoalType, ReactNode> = {
-    brush: <><path d="M5 4h10v5H5zM7 9v11M10 9v11M13 9v11" /><path d="M15 5h4v3h-4" /></>,
+    brush: <><rect x="4" y="3.5" width="12" height="6" rx="2" /><rect x="15" y="5" width="5" height="3" rx="1.5" /><rect x="5.5" y="8.5" width="2.5" height="12" rx="1.25" /><rect x="9" y="8.5" width="2.5" height="12" rx="1.25" /><rect x="12.5" y="8.5" width="2.5" height="12" rx="1.25" /></>,
     teeth: <path d="M8 3c-3 0-4 2.5-3 5 1 2.5 1 4.5 1.5 8 .4 2.7 2.7 5 3.5 1l.5-3c.2-1 2.8-1 3 0l.5 3c.8 4 3.1 1.7 3.5-1 .5-3.5.5-5.5 1.5-8 1-2.5 0-5-3-5-1.5 0-2.5 1-4 1s-2.5-1-4-1Z" />,
     paws: <><ellipse cx="12" cy="15.5" rx="4.7" ry="4" /><ellipse cx="6.8" cy="10" rx="2" ry="2.6" transform="rotate(-25 6.8 10)" /><ellipse cx="11" cy="7.5" rx="2" ry="2.6" /><ellipse cx="16" cy="9" rx="2" ry="2.6" transform="rotate(25 16 9)" /></>,
-    bath: <><path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6v-3Z" /><path d="M7 11V7a3 3 0 0 1 6 0M3 11h18M7 20v1M17 20v1" /></>,
-    nails: <><path d="M8 4c2 2 3 4 2 7l-2 7M16 4c-2 2-3 4-2 7l2 7" /><path d="M6 18h4M14 18h4" /></>,
-    ears: <><path d="M12 5c-5-4-8 0-6 5 1 3 3 5 6 7 3-2 5-4 6-7 2-5-1-9-6-5Z" /><path d="M9 8c2 1 4 1 6 0" /></>,
-    training: <><circle cx="12" cy="12" r="8" /><path d="m8.5 12 2.2 2.2 4.8-5" /></>,
-    custom: <><circle cx="12" cy="12" r="8" /><path d="M12 8v8M8 12h8" /></>,
+    bath: <><path d="M3 10.5h18v3.2a7 7 0 0 1-7 7h-4a7 7 0 0 1-7-7v-3.2Z" /><circle cx="7" cy="7" r="2.2" /><circle cx="11" cy="4.5" r="1.8" /><circle cx="15" cy="7.2" r="1.5" /></>,
+    nails: <><rect x="5.5" y="3" width="5" height="17" rx="2.5" transform="rotate(9 8 11.5)" /><rect x="13.5" y="3" width="5" height="17" rx="2.5" transform="rotate(-9 16 11.5)" /></>,
+    ears: <path d="M12 5.2C7.1.7 2.7 4.6 4.8 10.1c1.2 3.2 3.7 6.1 7.2 8.5 3.5-2.4 6-5.3 7.2-8.5C21.3 4.6 16.9.7 12 5.2Z" />,
+    training: <><circle cx="12" cy="12" r="9" /><path className="icon-negative" d="m7.8 12 2.7 2.7 5.8-6" /></>,
+    custom: <><circle cx="12" cy="12" r="9" /><path className="icon-negative" d="M12 7.5v9M7.5 12h9" /></>,
   };
-  return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
+  return <svg className="flat-icon-svg" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
 }
 
 function TopicIcon({ name }: { name: RecordCategory }) {
   const paths: Record<RecordCategory, ReactNode> = {
-    daily: <><rect x="4" y="5" width="16" height="15" rx="3" /><path d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h6" /></>,
-    meal: <><path d="M4 12h16c-.5 4.5-3 7-8 7s-7.5-2.5-8-7Z" /><path d="M6.5 12 8 9h8l1.5 3" /><circle cx="10" cy="7" r="1" /><circle cx="14" cy="6.5" r="1" /></>,
-    barking: <><path d="m5 9-2-3v7c0 4 3 7 7 7s7-3 7-7V6l-2 3" /><circle cx="8" cy="12" r=".7" fill="currentColor" stroke="none" /><circle cx="13" cy="12" r=".7" fill="currentColor" stroke="none" /><path d="M8.5 16h3M20 7l2-1M20.5 11H23M20 15l2 1" /></>,
-    toilet: <><path d="M8 18h9a3 3 0 0 0 0-6c.5-2.2-1-4-3.2-4 .2-2-1.2-3.5-3.1-3.5-2 0-3.2 1.5-3.1 3.5C5.5 8.3 4.4 10 5 12a3 3 0 0 0 3 6Z" /><path d="M9 13h4.5M10 9h3" /></>,
+    daily: <><rect x="3" y="4.5" width="18" height="16.5" rx="5" /><rect className="flat-icon-detail" x="7" y="9" width="10" height="2" rx="1" /><rect className="flat-icon-detail" x="7" y="13" width="7" height="2" rx="1" /></>,
+    meal: <><path d="M3 10.5h18c-.5 6.2-3.5 9.2-9 9.2s-8.5-3-9-9.2Z" /><circle cx="8" cy="7" r="2" /><circle cx="13" cy="6" r="2.3" /><circle cx="17.5" cy="8" r="1.5" /></>,
+    barking: <><path d="M4 9.2 2.5 5.5V14c0 4.4 3.7 7.4 8.3 7.4s8.2-3 8.2-7.4V5.5l-2 3.7c-3.6-2-9.2-2-13 0Z" /><circle className="flat-icon-detail" cx="8.2" cy="13" r="1.2" /><circle className="flat-icon-detail" cx="14.2" cy="13" r="1.2" /><path className="icon-negative" d="M9.5 17h3" /></>,
+    toilet: <path d="M7.2 20h10.2a4.1 4.1 0 0 0 1-8.1c.2-3-1.7-5-4.3-5.1.1-2.5-1.5-4.2-3.9-4.2S6.3 4.4 6.4 6.8c-2.8.4-4.3 2.7-3.4 5.2a4.1 4.1 0 0 0 4.2 8Z" />,
     walk: <><ellipse cx="12" cy="15.5" rx="4.7" ry="4" /><ellipse cx="6.8" cy="10" rx="2" ry="2.6" transform="rotate(-25 6.8 10)" /><ellipse cx="11" cy="7.5" rx="2" ry="2.6" /><ellipse cx="16" cy="9" rx="2" ry="2.6" transform="rotate(25 16 9)" /></>,
     sleep: <path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.5 8.5 0 1 0 20 15.2Z" />,
-    win: <><circle cx="12" cy="12" r="8" /><path d="m8.5 12 2.2 2.2 4.8-5" /><path d="M18.5 4.5 20 3m.5 5H23M5.5 4.5 4 3" /></>,
+    win: <path d="M12 21c-1.2-1-8.5-5.4-8.5-11.3 0-3.2 2.2-5.4 5.1-5.4 1.6 0 2.8.7 3.4 1.8.6-1.1 1.8-1.8 3.4-1.8 2.9 0 5.1 2.2 5.1 5.4C20.5 15.6 13.2 20 12 21Z" />,
   };
 
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="flat-icon-svg" viewBox="0 0 24 24" aria-hidden="true">
       {paths[name]}
     </svg>
   );
