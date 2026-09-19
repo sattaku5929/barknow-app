@@ -1261,6 +1261,7 @@ body { font-size: 16px; }
 .auth-submit span { font-size:19px; }
 .auth-submit:disabled { opacity:.58; }
 .auth-error { margin:0; padding:11px 13px; border-radius:11px; background:#fff0ed; color:#a54838; font-size:12px; line-height:1.6; }
+.onboarding-error { margin:16px 0 0; padding:12px 14px; border:1px solid rgba(165,72,56,.16); border-radius:12px; background:#fff0ed; color:#a54838; font-size:12px; font-weight:700; line-height:1.65; }
 .forgot-password { display:block; margin:18px auto 0; border:0; background:transparent; color:var(--green); cursor:pointer; font-size:11px; text-decoration:underline; text-underline-offset:3px; }
 .migration-note { margin:17px 0 0; color:var(--muted); font-size:10px; line-height:1.65; text-align:center; }
 .account-card { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:18px; padding:15px; border-radius:15px; background:#f1f3f1; }

@@ -700,6 +700,7 @@ export default function Home() {
   const [ownerProfile, setOwnerProfile] = useState<OwnerProfile>(initialOwnerProfile);
   const [onboardingRequired, setOnboardingRequired] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState<"owner" | "dog">("owner");
+  const [onboardingError, setOnboardingError] = useState("");
   const [records, setRecords] = useState<DailyRecord[]>([]);
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const [notice, setNotice] = useState("");
@@ -2054,8 +2055,12 @@ export default function Home() {
   }
 
   async function getUserId() {
-    const { data } = await supabase.auth.getSession();
-    return data.session?.user.id ?? null;
+    const { data, error } = await supabase.auth.getSession();
+    if (error) console.error("[Auth] getSession failed", error);
+    if (data.session?.user.id) return data.session.user.id;
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError) console.error("[Auth] getUser failed", userError);
+    return userData.user?.id ?? null;
   }
 
   async function ensureRemoteDog(userId: string, nextProfile = profile) {
@@ -2107,29 +2112,104 @@ export default function Home() {
 
   async function saveOwnerOnboarding(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const userId = await getUserId();
-    if (!userId) return;
+    setOnboardingError("");
+    const normalized = {
+      fullName: ownerProfile.fullName.trim(),
+      fullNameKana: ownerProfile.fullNameKana.trim(),
+      phoneNumber: ownerProfile.phoneNumber.trim(),
+      birthDate: ownerProfile.birthDate,
+      prefecture: ownerProfile.prefecture,
+      address: ownerProfile.address.trim(),
+    };
+    const missingLabel = [
+      [normalized.fullName, "お名前"],
+      [normalized.fullNameKana, "フリガナ"],
+      [normalized.phoneNumber, "電話番号"],
+      [normalized.birthDate, "生年月日"],
+      [normalized.prefecture, "都道府県"],
+      [normalized.address, "住所"],
+    ].find(([value]) => !value)?.[1];
+    if (missingLabel) {
+      const message = `${missingLabel}を入力してください。`;
+      setOnboardingError(message);
+      showNotice(message);
+      return;
+    }
+    const phoneDigits = normalized.phoneNumber.replace(/\D/g, "");
+    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
+      const message = "電話番号を10〜11桁で入力してください。";
+      setOnboardingError(message);
+      showNotice(message);
+      return;
+    }
+    if (normalized.birthDate > today()) {
+      const message = "生年月日は今日以前の日付を選択してください。";
+      setOnboardingError(message);
+      showNotice(message);
+      return;
+    }
+
     setSaving(true);
-    const completedAt = new Date().toISOString();
-    const { error } = await supabase.from("wt_owner_profiles").upsert({ user_id: userId, full_name: ownerProfile.fullName.trim(), full_name_kana: ownerProfile.fullNameKana.trim(), phone_number: ownerProfile.phoneNumber.trim(), prefecture: ownerProfile.prefecture, address: ownerProfile.address.trim(), owner_birth_date: ownerProfile.birthDate || null, onboarding_completed_at: completedAt, updated_at: completedAt });
-    if (error) showNotice(`お客様情報を保存できませんでした（${error.message}）`);
-    else {
+    let userId: string | null = null;
+    try {
+      userId = await getUserId();
+      if (!userId) throw new Error("ログイン情報を確認できませんでした。再度ログインしてください。");
+      const completedAt = new Date().toISOString();
+      const { error } = await supabase.from("wt_owner_profiles").upsert({ user_id: userId, full_name: normalized.fullName, full_name_kana: normalized.fullNameKana, phone_number: normalized.phoneNumber, prefecture: normalized.prefecture, address: normalized.address, owner_birth_date: normalized.birthDate, onboarding_completed_at: completedAt, updated_at: completedAt });
+      if (error) throw error;
       setOwnerProfile((current) => ({ ...current, completedAt }));
       setOnboardingStep("dog");
       window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "不明なエラー";
+      const message = `飼い主情報を保存できませんでした（${detail}）`;
+      console.error("[Onboarding] owner profile submission failed", {
+        userId,
+        inputSummary: {
+          fullNameLength: normalized.fullName.length,
+          fullNameKanaLength: normalized.fullNameKana.length,
+          phoneDigits: phoneDigits.length,
+          birthDateProvided: Boolean(normalized.birthDate),
+          prefectureSelected: Boolean(normalized.prefecture),
+          addressLength: normalized.address.length,
+        },
+        error,
+      });
+      setOnboardingError(message);
+      showNotice(message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   async function saveDogOnboarding(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const userId = await getUserId();
-    if (!userId) return;
+    setOnboardingError("");
+    const missingLabel = [
+      [profile.name.trim(), "愛犬の名前"],
+      [profile.breed.trim(), "犬種"],
+      [profile.birthday, "誕生日"],
+      [profile.isFirstTimeOwner, "飼育経験"],
+      [profile.gender, "性別"],
+      [profile.trainingExperience, "トレーニング経験"],
+      [profile.daycareFrequency, "保育園の頻度"],
+      [profile.walkFrequency, "散歩の頻度"],
+      [profile.concerns.trim(), "気になっていること"],
+    ].find(([value]) => !value)?.[1];
+    if (missingLabel) {
+      const message = `${missingLabel}を入力してください。`;
+      setOnboardingError(message);
+      showNotice(message);
+      return;
+    }
     setSaving(true);
-    const completedAt = new Date().toISOString();
-    const { data, error } = await supabase.from("wt_dogs").upsert({ owner_id: userId, name: profile.name.trim(), breed: profile.breed.trim() || null, birthday: profile.birthday || null, birth_date: profile.birthday || null, is_first_time_owner: profile.isFirstTimeOwner === "yes", gender: profile.gender, training_experience: profile.trainingExperience, daycare_frequency: profile.daycareFrequency, walk_frequency: profile.walkFrequency, concerns: profile.concerns.trim(), profile_completed_at: completedAt, updated_at: completedAt }, { onConflict: "owner_id" }).select("id").single();
-    if (error) showNotice(`愛犬情報を保存できませんでした（${error.message}）`);
-    else {
+    let userId: string | null = null;
+    try {
+      userId = await getUserId();
+      if (!userId) throw new Error("ログイン情報を確認できませんでした。再度ログインしてください。");
+      const completedAt = new Date().toISOString();
+      const { data, error } = await supabase.from("wt_dogs").upsert({ owner_id: userId, name: profile.name.trim(), breed: profile.breed.trim() || null, birthday: profile.birthday || null, birth_date: profile.birthday || null, is_first_time_owner: profile.isFirstTimeOwner === "yes", gender: profile.gender, training_experience: profile.trainingExperience, daycare_frequency: profile.daycareFrequency, walk_frequency: profile.walkFrequency, concerns: profile.concerns.trim(), profile_completed_at: completedAt, updated_at: completedAt }, { onConflict: "owner_id" }).select("id").single();
+      if (error) throw error;
       const next = { ...profile, id: data.id, profileCompletedAt: completedAt };
       setProfile(next);
       writeLocal(PROFILE_KEY, next);
@@ -2137,8 +2217,26 @@ export default function Home() {
       setView("home");
       router.replace("/");
       showNotice("登録が完了しました。今日から一緒に記録を始めましょう");
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "不明なエラー";
+      const message = `愛犬情報を保存できませんでした（${detail}）`;
+      console.error("[Onboarding] dog profile submission failed", {
+        userId,
+        inputSummary: {
+          nameLength: profile.name.trim().length,
+          breedLength: profile.breed.trim().length,
+          birthdayProvided: Boolean(profile.birthday),
+          daycareFrequencySelected: Boolean(profile.daycareFrequency),
+          walkFrequencySelected: Boolean(profile.walkFrequency),
+          concernsLength: profile.concerns.trim().length,
+        },
+        error,
+      });
+      setOnboardingError(message);
+      showNotice(message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   useEffect(() => {
@@ -3166,22 +3264,24 @@ export default function Home() {
       <header><strong>Wan Tone</strong><span>初期設定</span></header>
       <main className="onboarding-card">
         <div className="onboarding-progress"><span className={onboardingStep === "owner" ? "is-current" : "is-done"}>1<b>飼い主情報</b></span><i></i><span className={onboardingStep === "dog" ? "is-current" : ""}>2<b>愛犬情報</b></span></div>
-        {onboardingStep === "owner" ? <form onSubmit={saveOwnerOnboarding}><p className="card-label">WELCOME TO WAN TONE</p><h1>まず、飼い主さまのことを<br />教えてください。</h1><p className="onboarding-lead">担当コーチが安心してご連絡し、ご家族に合ったサポートを始めるための情報です。</p>
+        {onboardingStep === "owner" ? <form noValidate onSubmit={saveOwnerOnboarding} onInput={() => { if (onboardingError) setOnboardingError(""); }}><p className="card-label">WELCOME TO WAN TONE</p><h1>まず、飼い主さまのことを<br />教えてください。</h1><p className="onboarding-lead">担当コーチが安心してご連絡し、ご家族に合ったサポートを始めるための情報です。</p>
           <label className="field-label">お名前（氏名）<input autoFocus autoComplete="name" value={ownerProfile.fullName} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullName: event.target.value })} placeholder="例：三宅 太郎" required /></label>
           <label className="field-label">フリガナ<input value={ownerProfile.fullNameKana} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullNameKana: event.target.value })} placeholder="例：ミヤケ タロウ" maxLength={150} required /></label>
           <label className="field-label">電話番号<input type="tel" inputMode="tel" autoComplete="tel" value={ownerProfile.phoneNumber} onChange={(event) => setOwnerProfile({ ...ownerProfile, phoneNumber: event.target.value })} placeholder="例：09012345678" required /></label>
           <label className="field-label">生年月日<input type="date" autoComplete="bday" max={today()} value={ownerProfile.birthDate} onChange={(event) => setOwnerProfile({ ...ownerProfile, birthDate: event.target.value })} required /></label>
           <label className="field-label">都道府県<select value={ownerProfile.prefecture} onChange={(event) => setOwnerProfile({ ...ownerProfile, prefecture: event.target.value })} required><option value="">選択してください</option>{PREFECTURES.map((prefecture) => <option key={prefecture} value={prefecture}>{prefecture}</option>)}</select></label>
         <label className="field-label">市区町村・番地・建物名<textarea rows={3} autoComplete="street-address" value={ownerProfile.address} onChange={(event) => setOwnerProfile({ ...ownerProfile, address: event.target.value })} placeholder="例：目黒区〇〇1-2-3 Wan Toneマンション101" required /></label>
-          <button className="onboarding-next" disabled={saving}>{saving ? "保存中…" : "愛犬情報へ進む"}<span>→</span></button>
-        </form> : <form onSubmit={saveDogOnboarding}><p className="card-label">ABOUT YOUR DOG</p><h1>次に、愛犬の毎日を<br />教えてください。</h1><p className="onboarding-lead">暮らし方まで分かると、コーチが記録の変化を正しく読み取りやすくなります。</p>
+          {onboardingError && <p className="onboarding-error" role="alert">{onboardingError}</p>}
+          <button type="submit" className="onboarding-next" disabled={saving}>{saving ? "保存中…" : "愛犬情報へ進む"}<span>→</span></button>
+        </form> : <form noValidate onSubmit={saveDogOnboarding} onInput={() => { if (onboardingError) setOnboardingError(""); }}><p className="card-label">ABOUT YOUR DOG</p><h1>次に、愛犬の毎日を<br />教えてください。</h1><p className="onboarding-lead">暮らし方まで分かると、コーチが記録の変化を正しく読み取りやすくなります。</p>
           <div className="onboarding-grid"><label className="field-label">愛犬の名前<input autoFocus value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} placeholder="例：むぎ" required /></label><label className="field-label">犬種<input value={profile.breed} onChange={(event) => setProfile({ ...profile, breed: event.target.value })} placeholder="例：トイプードル" required /></label></div>
           <label className="field-label">誕生日<input type="date" max={today()} value={profile.birthday} onChange={(event) => setProfile({ ...profile, birthday: event.target.value })} required />{ageLabel(profile.birthday) && <small className="age-preview">{ageLabel(profile.birthday)}</small>}</label>
           <div className="onboarding-grid"><label className="field-label">犬を飼うのは初めて？<select value={profile.isFirstTimeOwner} onChange={(event) => setProfile({ ...profile, isFirstTimeOwner: event.target.value as DogProfile["isFirstTimeOwner"] })} required><option value="">選択してください</option><option value="yes">はい</option><option value="no">いいえ</option></select></label><label className="field-label">性別<select value={profile.gender} onChange={(event) => setProfile({ ...profile, gender: event.target.value as DogProfile["gender"] })} required><option value="">選択してください</option><option value="male">男の子</option><option value="female">女の子</option><option value="unknown">不明・回答しない</option></select></label></div>
           <label className="field-label">しつけトレーニングの経験回数<select value={profile.trainingExperience} onChange={(event) => setProfile({ ...profile, trainingExperience: event.target.value as DogProfile["trainingExperience"] })} required><option value="">選択してください</option><option value="first_time">初めて</option><option value="once">1回</option><option value="twice">2回</option><option value="three_or_more">3回以上</option></select></label>
           <div className="onboarding-grid"><label className="field-label">保育園への頻度<select value={profile.daycareFrequency} onChange={(event) => setProfile({ ...profile, daycareFrequency: event.target.value })} required><option value="">選択してください</option><option>通っていない</option><option>月に数回</option><option>週1回</option><option>週2〜3回</option><option>週4回以上</option></select></label><label className="field-label">散歩の頻度<select value={profile.walkFrequency} onChange={(event) => setProfile({ ...profile, walkFrequency: event.target.value })} required><option value="">選択してください</option><option>ほとんど行かない</option><option>週に数回</option><option>毎日1回</option><option>毎日2回</option><option>毎日3回以上</option></select></label></div>
           <label className="field-label">主な悩み・気になっていること<textarea rows={5} value={profile.concerns} onChange={(event) => setProfile({ ...profile, concerns: event.target.value })} placeholder="吠える場面、散歩で困ること、日々気になる様子など" required /></label>
-          <div className="onboarding-actions"><button type="button" onClick={() => setOnboardingStep("owner")}>← 戻る</button><button className="onboarding-next" disabled={saving}>{saving ? "登録中…" : "登録して始める"}<span>→</span></button></div>
+          {onboardingError && <p className="onboarding-error" role="alert">{onboardingError}</p>}
+          <div className="onboarding-actions"><button type="button" onClick={() => { setOnboardingError(""); setOnboardingStep("owner"); }}>← 戻る</button><button type="submit" className="onboarding-next" disabled={saving}>{saving ? "登録中…" : "登録して始める"}<span>→</span></button></div>
         </form>}
         <p className="onboarding-privacy">入力情報は担当コーチと管理者だけがサポート目的で確認できます。</p>
       </main>
