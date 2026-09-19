@@ -1545,6 +1545,26 @@ body { font-size: 16px; }
 /* Owner/coach media chat */
 .message-media { display:block; width:min(100%,360px); margin:8px 0; overflow:hidden; border-radius:14px; background:#edf1ef; }
 .message-media img,.message-media video { display:block; width:100%; max-width:100%; max-height:360px; object-fit:contain; }
+.message-media-button { position:relative; padding:0; border:0; color:inherit; cursor:pointer; text-align:left; }
+.message-media-button video { pointer-events:none; }
+.media-play-mark { position:absolute; top:50%; left:50%; display:grid; width:42px; height:42px; place-items:center; padding-left:2px; transform:translate(-50%,-50%); border-radius:50%; background:rgba(255,255,255,.9); color:var(--green-dark); font-size:15px; box-shadow:0 8px 22px rgba(23,53,42,.2); }
+.media-gallery-backdrop { position:fixed; z-index:80; inset:0; display:grid; place-items:center; padding:18px; background:rgba(22,39,33,.58); backdrop-filter:blur(8px); }
+.media-gallery { width:min(100%,580px); max-height:min(88svh,780px); overflow:auto; border:1px solid rgba(255,255,255,.5); border-radius:28px; background:#fafbf8; box-shadow:0 28px 80px rgba(9,31,23,.3); }
+.media-gallery > header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:20px 20px 15px; }
+.media-gallery > header small { color:var(--green); font-size:9px; font-weight:850; letter-spacing:.14em; }
+.media-gallery > header h2 { margin:3px 0 0; font-size:20px; }
+.media-gallery > header p { margin:3px 0 0; color:var(--muted); font-size:10px; }
+.media-gallery > header > button { display:grid; width:36px; height:36px; flex:0 0 auto; place-items:center; border:0; border-radius:50%; background:#edf1ee; color:#526159; cursor:pointer; font-size:23px; line-height:1; }
+.media-gallery-stage { display:grid; min-height:260px; aspect-ratio:4 / 3; place-items:center; overflow:hidden; background:#17221e; }
+.media-gallery-stage img,.media-gallery-stage video { display:block; width:100%; height:100%; object-fit:contain; }
+.media-gallery-meta { display:flex; min-width:0; align-items:center; justify-content:space-between; gap:14px; padding:14px 20px 4px; }
+.media-gallery-meta strong { overflow:hidden; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+.media-gallery-meta time { flex:0 0 auto; color:var(--muted); font-size:9px; }
+.media-gallery-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; padding:14px 20px 20px; }
+.media-gallery-grid > button { position:relative; aspect-ratio:1; overflow:hidden; padding:0; border:2px solid transparent; border-radius:14px; background:#e8eeea; cursor:pointer; }
+.media-gallery-grid > button.is-selected { border-color:var(--green); box-shadow:0 0 0 3px rgba(0,134,97,.1); }
+.media-gallery-grid img,.media-gallery-grid video { display:block; width:100%; height:100%; object-fit:cover; }
+.media-gallery-grid span { position:absolute; top:50%; left:50%; display:grid; width:28px; height:28px; place-items:center; padding-left:2px; transform:translate(-50%,-50%); border-radius:50%; background:rgba(255,255,255,.88); color:var(--green-dark); font-size:10px; }
 .media-chat-input { display:grid; gap:10px; margin-top:12px; padding:14px; border:1px solid rgba(0,134,97,.14); border-radius:18px; background:#fff; box-shadow:0 8px 24px rgba(31,65,52,.06); }
 .media-chat-input textarea { width:100%; min-height:82px; padding:13px; resize:vertical; border:1px solid rgba(27,61,49,.14); border-radius:13px; background:#fbfcfb; color:var(--ink); font:inherit; font-size:14px; line-height:1.65; }
 .media-chat-actions { display:flex; align-items:center; gap:9px; }
@@ -1560,6 +1580,13 @@ body { font-size: 16px; }
 .media-chat-error { margin:0; color:#a64f46; font-size:11px; line-height:1.5; }
 .media-chat-unavailable { margin:12px 0 0; padding:13px; border-radius:12px; background:#f2f4f3; color:var(--muted); font-size:11px; text-align:center; }
 .admin-chat-history .message-media { width:min(100%,300px); }
+@media (max-width:520px) {
+  .media-gallery-backdrop { padding:10px; }
+  .media-gallery { max-height:92svh; border-radius:24px; }
+  .media-gallery-stage { min-height:220px; }
+  .media-gallery-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .media-gallery-meta { align-items:flex-start; flex-direction:column; gap:4px; }
+}
 @media (max-width:700px) {
   .admin-detail-hero { grid-template-columns:52px 1fr; padding:18px; }
   .admin-dog-avatar { width:52px; height:52px; border-radius:17px; font-size:22px; }

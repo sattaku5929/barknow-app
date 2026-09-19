@@ -82,8 +82,17 @@ function mapCoachMessage(item: Record<string, unknown>): CoachMessage {
   };
 }
 
-function MessageMedia({ message }: { message: CoachMessage }) {
+function MessageMedia({ message, onOpen }: { message: CoachMessage; onOpen?: (message: CoachMessage) => void }) {
   if (!message.mediaUrl || !message.mediaType) return null;
+  if (onOpen) {
+    return (
+      <button type="button" className={`message-media message-media-button is-${message.mediaType}`} onClick={() => onOpen(message)} aria-label={`${message.mediaName || (message.mediaType === "image" ? "画像" : "動画")}をギャラリーで開く`}>
+        {message.mediaType === "image"
+          ? <img src={message.mediaUrl} alt={message.mediaName || "共有された画像"} loading="lazy" />
+          : <><video src={message.mediaUrl} muted playsInline preload="metadata">動画を再生できません。</video><span className="media-play-mark" aria-hidden="true">▶</span></>}
+      </button>
+    );
+  }
   return message.mediaType === "image"
     ? <a className="message-media" href={message.mediaUrl} target="_blank" rel="noreferrer"><img src={message.mediaUrl} alt={message.mediaName || "共有された画像"} loading="lazy" /></a>
     : <div className="message-media"><video src={message.mediaUrl} controls playsInline preload="metadata">動画を再生できません。</video></div>;
@@ -716,6 +725,8 @@ export default function Home() {
   const [coachingNote, setCoachingNote] = useState("");
   const [ownerCoachTab, setOwnerCoachTab] = useState<"sessions" | "chat">("chat");
   const ownerMessageListRef = useRef<HTMLDivElement>(null);
+  const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
+  const [selectedMediaId, setSelectedMediaId] = useState("");
   const [assignedCoachProfile, setAssignedCoachProfile] = useState<CoachProfile | null>(null);
   const [coachProfile, setCoachProfile] = useState<CoachProfile>({ displayName: "", headline: "", bio: "", credentials: "", avatarUrl: "", avatarPreset: "paw-green", meetUrl: "" });
   const [availableSlots, setAvailableSlots] = useState<AvailabilitySlot[]>([]);
@@ -749,6 +760,15 @@ export default function Home() {
     });
     return () => window.cancelAnimationFrame(frame);
   }, [ownerCoachTab, messages]);
+
+  useEffect(() => {
+    if (!mediaGalleryOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMediaGalleryOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [mediaGalleryOpen]);
 
   const streak = useMemo(() => calculateStreak(records), [records]);
   const todaysRecord = records.find((record) => record.recordedOn === today());
@@ -2915,7 +2935,20 @@ export default function Home() {
   const ownerBookedSessions = onlineSessions.filter((session) => session.status === "booked").sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
   const ownerCompletedSessions = onlineSessions.filter((session) => session.status === "completed").sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
   const chronologicalMessages = [...messages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  const mediaMessages = chronologicalMessages.filter((message) => message.mediaUrl && message.mediaType);
+  const selectedMedia = mediaMessages.find((message) => message.id === selectedMediaId) ?? mediaMessages[mediaMessages.length - 1];
+  const openMediaGallery = (message: CoachMessage) => {
+    setSelectedMediaId(message.id);
+    setMediaGalleryOpen(true);
+  };
   const ownerHasInitialSession = onlineSessions.some((session) => session.sessionType === "initial" && session.status !== "cancelled");
+  const assignedCoachCard = coachingApplication ? (
+    <section className="coach-assigned-card">
+      <div className={`coach-avatar coach-profile-avatar preset-${assignedCoachProfile?.avatarPreset ?? "paw-green"}`}>{assignedCoachProfile?.avatarUrl ? <img src={assignedCoachProfile.avatarUrl} alt="" /> : <CareIcon name="paws" />}</div>
+      <div className="coach-identity"><p className="coach-role-label"><span></span>あなたの担当コーチ</p><h2>{assignedCoachProfile?.displayName || "担当コーチ"}</h2><strong>{assignedCoachProfile?.headline || "愛犬との暮らしを一緒に整えます"}</strong><p>{assignedCoachProfile?.bio || "記録を見ながら、まずは今いちばん気になることから話しましょう。"}</p>{assignedCoachProfile?.credentials && <small>{assignedCoachProfile.credentials}</small>}</div>
+      <b>{coachingApplication.ownerConfirmedAt ? "担当確定" : "確認待ち"}</b>
+    </section>
+  ) : null;
   const coachView = (
     <section className="coach-screen">
       <SectionTitle eyebrow="COACHING" title={coachingChatOpen ? "担当コーチに相談" : "記録を、変化につなげる"} />
@@ -2955,11 +2988,7 @@ export default function Home() {
         </section>
       ) : (
         <>
-          <section className="coach-assigned-card">
-            <div className={`coach-avatar coach-profile-avatar preset-${assignedCoachProfile?.avatarPreset ?? "paw-green"}`}>{assignedCoachProfile?.avatarUrl ? <img src={assignedCoachProfile.avatarUrl} alt="" /> : <CareIcon name="paws" />}</div>
-            <div className="coach-identity"><p className="coach-role-label"><span></span>あなたの担当コーチ</p><h2>{assignedCoachProfile?.displayName || "担当コーチ"}</h2><strong>{assignedCoachProfile?.headline || "愛犬との暮らしを一緒に整えます"}</strong><p>{assignedCoachProfile?.bio || "記録を見ながら、まずは今いちばん気になることから話しましょう。"}</p>{assignedCoachProfile?.credentials && <small>{assignedCoachProfile.credentials}</small>}</div>
-            <b>{coachingApplication.ownerConfirmedAt ? "担当確定" : "確認待ち"}</b>
-          </section>
+          {!coachingApplication.ownerConfirmedAt && assignedCoachCard}
           {!coachingApplication.ownerConfirmedAt ? (
             <section className="coach-confirm-card">
               <p className="card-label">FINAL CONFIRMATION</p>
@@ -3031,8 +3060,7 @@ export default function Home() {
                   <div className="message-list" aria-live="polite" ref={ownerMessageListRef}>
                     {chronologicalMessages.length ? chronologicalMessages.map((message) => (
                       <div key={message.id} className={`message ${message.sender}`}>
-                        <span>{message.sender === "coach" ? "COACH" : "YOU"}</span>
-                        <MessageMedia message={message} />
+                        <MessageMedia message={message} onOpen={openMediaGallery} />
                         {message.body && <MessageBody body={message.body} />}
                         <time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time>
                       </div>
@@ -3043,7 +3071,28 @@ export default function Home() {
                     : <p className="media-chat-unavailable">オンライン接続後にメッセージや画像・動画を送信できます。</p>}
                 </div>
               )}
+              {assignedCoachCard}
             </>
+          )}
+          {mediaGalleryOpen && selectedMedia && (
+            <div className="media-gallery-backdrop" role="dialog" aria-modal="true" aria-label="共有メディアギャラリー" onClick={() => setMediaGalleryOpen(false)}>
+              <section className="media-gallery" onClick={(event) => event.stopPropagation()}>
+                <header><div><small>SHARED MEDIA</small><h2>画像・動画</h2><p>{mediaMessages.length}件</p></div><button type="button" onClick={() => setMediaGalleryOpen(false)} aria-label="ギャラリーを閉じる">×</button></header>
+                <div className="media-gallery-stage">
+                  {selectedMedia.mediaType === "image"
+                    ? <img src={selectedMedia.mediaUrl} alt={selectedMedia.mediaName || "共有された画像"} />
+                    : <video src={selectedMedia.mediaUrl} controls autoPlay playsInline preload="metadata">動画を再生できません。</video>}
+                </div>
+                <div className="media-gallery-meta"><strong>{selectedMedia.mediaName || (selectedMedia.mediaType === "image" ? "共有された画像" : "共有された動画")}</strong><time>{new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(selectedMedia.createdAt))}</time></div>
+                <div className="media-gallery-grid" aria-label="共有メディア一覧">
+                  {mediaMessages.map((message) => (
+                    <button type="button" key={message.id} className={message.id === selectedMedia.id ? "is-selected" : ""} onClick={() => setSelectedMediaId(message.id)} aria-label={`${message.mediaName || (message.mediaType === "image" ? "画像" : "動画")}を表示`}>
+                      {message.mediaType === "image" ? <img src={message.mediaUrl} alt="" loading="lazy" /> : <><video src={message.mediaUrl} muted playsInline preload="metadata" /><span aria-hidden="true">▶</span></>}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </div>
           )}
         </>
       )}
@@ -3283,7 +3332,7 @@ export default function Home() {
                 </div>
                 <section className="admin-panel admin-chat-panel">
                   <div className="admin-panel-heading"><div><p className="card-label">CHAT</p><h2>飼い主との会話</h2></div><span>{adminDetailMessages.length}件</span></div>
-                  <div className="admin-chat-history">{adminDetailMessages.map((message) => <article className={message.sender} key={message.id}><small>{message.sender === "coach" ? "コーチ" : "飼い主"}</small><MessageMedia message={message} />{message.body && <MessageBody body={message.body} />}<time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time></article>)}{!adminDetailMessages.length && <p className="admin-muted">まだ相談はありません。コーチから声をかけることもできます。</p>}</div>
+                  <div className="admin-chat-history">{adminDetailMessages.map((message) => <article className={message.sender} key={message.id}><MessageMedia message={message} />{message.body && <MessageBody body={message.body} />}<time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time></article>)}{!adminDetailMessages.length && <p className="admin-muted">まだ相談はありません。コーチから声をかけることもできます。</p>}</div>
                   <ChatInput ownerId={selectedAdminCustomer.ownerId} dogId={selectedAdminCustomer.dogId} sender="coach" placeholder={`${selectedAdminCustomer.dogName}の飼い主へメッセージ`} onSent={addAdminMessage} />
                 </section>
               </>
