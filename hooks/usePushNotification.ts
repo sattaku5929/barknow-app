@@ -17,7 +17,11 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
 }
 
 function subscribeErrorMessage(error: unknown, stage: SubscribeStage) {
-  const originalMessage = error instanceof Error ? error.message : String(error);
+  const originalMessage = error instanceof Error
+    ? error.message
+    : error && typeof error === "object" && "message" in error && typeof error.message === "string"
+      ? error.message
+      : String(error);
   if (originalMessage === "VAPID公開鍵が設定されていません" || originalMessage === "Notification permission denied") return originalMessage;
   if (stage === "support" || stage === "service-worker") return `ServiceWorker not ready: ${originalMessage}`;
   if (stage === "vapid") return `VAPID key error: ${originalMessage}`;
@@ -58,9 +62,15 @@ export function usePushNotification() {
       return false;
     }
 
-    const { data, error } = await supabase.from("push_subscriptions").select("subscription").eq("user_id", user.id).maybeSingle();
-    const savedEndpoint = (data?.subscription as { endpoint?: string } | null)?.endpoint;
-    const subscribed = !error && savedEndpoint === browserSubscription.endpoint;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) {
+      setSubscriptionStatus("unsubscribed");
+      return false;
+    }
+    const response = await fetch("/api/push-subscriptions", { headers: { Authorization: `Bearer ${accessToken}` } });
+    const result = await response.json().catch(() => null) as { subscription?: { endpoint?: string } | null } | null;
+    const subscribed = response.ok && result?.subscription?.endpoint === browserSubscription.endpoint;
     setSubscriptionStatus(subscribed ? "subscribed" : "unsubscribed");
     return subscribed;
   }, []);
@@ -101,14 +111,18 @@ export function usePushNotification() {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       if (!user) throw new Error("ログインユーザーを確認できません");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("ログインセッションを確認できません");
 
       stage = "database";
-      const { error: saveError } = await supabase.from("push_subscriptions").upsert({
-        user_id: user.id,
-        subscription: subscription.toJSON(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "user_id" });
-      if (saveError) throw saveError;
+      const response = await fetch("/api/push-subscriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ subscription: subscription.toJSON() }),
+      });
+      const result = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(result?.error || `保存APIからエラーが返されました（${response.status}）`);
 
       setSubscriptionStatus("subscribed");
       return subscription;

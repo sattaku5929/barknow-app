@@ -16,15 +16,27 @@ export async function sendPushNotification(userId: string, title: string, body: 
   configureVapid();
   const admin = serviceSupabase();
   const { data, error } = await admin.from("push_subscriptions").select("subscription").eq("user_id", userId).maybeSingle();
-  if (error) throw error;
-  if (!data?.subscription) return;
+  if (error) console.error("[Web Push] subscription table lookup failed; checking auth metadata", { userId, error });
+  let subscription = data?.subscription as PushSubscription | undefined;
+  if (!subscription) {
+    const { data: authData, error: authError } = await admin.auth.admin.getUserById(userId);
+    if (authError) throw authError;
+    subscription = authData.user?.user_metadata?.push_subscription as PushSubscription | undefined;
+  }
+  if (!subscription) return;
 
   try {
-    await webpush.sendNotification(data.subscription as PushSubscription, JSON.stringify({ title, body, url }));
+    await webpush.sendNotification(subscription, JSON.stringify({ title, body, url }));
   } catch (error) {
     const statusCode = typeof error === "object" && error && "statusCode" in error ? Number(error.statusCode) : 0;
     if (statusCode === 404 || statusCode === 410) {
       await admin.from("push_subscriptions").delete().eq("user_id", userId);
+      const { data: authData } = await admin.auth.admin.getUserById(userId);
+      if (authData.user?.user_metadata?.push_subscription) {
+        await admin.auth.admin.updateUserById(userId, {
+          user_metadata: { ...authData.user.user_metadata, push_subscription: null },
+        });
+      }
       return;
     }
     throw error;
