@@ -262,6 +262,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .privacy-card { margin: 26px 0 0; padding: 18px; border-left: 2px solid rgba(0,134,97,.34); background: rgba(0,134,97,.04); }
 .privacy-card strong { font-size: 12px; }
 .privacy-card p { margin: 7px 0 0; color: var(--muted); font-size: 11px; line-height: 1.8; }
+.push-notification-card { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-top:18px; padding:17px 18px; border:1px solid rgba(0,134,97,.13); border-radius:20px; background:#eff8f3; }
+.push-notification-card strong { font-size:13px; }
+.push-notification-card p { margin:5px 0 0; color:var(--muted); font-size:10px; line-height:1.6; }
+.push-notification-card button { min-height:40px; flex:0 0 auto; padding:0 13px; border:0; border-radius:12px; background:var(--green); color:#fff; cursor:pointer; font-size:10px; font-weight:800; }
+.push-notification-card button:disabled { cursor:default; opacity:.55; }
+@media (max-width:520px) { .push-notification-card { align-items:flex-start; flex-direction:column; } }
 
 .message-list { display: flex; min-height: 250px; flex-direction: column; gap: 12px; padding: 20px 0; }
 .coach-empty { padding: 28px 22px; border: 1px dashed rgba(0,134,97,.23); border-radius: 20px; background: rgba(255,255,255,.7); }

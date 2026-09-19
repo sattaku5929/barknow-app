@@ -118,9 +118,23 @@ export default function ChatInput({ ownerId, dogId, sender, placeholder = "メ�
         body: messageBody,
         ...(mediaUrl ? { media_url: mediaUrl, media_key: mediaKey, media_type: mediaType, media_name: file?.name ?? "", media_size: file?.size ?? 0 } : {}),
       };
-      const { data, error: insertError } = await supabase.from("wt_coach_messages").insert(insert).select("*").single();
-      if (insertError) throw insertError;
-      onSent?.({ id: data.id, sender: data.sender, body: data.body ?? "", mediaUrl: data.media_url ?? "", mediaType: data.media_type ?? "", mediaName: data.media_name ?? "", createdAt: data.created_at });
+      const response = await fetch("/api/chat/messages", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(insert),
+      });
+      const result = await response.json().catch(() => null) as { message?: Record<string, string | number | null>; error?: string } | null;
+      if (!response.ok || !result?.message) throw new Error(result?.error || "メッセージを送信できませんでした");
+      const data = result.message;
+      onSent?.({
+        id: String(data.id),
+        sender: data.sender === "coach" ? "coach" : "owner",
+        body: String(data.body ?? ""),
+        mediaUrl: String(data.media_url ?? ""),
+        mediaType: data.media_type === "image" ? "image" : data.media_type === "video" ? "video" : "",
+        mediaName: String(data.media_name ?? ""),
+        createdAt: String(data.created_at),
+      });
       setBody("");
       setFile(null);
       if (fileInput.current) fileInput.current.value = "";
