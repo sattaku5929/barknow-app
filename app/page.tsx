@@ -353,6 +353,30 @@ function normalizeDogGender(gender: unknown): DogProfile["gender"] {
   return gender === "unknown" ? "unknown" : "";
 }
 
+function getSubmissionErrorDetail(error: unknown) {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error) return error;
+  if (error && typeof error === "object") {
+    const value = error as { message?: unknown; details?: unknown; hint?: unknown; code?: unknown };
+    const details = [value.message, value.details, value.hint, value.code]
+      .filter((item): item is string => typeof item === "string" && Boolean(item.trim()));
+    if (details.length) return Array.from(new Set(details)).join(" / ");
+  }
+  return "原因を確認できませんでした。通信環境を確認して、もう一度お試しください。";
+}
+
+function getMissingSchemaColumn(error: unknown) {
+  if (!error || typeof error !== "object") return null;
+  const value = error as { message?: unknown; details?: unknown; code?: unknown };
+  const detail = [value.message, value.details]
+    .filter((item): item is string => typeof item === "string")
+    .join(" ");
+  if (value.code !== "PGRST204" && !/schema cache|column/i.test(detail)) return null;
+  return detail.match(/['\"]([a-z0-9_]+)['\"]\s+column/i)?.[1]
+    ?? detail.match(/column\s+['\"]?([a-z0-9_]+)['\"]?/i)?.[1]
+    ?? null;
+}
+
 function dogGenderLabel(gender: DogProfile["gender"]) {
   return { male: "男の子", female: "女の子", unknown: "不明・未回答", "": "未登録" }[gender];
 }
@@ -2155,13 +2179,29 @@ export default function Home() {
       userId = await getUserId();
       if (!userId) throw new Error("ログイン情報を確認できませんでした。再度ログインしてください。");
       const completedAt = new Date().toISOString();
-      const { error } = await supabase.from("wt_owner_profiles").upsert({ user_id: userId, full_name: normalized.fullName, full_name_kana: normalized.fullNameKana, phone_number: normalized.phoneNumber, prefecture: normalized.prefecture, address: normalized.address, owner_birth_date: normalized.birthDate, onboarding_completed_at: completedAt, updated_at: completedAt });
-      if (error) throw error;
+      const ownerPayload: Record<string, string> = { user_id: userId, full_name: normalized.fullName, full_name_kana: normalized.fullNameKana, phone_number: normalized.phoneNumber, prefecture: normalized.prefecture, address: normalized.address, owner_birth_date: normalized.birthDate, onboarding_completed_at: completedAt, updated_at: completedAt };
+      let ownerSaveError: unknown = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const { error } = await supabase.from("wt_owner_profiles").upsert(ownerPayload);
+        if (!error) {
+          ownerSaveError = null;
+          break;
+        }
+        ownerSaveError = error;
+        const missingColumn = getMissingSchemaColumn(error);
+        if ((missingColumn === "full_name_kana" || missingColumn === "prefecture") && missingColumn in ownerPayload) {
+          console.warn("[Onboarding] retrying with legacy owner profile schema", { missingColumn, error });
+          delete ownerPayload[missingColumn];
+          continue;
+        }
+        break;
+      }
+      if (ownerSaveError) throw ownerSaveError;
       setOwnerProfile((current) => ({ ...current, completedAt }));
       setOnboardingStep("dog");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
-      const detail = error instanceof Error ? error.message : "不明なエラー";
+      const detail = getSubmissionErrorDetail(error);
       const message = `飼い主情報を保存できませんでした（${detail}）`;
       console.error("[Onboarding] owner profile submission failed", {
         userId,
@@ -2208,9 +2248,33 @@ export default function Home() {
       userId = await getUserId();
       if (!userId) throw new Error("ログイン情報を確認できませんでした。再度ログインしてください。");
       const completedAt = new Date().toISOString();
-      const { data, error } = await supabase.from("wt_dogs").upsert({ owner_id: userId, name: profile.name.trim(), breed: profile.breed.trim() || null, birthday: profile.birthday || null, birth_date: profile.birthday || null, is_first_time_owner: profile.isFirstTimeOwner === "yes", gender: profile.gender, training_experience: profile.trainingExperience, daycare_frequency: profile.daycareFrequency, walk_frequency: profile.walkFrequency, concerns: profile.concerns.trim(), profile_completed_at: completedAt, updated_at: completedAt }, { onConflict: "owner_id" }).select("id").single();
-      if (error) throw error;
-      const next = { ...profile, id: data.id, profileCompletedAt: completedAt };
+      const dogPayload: Record<string, string | boolean | null> = { owner_id: userId, name: profile.name.trim(), breed: profile.breed.trim() || null, birthday: profile.birthday || null, birth_date: profile.birthday || null, is_first_time_owner: profile.isFirstTimeOwner === "yes", gender: profile.gender, training_experience: profile.trainingExperience, daycare_frequency: profile.daycareFrequency, walk_frequency: profile.walkFrequency, concerns: profile.concerns.trim(), profile_completed_at: completedAt, updated_at: completedAt };
+      let dogSaveError: unknown = null;
+      let savedDogId = "";
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const { data, error } = await supabase.from("wt_dogs").upsert(dogPayload, { onConflict: "owner_id" }).select("id").single();
+        if (!error && data?.id) {
+          dogSaveError = null;
+          savedDogId = data.id;
+          break;
+        }
+        dogSaveError = error ?? new Error("愛犬情報の保存結果を確認できませんでした。");
+        const missingColumn = getMissingSchemaColumn(error);
+        if (missingColumn === "training_experience" && missingColumn in dogPayload) {
+          console.warn("[Onboarding] retrying with legacy dog profile schema", { missingColumn, error });
+          delete dogPayload[missingColumn];
+          continue;
+        }
+        const detail = getSubmissionErrorDetail(error);
+        if (profile.gender !== "unknown" && /wt_dogs_gender_check|gender.*check constraint/i.test(detail)) {
+          console.warn("[Onboarding] retrying with legacy dog gender values", { error });
+          dogPayload.gender = profile.gender === "male" ? "male_intact" : "female_intact";
+          continue;
+        }
+        break;
+      }
+      if (dogSaveError || !savedDogId) throw dogSaveError ?? new Error("愛犬情報の保存結果を確認できませんでした。");
+      const next = { ...profile, id: savedDogId, profileCompletedAt: completedAt };
       setProfile(next);
       writeLocal(PROFILE_KEY, next);
       setOnboardingRequired(false);
@@ -2218,7 +2282,7 @@ export default function Home() {
       router.replace("/");
       showNotice("登録が完了しました。今日から一緒に記録を始めましょう");
     } catch (error) {
-      const detail = error instanceof Error ? error.message : "不明なエラー";
+      const detail = getSubmissionErrorDetail(error);
       const message = `愛犬情報を保存できませんでした（${detail}）`;
       console.error("[Onboarding] dog profile submission failed", {
         userId,
