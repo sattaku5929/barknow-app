@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, MouseEvent as ReactMouseEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { FormEvent, MouseEvent as ReactMouseEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import ChatInput, { SentChatMessage } from "@/components/ChatInput";
 import { supabase } from "./supabase";
@@ -87,6 +87,57 @@ function MessageMedia({ message }: { message: CoachMessage }) {
   return message.mediaType === "image"
     ? <a className="message-media" href={message.mediaUrl} target="_blank" rel="noreferrer"><img src={message.mediaUrl} alt={message.mediaName || "共有された画像"} loading="lazy" /></a>
     : <div className="message-media"><video src={message.mediaUrl} controls playsInline preload="metadata">動画を再生できません。</video></div>;
+}
+
+function urlsInMessage(body: string) {
+  const matches = body.match(/https?:\/\/[^\s<>"']+/gi) ?? [];
+  return matches
+    .map((value) => value.replace(/[.,!?;:。、！？）)\]}】]+$/u, ""))
+    .filter((value, index, values) => value && values.indexOf(value) === index);
+}
+
+function safeExternalUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+function UrlPreview({ value }: { value: string }) {
+  const url = safeExternalUrl(value);
+  if (!url) return null;
+  const path = `${url.pathname === "/" ? "" : url.pathname}${url.search}`;
+  const displayPath = path.length > 52 ? `${path.slice(0, 52)}…` : path;
+  return (
+    <a className="message-link-preview" href={url.href} target="_blank" rel="noopener noreferrer">
+      <span><small>LINK</small><strong>{url.hostname.replace(/^www\./, "")}</strong>{displayPath && <em>{displayPath}</em>}</span>
+      <b aria-hidden="true">↗</b>
+    </a>
+  );
+}
+
+function MessageBody({ body }: { body: string }) {
+  const matcher = /https?:\/\/[^\s<>"']+/gi;
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+  while ((match = matcher.exec(body)) !== null) {
+    const raw = match[0];
+    const clean = raw.replace(/[.,!?;:。、！？）)\]}】]+$/u, "");
+    const trailing = raw.slice(clean.length);
+    if (match.index > cursor) parts.push(body.slice(cursor, match.index));
+    const url = safeExternalUrl(clean);
+    parts.push(url
+      ? <a className="message-inline-link" href={url.href} target="_blank" rel="noopener noreferrer" key={`${match.index}-${clean}`}>{clean}</a>
+      : clean);
+    if (trailing) parts.push(trailing);
+    cursor = match.index + raw.length;
+  }
+  if (cursor < body.length) parts.push(body.slice(cursor));
+  const firstUrl = urlsInMessage(body).find((value) => safeExternalUrl(value));
+  return <><p>{parts}</p>{firstUrl && <UrlPreview value={firstUrl} />}</>;
 }
 
 type CareGoal = {
@@ -664,6 +715,7 @@ export default function Home() {
   const [coachingOutcome, setCoachingOutcome] = useState("");
   const [coachingNote, setCoachingNote] = useState("");
   const [ownerCoachTab, setOwnerCoachTab] = useState<"sessions" | "chat">("chat");
+  const ownerMessageListRef = useRef<HTMLDivElement>(null);
   const [assignedCoachProfile, setAssignedCoachProfile] = useState<CoachProfile | null>(null);
   const [coachProfile, setCoachProfile] = useState<CoachProfile>({ displayName: "", headline: "", bio: "", credentials: "", avatarUrl: "", avatarPreset: "paw-green", meetUrl: "" });
   const [availableSlots, setAvailableSlots] = useState<AvailabilitySlot[]>([]);
@@ -688,6 +740,15 @@ export default function Home() {
   const [customGoalCount, setCustomGoalCount] = useState(1);
   const [customGoalPeriod, setCustomGoalPeriod] = useState<GoalPeriod>("week");
   const [celebration, setCelebration] = useState<{ title: string; message: string } | null>(null);
+
+  useEffect(() => {
+    if (ownerCoachTab !== "chat") return;
+    const frame = window.requestAnimationFrame(() => {
+      const messageList = ownerMessageListRef.current;
+      if (messageList) messageList.scrollTop = messageList.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [ownerCoachTab, messages]);
 
   const streak = useMemo(() => calculateStreak(records), [records]);
   const todaysRecord = records.find((record) => record.recordedOn === today());
@@ -2853,7 +2914,7 @@ export default function Home() {
   const coachingChatOpen = Boolean(coachingApplication?.ownerConfirmedAt) && Boolean(coachingApplication && ["assigned", "consulting", "payment_pending", "active"].includes(coachingApplication.status));
   const ownerBookedSessions = onlineSessions.filter((session) => session.status === "booked").sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
   const ownerCompletedSessions = onlineSessions.filter((session) => session.status === "completed").sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
-  const newestMessages = [...messages].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const chronologicalMessages = [...messages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   const ownerHasInitialSession = onlineSessions.some((session) => session.sessionType === "initial" && session.status !== "cancelled");
   const coachView = (
     <section className="coach-screen">
@@ -2967,12 +3028,12 @@ export default function Home() {
               ) : (
                 <div className="owner-coach-panel owner-chat-panel" role="tabpanel" aria-label="チャット">
                   <div className="connection-note"><span className={connection}></span>{connection === "online" ? "コーチルームに接続中" : connection === "checking" ? "接続を確認しています" : "端末保存モード"}</div>
-                  <div className="message-list" aria-live="polite">
-                    {newestMessages.length ? newestMessages.map((message) => (
+                  <div className="message-list" aria-live="polite" ref={ownerMessageListRef}>
+                    {chronologicalMessages.length ? chronologicalMessages.map((message) => (
                       <div key={message.id} className={`message ${message.sender}`}>
                         <span>{message.sender === "coach" ? "COACH" : "YOU"}</span>
                         <MessageMedia message={message} />
-                        {message.body && <p>{message.body}</p>}
+                        {message.body && <MessageBody body={message.body} />}
                         <time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time>
                       </div>
                     )) : <div className="coach-empty"><div className="coach-avatar"><NavGlyph name="coach" /></div><h3>担当コーチへ、最初のメッセージを。</h3><p>例：いちばん困っているのは散歩中の引っ張りです。記録のどこを見ればよいですか？</p></div>}
@@ -3222,7 +3283,7 @@ export default function Home() {
                 </div>
                 <section className="admin-panel admin-chat-panel">
                   <div className="admin-panel-heading"><div><p className="card-label">CHAT</p><h2>飼い主との会話</h2></div><span>{adminDetailMessages.length}件</span></div>
-                  <div className="admin-chat-history">{adminDetailMessages.map((message) => <article className={message.sender} key={message.id}><small>{message.sender === "coach" ? "コーチ" : "飼い主"}</small><MessageMedia message={message} />{message.body && <p>{message.body}</p>}<time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time></article>)}{!adminDetailMessages.length && <p className="admin-muted">まだ相談はありません。コーチから声をかけることもできます。</p>}</div>
+                  <div className="admin-chat-history">{adminDetailMessages.map((message) => <article className={message.sender} key={message.id}><small>{message.sender === "coach" ? "コーチ" : "飼い主"}</small><MessageMedia message={message} />{message.body && <MessageBody body={message.body} />}<time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time></article>)}{!adminDetailMessages.length && <p className="admin-muted">まだ相談はありません。コーチから声をかけることもできます。</p>}</div>
                   <ChatInput ownerId={selectedAdminCustomer.ownerId} dogId={selectedAdminCustomer.dogId} sender="coach" placeholder={`${selectedAdminCustomer.dogName}の飼い主へメッセージ`} onSent={addAdminMessage} />
                 </section>
               </>
