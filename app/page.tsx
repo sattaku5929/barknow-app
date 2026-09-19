@@ -663,7 +663,7 @@ export default function Home() {
   const [coachingConcerns, setCoachingConcerns] = useState<string[]>([]);
   const [coachingOutcome, setCoachingOutcome] = useState("");
   const [coachingNote, setCoachingNote] = useState("");
-  const [ownerCoachTab, setOwnerCoachTab] = useState<"sessions" | "chat">("sessions");
+  const [ownerCoachTab, setOwnerCoachTab] = useState<"sessions" | "chat">("chat");
   const [assignedCoachProfile, setAssignedCoachProfile] = useState<CoachProfile | null>(null);
   const [coachProfile, setCoachProfile] = useState<CoachProfile>({ displayName: "", headline: "", bio: "", credentials: "", avatarUrl: "", avatarPreset: "paw-green", meetUrl: "" });
   const [availableSlots, setAvailableSlots] = useState<AvailabilitySlot[]>([]);
@@ -2853,6 +2853,7 @@ export default function Home() {
   const coachingChatOpen = Boolean(coachingApplication?.ownerConfirmedAt) && Boolean(coachingApplication && ["assigned", "consulting", "payment_pending", "active"].includes(coachingApplication.status));
   const ownerBookedSessions = onlineSessions.filter((session) => session.status === "booked").sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
   const ownerCompletedSessions = onlineSessions.filter((session) => session.status === "completed").sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
+  const newestMessages = [...messages].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const ownerHasInitialSession = onlineSessions.some((session) => session.sessionType === "initial" && session.status !== "cancelled");
   const coachView = (
     <section className="coach-screen">
@@ -2908,8 +2909,8 @@ export default function Home() {
           ) : (
             <>
               <div className="owner-coach-tabs" role="tablist" aria-label="コーチメニュー">
-                <button type="button" role="tab" aria-selected={ownerCoachTab === "sessions"} className={ownerCoachTab === "sessions" ? "is-active" : ""} onClick={() => setOwnerCoachTab("sessions")}><span className="owner-tab-icon"><NavGlyph name="goals" /></span><span><strong>オンライン診断</strong><small>{ownerBookedSessions.length ? `予約 ${ownerBookedSessions.length}件` : "予約・履歴"}</small></span></button>
                 <button type="button" role="tab" aria-selected={ownerCoachTab === "chat"} className={ownerCoachTab === "chat" ? "is-active" : ""} onClick={() => setOwnerCoachTab("chat")}><span className="owner-tab-icon"><NavGlyph name="coach" /></span><span><strong>チャット</strong><small>{messages.length ? `${messages.length}件のやりとり` : "コーチに相談"}</small></span></button>
+                <button type="button" role="tab" aria-selected={ownerCoachTab === "sessions"} className={ownerCoachTab === "sessions" ? "is-active" : ""} onClick={() => setOwnerCoachTab("sessions")}><span className="owner-tab-icon"><NavGlyph name="goals" /></span><span><strong>オンライン診断</strong><small>{ownerBookedSessions.length ? `予約 ${ownerBookedSessions.length}件` : "予約・履歴"}</small></span></button>
               </div>
 
               {ownerCoachTab === "sessions" ? (
@@ -2967,7 +2968,7 @@ export default function Home() {
                 <div className="owner-coach-panel owner-chat-panel" role="tabpanel" aria-label="チャット">
                   <div className="connection-note"><span className={connection}></span>{connection === "online" ? "コーチルームに接続中" : connection === "checking" ? "接続を確認しています" : "端末保存モード"}</div>
                   <div className="message-list" aria-live="polite">
-                    {messages.length ? messages.map((message) => (
+                    {newestMessages.length ? newestMessages.map((message) => (
                       <div key={message.id} className={`message ${message.sender}`}>
                         <span>{message.sender === "coach" ? "COACH" : "YOU"}</span>
                         <MessageMedia message={message} />
