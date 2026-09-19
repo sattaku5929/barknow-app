@@ -12,6 +12,9 @@ const notoSansJP = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: "Wan Tone | 愛犬とコーチをつなぐ記録アプリ",
   description: "愛犬の毎日を記録し、気になる変化をコーチに相談できるBarKnowのケアアプリです。",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "Wan Tone", statusBarStyle: "default" },
+  icons: { apple: "/icon-192.png" },
 };
 
 export const viewport: Viewport = {

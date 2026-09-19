@@ -4,6 +4,7 @@ import { FormEvent, MouseEvent as ReactMouseEvent, ReactNode, useEffect, useMemo
 import { usePathname, useRouter } from "next/navigation";
 import ChatInput, { SentChatMessage } from "@/components/ChatInput";
 import { usePushNotification } from "@/hooks/usePushNotification";
+import { clearAppBadge } from "@/lib/appBadge";
 import { supabase } from "./supabase";
 
 type View = "home" | "goals" | "record" | "report" | "coach" | "profile";
@@ -799,6 +800,16 @@ export default function Home() {
     });
     return () => window.cancelAnimationFrame(frame);
   }, [ownerCoachTab, messages]);
+
+  useEffect(() => {
+    if (view !== "coach" || ownerCoachTab !== "chat") return;
+    void clearAppBadge();
+    const clearWhenVisible = () => {
+      if (document.visibilityState === "visible") void clearAppBadge();
+    };
+    document.addEventListener("visibilitychange", clearWhenVisible);
+    return () => document.removeEventListener("visibilitychange", clearWhenVisible);
+  }, [view, ownerCoachTab, messages.length]);
 
   useEffect(() => {
     if (!mediaGalleryOpen) return;
