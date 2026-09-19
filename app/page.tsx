@@ -265,6 +265,8 @@ type OnlineSession = {
 const PROFILE_KEY = "wan-tone-profile-v1";
 const RECORDS_KEY = "wan-tone-records-v1";
 const MESSAGES_KEY = "wan-tone-messages-v1";
+const PWA_INSTALL_DISMISSED_KEY = "wan-tone-pwa-install-dismissed-v1";
+const PUSH_PROMPT_SESSION_KEY = "wan-tone-push-prompt-shown-v1";
 const CUSTOM_BEHAVIORS_KEY = "wan-tone-custom-behaviors-v1";
 const CARE_GOALS_KEY = "wan-tone-care-goals-v1";
 const GOAL_COMPLETIONS_KEY = "wan-tone-goal-completions-v1";
@@ -691,6 +693,9 @@ export default function Home() {
   const pathname = usePathname();
   const { subscribeUser, permissionStatus, subscriptionStatus, isSubscribed, refreshSubscriptionStatus } = usePushNotification();
   const [pushBusy, setPushBusy] = useState(false);
+  const [showPushPrompt, setShowPushPrompt] = useState(false);
+  const [showPwaInstallBanner, setShowPwaInstallBanner] = useState(false);
+  const [isIOSDevice, setIsIOSDevice] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [anonymousUser, setAnonymousUser] = useState(false);
@@ -791,6 +796,36 @@ export default function Home() {
   useEffect(() => {
     if (authenticated) void refreshSubscriptionStatus();
   }, [authenticated, refreshSubscriptionStatus]);
+
+  useEffect(() => {
+    if (!authReady || !authenticated || anonymousUser || userRole !== "owner" || onboardingRequired) return;
+    if (!("Notification" in window) || Notification.permission === "granted") return;
+    if (window.sessionStorage.getItem(PUSH_PROMPT_SESSION_KEY) === "1") return;
+    window.sessionStorage.setItem(PUSH_PROMPT_SESSION_KEY, "1");
+    const frame = window.requestAnimationFrame(() => setShowPushPrompt(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [authReady, authenticated, anonymousUser, userRole, onboardingRequired]);
+
+  useEffect(() => {
+    const navigatorWithStandalone = window.navigator as Navigator & { standalone?: boolean };
+    const standaloneQuery = window.matchMedia("(display-mode: standalone)");
+    const ios = /iPad|iPhone|iPod/i.test(navigator.userAgent)
+      || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const updateInstallBanner = () => {
+      const standalone = navigatorWithStandalone.standalone === true || standaloneQuery.matches;
+      const dismissed = window.localStorage.getItem(PWA_INSTALL_DISMISSED_KEY) === "1";
+      setShowPwaInstallBanner(!standalone && !dismissed);
+    };
+    const frame = window.requestAnimationFrame(() => {
+      setIsIOSDevice(ios);
+      updateInstallBanner();
+    });
+    standaloneQuery.addEventListener?.("change", updateInstallBanner);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      standaloneQuery.removeEventListener?.("change", updateInstallBanner);
+    };
+  }, []);
 
   useEffect(() => {
     if (ownerCoachTab !== "chat") return;
@@ -1452,12 +1487,18 @@ export default function Home() {
     setPushBusy(true);
     try {
       const subscription = await subscribeUser();
+      if (subscription) setShowPushPrompt(false);
       showNotice(subscription ? "新着メッセージの通知をオンにしました" : permissionStatus === "denied" ? "ブラウザまたは端末の設定から通知を許可してください" : "通知の許可が必要です");
     } catch (error) {
       showNotice(error instanceof Error ? `通知を設定できませんでした（${error.message}）` : "通知を設定できませんでした");
     } finally {
       setPushBusy(false);
     }
+  }
+
+  function dismissPwaInstallBanner() {
+    window.localStorage.setItem(PWA_INSTALL_DISMISSED_KEY, "1");
+    setShowPwaInstallBanner(false);
   }
 
   async function authorizedFetch(url: string, init: RequestInit = {}) {
@@ -3733,6 +3774,26 @@ export default function Home() {
               <button onClick={() => setCelebration(null)}>今日のできたを喜ぶ</button>
             </div>
           </div>
+        )}
+        {showPushPrompt && (
+          <div className="notification-prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="notification-prompt-title">
+            <section className="notification-prompt-card">
+              <span className="notification-prompt-icon" aria-hidden="true">🔔</span>
+              <p>MESSAGE NOTIFICATION</p>
+              <h2 id="notification-prompt-title">メッセージを見逃さないために</h2>
+              <span>担当コーチから新しいメッセージが届いたとき、この端末へ通知します。</span>
+              {permissionStatus === "denied" && <small>通知が拒否されています。端末の設定からWanToneの通知を許可してください。</small>}
+              <button type="button" onClick={() => void enablePushNotifications()} disabled={pushBusy}>{pushBusy ? "設定中…" : "メッセージ通知をONにする"}</button>
+              <button type="button" className="notification-prompt-later" onClick={() => setShowPushPrompt(false)}>あとで設定する</button>
+            </section>
+          </div>
+        )}
+        {showPwaInstallBanner && (
+          <aside className="pwa-install-banner" aria-label="ホーム画面への追加案内">
+            <span className="pwa-install-mark" aria-hidden="true">□↑</span>
+            <div><strong>WanToneをホーム画面に追加</strong><p>{isIOSDevice ? <>Safariの共有ボタン（□↑）をタップし、<b>「ホーム画面に追加」</b>を選択してください。</> : <>ブラウザのメニューから<b>「ホーム画面に追加」</b>を選択すると、アプリのように使えます。</>}</p></div>
+            <button type="button" onClick={dismissPwaInstallBanner} aria-label="ホーム画面追加の案内を閉じる">×</button>
+          </aside>
         )}
         <div className={`toast ${notice ? "show" : ""}`} role="status">{notice}</div>
       </div>

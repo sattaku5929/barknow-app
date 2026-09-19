@@ -1685,6 +1685,23 @@ body { font-size: 16px; }
 .celebration-card h2 { margin:7px 0 9px; font-size:24px; }
 .celebration-card > span:not(.celebration-paw) { color:var(--muted); font-size:13px; line-height:1.75; }
 .celebration-card > button { width:100%; min-height:50px; margin-top:22px; border:0; border-radius:15px; background:var(--green-dark); color:#fff; font-size:13px; font-weight:800; }
+.notification-prompt-backdrop { position:fixed; z-index:90; inset:0; display:grid; place-items:center; padding:24px; background:rgba(18,35,29,.56); backdrop-filter:blur(8px); }
+.notification-prompt-card { width:min(100%,370px); padding:30px 24px 22px; border-radius:28px; background:#fff; text-align:center; box-shadow:0 30px 80px rgba(8,44,32,.28); }
+.notification-prompt-icon { display:grid; width:64px; height:64px; margin:0 auto 14px; place-items:center; border-radius:50%; background:#e8f5ee; font-size:27px; }
+.notification-prompt-card > p { margin:0; color:var(--green); font-family:var(--font-display); font-size:9px; font-weight:800; letter-spacing:.16em; }
+.notification-prompt-card h2 { margin:8px 0 10px; color:var(--ink); font-size:21px; line-height:1.45; }
+.notification-prompt-card > span:not(.notification-prompt-icon) { display:block; color:var(--muted); font-size:12px; line-height:1.75; }
+.notification-prompt-card > small { display:block; margin-top:10px; padding:9px 11px; border-radius:10px; background:#fff2ef; color:#a54838; font-size:10px; line-height:1.6; }
+.notification-prompt-card > button { width:100%; min-height:49px; margin-top:20px; border:0; border-radius:14px; background:var(--green); color:#fff; cursor:pointer; font-size:12px; font-weight:850; }
+.notification-prompt-card > button:disabled { cursor:wait; opacity:.58; }
+.notification-prompt-card > .notification-prompt-later { min-height:36px; margin-top:5px; background:transparent; color:var(--muted); font-size:10px; }
+.pwa-install-banner { position:fixed; z-index:55; right:18px; bottom:88px; left:18px; display:flex; max-width:560px; align-items:flex-start; gap:12px; margin:auto; padding:15px 42px 15px 15px; border:1px solid rgba(0,134,97,.18); border-radius:18px; background:rgba(255,255,255,.97); box-shadow:0 16px 45px rgba(22,57,44,.18); backdrop-filter:blur(14px); }
+.pwa-install-mark { display:grid; width:39px; height:39px; flex:0 0 auto; place-items:center; border-radius:11px; background:#e8f5ee; color:var(--green-dark); font-size:15px; font-weight:850; }
+.pwa-install-banner div { min-width:0; }
+.pwa-install-banner strong { display:block; color:var(--green-dark); font-size:12px; }
+.pwa-install-banner p { margin:4px 0 0; color:var(--muted); font-size:10px; line-height:1.65; }
+.pwa-install-banner p b { color:var(--ink); }
+.pwa-install-banner > button { position:absolute; top:8px; right:9px; width:30px; height:30px; border:0; background:transparent; color:#718078; cursor:pointer; font-size:20px; }
 @keyframes celebrate-in { from { transform:translateY(16px) scale(.96); opacity:0; } to { transform:none; opacity:1; } }
 
 @media (max-width:390px) {
