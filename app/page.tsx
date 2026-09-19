@@ -664,7 +664,7 @@ function StatusSelector({
 export default function Home() {
   const router = useRouter();
   const pathname = usePathname();
-  const { subscribeUser, permissionStatus } = usePushNotification();
+  const { subscribeUser, permissionStatus, subscriptionStatus, isSubscribed, refreshSubscriptionStatus } = usePushNotification();
   const [pushBusy, setPushBusy] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
@@ -761,6 +761,10 @@ export default function Home() {
     });
     return () => window.cancelAnimationFrame(frame);
   }, []);
+
+  useEffect(() => {
+    if (authenticated) void refreshSubscriptionStatus();
+  }, [authenticated, refreshSubscriptionStatus]);
 
   useEffect(() => {
     if (ownerCoachTab !== "chat") return;
@@ -1406,6 +1410,18 @@ export default function Home() {
   function showNotice(message: string) {
     setNotice(message);
     window.setTimeout(() => setNotice(""), 3200);
+  }
+
+  async function enablePushNotifications() {
+    setPushBusy(true);
+    try {
+      const subscription = await subscribeUser();
+      showNotice(subscription ? "新着メッセージの通知をオンにしました" : permissionStatus === "denied" ? "ブラウザまたは端末の設定から通知を許可してください" : "通知の許可が必要です");
+    } catch (error) {
+      showNotice(error instanceof Error ? `通知を設定できませんでした（${error.message}）` : "通知を設定できませんでした");
+    } finally {
+      setPushBusy(false);
+    }
   }
 
   async function authorizedFetch(url: string, init: RequestInit = {}) {
@@ -3066,6 +3082,13 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="owner-coach-panel owner-chat-panel" role="tabpanel" aria-label="チャット">
+                  {subscriptionStatus !== "checking" && subscriptionStatus !== "unsupported" && (
+                    <section className={`chat-push-card ${isSubscribed ? "is-enabled" : ""}`} aria-live="polite">
+                      <div><strong>{isSubscribed ? "通知は有効です" : "新着メッセージを見逃さないために"}</strong><p>{isSubscribed ? "この端末で新着メッセージを受け取れます。" : "担当コーチからメッセージが届いたら、この端末へお知らせします。"}</p></div>
+                      {!isSubscribed && <button type="button" disabled={pushBusy} onClick={() => void enablePushNotifications()}>{pushBusy ? "設定中…" : "新着メッセージの通知をONにする"}</button>}
+                      {isSubscribed && <span><i aria-hidden="true">✓</i> ON</span>}
+                    </section>
+                  )}
                   <div className="message-list" aria-live="polite" ref={ownerMessageListRef}>
                     {chronologicalMessages.length ? chronologicalMessages.map((message) => (
                       <div key={message.id} className={`message ${message.sender}`}>
@@ -3131,20 +3154,6 @@ export default function Home() {
         <label className="field-label">保育園への頻度<select value={profile.daycareFrequency} onChange={(event) => setProfile({ ...profile, daycareFrequency: event.target.value })} required><option value="">選択してください</option><option>通っていない</option><option>月に数回</option><option>週1回</option><option>週2〜3回</option><option>週4回以上</option></select></label>
         <label className="field-label">散歩の頻度<select value={profile.walkFrequency} onChange={(event) => setProfile({ ...profile, walkFrequency: event.target.value })} required><option value="">選択してください</option><option>ほとんど行かない</option><option>週に数回</option><option>毎日1回</option><option>毎日2回</option><option>毎日3回以上</option></select></label>
         <label className="field-label">主な悩み・気になっていること<textarea rows={5} value={profile.concerns} onChange={(event) => setProfile({ ...profile, concerns: event.target.value })} placeholder="例：散歩中に犬を見ると吠える。来客時に落ち着けない。" required /></label>
-      </section>
-      <section className="push-notification-card">
-        <div><strong>メッセージ通知</strong><p>担当コーチとの新着メッセージを、この端末で受け取ります。</p></div>
-        <button type="button" disabled={pushBusy || permissionStatus === "granted" || permissionStatus === "unsupported"} onClick={async () => {
-          setPushBusy(true);
-          try {
-            const subscription = await subscribeUser();
-            showNotice(subscription ? "通知をオンにしました" : "通知の許可が必要です");
-          } catch (error) {
-            showNotice(error instanceof Error ? `通知を設定できませんでした（${error.message}）` : "通知を設定できませんでした");
-          } finally {
-            setPushBusy(false);
-          }
-        }}>{permissionStatus === "granted" ? "通知オン" : permissionStatus === "denied" ? "端末設定で許可" : permissionStatus === "unsupported" ? "非対応" : pushBusy ? "設定中…" : "通知をオンにする"}</button>
       </section>
       <div className="privacy-card"><strong>記録について</strong><p>登録した情報は、あなたと担当コーチのサポートのために使用します。共有範囲は今後プロフィールから管理できるようにします。</p></div>
       <button className="primary-button" disabled={saving}>{saving ? "保存中…" : "プロフィールを保存"}<span>→</span></button>
