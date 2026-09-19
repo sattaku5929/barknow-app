@@ -482,21 +482,82 @@ function TopicIcon({ name }: { name: RecordCategory }) {
   );
 }
 
-function DailyCareIllustration() {
+type LifeScene = "park" | "home" | "cafe";
+
+function LifeSceneIllustration({ scene }: { scene: LifeScene }) {
+  if (scene === "park") {
+    return (
+      <svg className="life-scene-illustration" viewBox="0 0 360 104" role="img" aria-label="愛犬と公園を散歩する暮らしのイラスト">
+        <circle className="scene-sun" cx="312" cy="19" r="11" />
+        <path className="scene-cloud" d="M42 26h41c0-9-9-13-16-9-5-11-23-5-20 5-4 0-5 2-5 4Z" />
+        <path className="scene-ground" d="M0 87c56-10 102 8 157 0s111-8 203 0v17H0Z" />
+        <path className="scene-line scene-soft-line" d="M0 88c56-10 102 8 157 0s111-8 203 0" />
+        <path className="scene-tree-trunk" d="M73 54h8v36h-8z" />
+        <path className="scene-green" d="M77 14c-18 0-28 12-22 24-11 7-5 23 9 22 4 9 23 7 24-3 15 2 21-15 10-22 3-12-7-21-21-21Z" />
+        <circle className="scene-skin" cx="185" cy="35" r="9" />
+        <path className="scene-dark" d="M176 34c1-10 16-13 19-2-6-4-12-5-19 2Z" />
+        <path className="scene-person" d="M177 47c5-4 13-4 18 0l8 23-31 1 5-24Z" />
+        <path className="scene-line" d="m180 52-12 16m25-16 8 14m-21 5-6 17m21-17 8 17" />
+        <path className="scene-line scene-leash" d="M201 65c22-3 27 7 39 11" />
+        <path className="scene-dog" d="M238 69c2-9 10-14 20-12l8-8 4 13c6 3 9 8 9 14v12h-40l-1-19Z" />
+        <path className="scene-line scene-dog-line" d="m249 58 3-9 8 9m10 16h11m-34 14v-9m25 9v-9" />
+        <circle className="scene-eye" cx="268" cy="67" r="1.5" />
+        <path className="scene-petal" d="M120 79c-7-8-18 2 0 14 18-12 7-22 0-14Z" />
+      </svg>
+    );
+  }
+
+  if (scene === "cafe") {
+    return (
+      <svg className="life-scene-illustration" viewBox="0 0 360 104" role="img" aria-label="愛犬とカフェでくつろぐ暮らしのイラスト">
+        <path className="scene-cafe-wall" d="M0 0h360v104H0z" />
+        <path className="scene-awning" d="M0 13h145v20c-9 9-20 9-29 0-9 9-20 9-29 0-9 9-20 9-29 0-9 9-20 9-29 0-9 9-20 9-29 0V13Z" />
+        <path className="scene-line scene-soft-line" d="M191 76h111M214 76v19m66-19v19" />
+        <ellipse className="scene-table" cx="247" cy="58" rx="55" ry="8" />
+        <path className="scene-line" d="M247 66v29m-19 0h38" />
+        <path className="scene-cup" d="M239 41h22v15h-22zM261 44h6a5 5 0 0 1 0 9h-6" />
+        <path className="scene-line scene-soft-line" d="M245 36c-5-6 5-8 0-14m10 14c-5-6 5-8 0-14" />
+        <circle className="scene-skin" cx="176" cy="35" r="9" />
+        <path className="scene-dark" d="M167 33c2-10 16-12 19-1-6-4-12-4-19 1Z" />
+        <path className="scene-person-alt" d="M166 48c6-5 16-5 21 0l12 29h-46l13-29Z" />
+        <path className="scene-line" d="m169 54-14 17m29-17 12 14" />
+        <path className="scene-dog" d="M78 72c2-10 12-16 25-14l8-9 5 14c8 3 12 9 12 17v11H78V72Z" />
+        <path className="scene-line scene-dog-line" d="m91 60 2-11 10 9m14 19h13M88 91v-9m32 9v-9" />
+        <circle className="scene-eye" cx="115" cy="69" r="1.5" />
+        <path className="scene-plant" d="M326 92V54m0 17c-14-2-20-10-19-22 12 1 19 8 19 22Zm0 9c13-2 21-10 20-22-12 0-20 8-20 22Z" />
+        <path className="scene-pot" d="M313 85h27l-4 12h-19l-4-12Z" />
+      </svg>
+    );
+  }
+
   return (
-    <svg className="daily-care-illustration" viewBox="0 0 320 118" role="img" aria-label="愛犬と穏やかに過ごす日常のイラスト">
-      <circle className="care-sun" cx="274" cy="25" r="13" />
-      <path className="care-ground" d="M18 99h284" />
-      <path className="care-plant" d="M48 98V69m0 12c-12-2-17-9-16-19 10 1 16 7 16 19Zm0 7c11-2 17-8 17-18-10 0-16 6-17 18Z" />
-      <circle className="care-person-head" cx="142" cy="40" r="15" />
-      <path className="care-person" d="M127 60c7-7 24-7 31 0l12 24h-53l10-24Z" />
-      <path className="care-arm" d="m128 64-22 16m48-16 17 15" />
-      <path className="care-dog" d="M184 76c0-13 10-22 24-22h17l10-12 6 19c6 4 9 10 9 18v19h-66V76Z" />
-      <path className="care-dog-detail" d="M207 55c-1-10 5-16 13-18l5 17m17 20h10m-54 24V86m39 12V86" />
-      <circle className="care-dog-eye" cx="234" cy="64" r="2" />
-      <path className="care-heart" d="M175 44c-5-6-14 1 0 11 14-10 5-17 0-11Z" />
-      <path className="care-bowl" d="M72 84h31c-1 10-6 14-15 14s-14-4-16-14Z" />
+    <svg className="life-scene-illustration" viewBox="0 0 360 104" role="img" aria-label="愛犬とおうちでケアをする暮らしのイラスト">
+      <path className="scene-home-wall" d="M0 0h360v104H0z" />
+      <path className="scene-window" d="M27 14h74v55H27z" />
+      <path className="scene-line scene-soft-line" d="M64 14v55M27 42h74" />
+      <circle className="scene-sun" cx="48" cy="29" r="8" />
+      <path className="scene-sofa" d="M221 63h112v29H221zM212 53h18v39h-18zm112 0h18v39h-18z" />
+      <path className="scene-line scene-sofa-line" d="M230 63V48h45v15m0 0V48h49v15" />
+      <circle className="scene-skin" cx="156" cy="31" r="9" />
+      <path className="scene-dark" d="M147 30c1-10 16-13 19-2-6-4-13-5-19 2Z" />
+      <path className="scene-person" d="M146 43c6-4 15-4 20 1l12 31h-45l13-32Z" />
+      <path className="scene-line" d="m149 50-15 16m29-16 18 14m-42 12-4 18m35-18 6 18" />
+      <path className="scene-dog" d="M174 69c2-9 11-14 22-12l8-8 5 13c7 3 11 9 11 16v15h-46V69Z" />
+      <path className="scene-line scene-dog-line" d="m185 59 3-10 9 8m13 18h12m-38 18v-10m29 10V82" />
+      <circle className="scene-eye" cx="207" cy="68" r="1.5" />
+      <path className="scene-brush" d="m178 61 16-11 3 5-16 11Z" />
+      <path className="scene-plant" d="M119 96V67m0 12c-11-2-16-8-15-18 9 1 15 7 15 18Zm0 7c10-2 16-8 16-17-10 0-16 6-16 17Z" />
+      <path className="scene-pot" d="M107 88h24l-4 10h-16l-4-10Z" />
     </svg>
+  );
+}
+
+function LifeMoment({ scene, eyebrow, text }: { scene: LifeScene; eyebrow: string; text: string }) {
+  return (
+    <figure className={`life-moment life-moment-${scene}`}>
+      <LifeSceneIllustration scene={scene} />
+      <figcaption><small>{eyebrow}</small><span>{text}</span></figcaption>
+    </figure>
   );
 }
 
@@ -2458,12 +2519,14 @@ export default function Home() {
         </button>
       )}
 
+      <LifeMoment scene="park" eyebrow="WALK TOGETHER" text="いつもの散歩にも、ふたりだけの発見を。" />
+
       <section className="today-mission" aria-labelledby="today-mission-title">
         <div className="mission-head">
           <div><p className="card-label">TODAY</p><h2 id="today-mission-title">今日のお世話</h2></div>
           <div className="mission-score"><strong>{completedGoalCount}</strong><span>/{careGoals.length || "–"}</span></div>
         </div>
-        <div className="daily-care-art"><DailyCareIllustration /><p>小さなお世話が、今日の心地よさをつくります。</p></div>
+        <LifeMoment scene="home" eyebrow="CARE AT HOME" text="小さなお世話が、今日の心地よさをつくります。" />
         {careGoals.length === 0 ? (
           <button className="mission-empty" onClick={() => setView("goals")}>
             <span><CareIcon name="paws" /></span>
@@ -2502,6 +2565,8 @@ export default function Home() {
           })}
         </div>
       </section>
+
+      <LifeMoment scene="cafe" eyebrow="SLOW TIME" text="一緒にくつろぐ時間も、大切な記録のひとつ。" />
 
       <button className="insight-spotlight" onClick={() => setView("report")}>
         <span className="insight-spark" aria-hidden="true">✦</span>

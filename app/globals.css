@@ -1598,19 +1598,43 @@ body { font-size: 16px; }
 .home-flat .today-mission .card-label { color:var(--green); }
 .home-flat .mission-score strong { color:var(--green-dark); }
 .home-flat .mission-score span { color:#728078; }
-.daily-care-art { position:relative; z-index:1; overflow:hidden; margin:15px 0 14px; border:1px solid #d4e7dd; border-radius:15px; background:#f8fcfa; }
-.daily-care-art p { margin:0; padding:9px 13px 11px; border-top:1px solid #dcebe3; color:#557066; font-size:11px; font-weight:650; line-height:1.5; }
-.daily-care-illustration { display:block; width:100%; height:auto; }
-.daily-care-illustration * { vector-effect:non-scaling-stroke; }
-.care-ground,.care-plant,.care-arm,.care-dog-detail,.care-bowl { fill:none; stroke:#43866f; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-.care-ground { stroke:#b9d8ca; }
-.care-sun { fill:#f4c85b; }
-.care-person-head { fill:#efb49a; }
-.care-person { fill:#7ab49e; stroke:#43866f; stroke-width:2; stroke-linejoin:round; }
-.care-dog { fill:#e9b76a; stroke:#7d633d; stroke-width:2; stroke-linejoin:round; }
-.care-dog-detail { stroke:#7d633d; }
-.care-dog-eye { fill:#50442f; }
-.care-heart { fill:#dd806c; stroke:#b45d4f; stroke-width:1.5; }
+.life-moment { position:relative; z-index:1; overflow:hidden; margin:22px 0 0; border:1px solid #d7e6de; border-radius:18px; background:#f8fcfa; }
+.life-moment figcaption { display:flex; align-items:baseline; gap:9px; padding:9px 13px 11px; border-top:1px solid rgba(81,133,111,.14); color:#557066; line-height:1.5; }
+.life-moment figcaption small { flex:0 0 auto; color:var(--green); font-family:var(--font-display); font-size:8px; font-weight:800; letter-spacing:.13em; }
+.life-moment figcaption span { font-size:11px; font-weight:650; }
+.life-moment-park { background:#f2f8ef; }
+.life-moment-cafe { margin-top:24px; border-color:#eadfc9; background:#fcf7ec; }
+.life-moment-cafe figcaption { border-top-color:rgba(139,106,55,.13); color:#78684f; }
+.life-moment-cafe figcaption small { color:#a4773f; }
+.today-mission .life-moment { margin:15px 0 14px; border-radius:15px; }
+.life-scene-illustration { display:block; width:100%; height:auto; }
+.life-scene-illustration * { vector-effect:non-scaling-stroke; }
+.scene-line,.scene-plant { fill:none; stroke:#43866f; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.scene-soft-line { stroke:#a9cdbd; stroke-width:1.5; }
+.scene-leash { stroke-dasharray:3 3; }
+.scene-sun { fill:#f4c85b; }
+.scene-cloud { fill:#fff; stroke:#d7e7e0; stroke-width:1.3; }
+.scene-ground { fill:#dcefdc; }
+.scene-tree-trunk { fill:#ae8056; }
+.scene-green { fill:#79b899; stroke:#43866f; stroke-width:1.5; }
+.scene-skin { fill:#efb49a; }
+.scene-dark { fill:#4b554f; }
+.scene-person { fill:#7ab49e; stroke:#43866f; stroke-width:1.8; stroke-linejoin:round; }
+.scene-person-alt { fill:#d99a73; stroke:#9b6749; stroke-width:1.8; stroke-linejoin:round; }
+.scene-dog { fill:#e9b76a; stroke:#7d633d; stroke-width:1.8; stroke-linejoin:round; }
+.scene-dog-line { stroke:#7d633d; }
+.scene-eye { fill:#50442f; }
+.scene-petal { fill:#dd806c; stroke:#b45d4f; stroke-width:1.2; }
+.scene-cafe-wall { fill:#fffaf0; }
+.scene-awning { fill:#82b8a1; stroke:#43866f; stroke-width:1.5; stroke-linejoin:round; }
+.scene-table { fill:#d8b487; stroke:#9d7651; stroke-width:1.5; }
+.scene-cup { fill:#fff; stroke:#9d7651; stroke-width:1.5; stroke-linejoin:round; }
+.scene-pot { fill:#d69b6a; stroke:#9f704b; stroke-width:1.4; stroke-linejoin:round; }
+.scene-home-wall { fill:#f8fcfa; }
+.scene-window { fill:#e7f4f4; stroke:#9fc7bc; stroke-width:1.4; }
+.scene-sofa { fill:#dfd6c4; stroke:#9f9178; stroke-width:1.5; stroke-linejoin:round; }
+.scene-sofa-line { stroke:#9f9178; }
+.scene-brush { fill:#f2c45d; stroke:#8e7035; stroke-width:1.3; stroke-linejoin:round; }
 .home-flat .mission-list { gap:7px; margin-top:0; }
 .home-flat .mission-list > button { border-color:#d7e5de; border-radius:14px; background:#fff; }
 .home-flat .mission-list > button > b { border:1px solid var(--green); border-radius:10px; background:#fff; color:var(--green-dark); }
