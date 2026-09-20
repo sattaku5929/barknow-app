@@ -12,6 +12,7 @@ type MessageInput = {
   media_type?: "image" | "video" | "";
   media_name?: string;
   media_size?: number;
+  reply_to_message_id?: string;
 };
 
 export async function POST(request: NextRequest) {
@@ -28,11 +29,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const client = authenticatedSupabase(accessToken);
+  let replySnapshot: { reply_to_message_id: string; reply_to_body: string; reply_to_sender: "owner" | "coach" } | null = null;
+  if (input.reply_to_message_id) {
+    const { data: reply, error: replyError } = await client
+      .from("wt_coach_messages")
+      .select("id,owner_id,dog_id,body,sender")
+      .eq("id", input.reply_to_message_id)
+      .eq("owner_id", input.owner_id)
+      .eq("dog_id", input.dog_id)
+      .maybeSingle();
+    if (replyError || !reply || (reply.sender !== "owner" && reply.sender !== "coach")) {
+      console.error("Quoted chat message lookup failed", { replyMessageId: input.reply_to_message_id, replyError });
+      return NextResponse.json({ error: "引用元のメッセージを確認できませんでした" }, { status: 400 });
+    }
+    replySnapshot = {
+      reply_to_message_id: String(reply.id),
+      reply_to_body: String(reply.body ?? "").slice(0, 3000),
+      reply_to_sender: reply.sender,
+    };
+  }
+
   const message = {
     owner_id: input.owner_id,
     dog_id: input.dog_id,
     sender: input.sender,
     body: input.body.trim(),
+    ...(replySnapshot ?? {}),
     ...(input.media_url ? {
       media_url: input.media_url,
       media_key: input.media_key || null,
@@ -41,7 +64,6 @@ export async function POST(request: NextRequest) {
       media_size: input.media_size || null,
     } : {}),
   };
-  const client = authenticatedSupabase(accessToken);
   const { data, error } = await client.from("wt_coach_messages").insert(message).select("*").single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 

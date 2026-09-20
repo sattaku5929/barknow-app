@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { supabase } from "@/app/supabase";
 
 export type SentChatMessage = {
@@ -11,6 +11,16 @@ export type SentChatMessage = {
   mediaType: "image" | "video" | "";
   mediaName: string;
   createdAt: string;
+  replyToId: string;
+  replyToBody: string;
+  replyToSender: "owner" | "coach" | "";
+  readAt: string;
+};
+
+export type ChatReplyTarget = {
+  id: string;
+  sender: "owner" | "coach";
+  body: string;
 };
 
 type ChatInputProps = {
@@ -19,6 +29,8 @@ type ChatInputProps = {
   sender: "owner" | "coach";
   placeholder?: string;
   onSent?: (message: SentChatMessage) => void;
+  replyTo?: ChatReplyTarget | null;
+  onCancelReply?: () => void;
 };
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -32,12 +44,17 @@ type UploadUrlResponse = {
   error?: string;
 };
 
-export default function ChatInput({ ownerId, dogId, sender, placeholder = "メッセージを入力", onSent }: ChatInputProps) {
+export default function ChatInput({ ownerId, dogId, sender, placeholder = "メッセージを入力", onSent, replyTo, onCancelReply }: ChatInputProps) {
   const [body, setBody] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
+  const textInput = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (replyTo) textInput.current?.focus();
+  }, [replyTo]);
 
   function chooseFile(event: ChangeEvent<HTMLInputElement>) {
     const next = event.target.files?.[0] ?? null;
@@ -116,6 +133,7 @@ export default function ChatInput({ ownerId, dogId, sender, placeholder = "メ�
         dog_id: dogId,
         sender,
         body: messageBody,
+        ...(replyTo ? { reply_to_message_id: replyTo.id } : {}),
         ...(mediaUrl ? { media_url: mediaUrl, media_key: mediaKey, media_type: mediaType, media_name: file?.name ?? "", media_size: file?.size ?? 0 } : {}),
       };
       const response = await fetch("/api/chat/messages", {
@@ -134,9 +152,14 @@ export default function ChatInput({ ownerId, dogId, sender, placeholder = "メ�
         mediaType: data.media_type === "image" ? "image" : data.media_type === "video" ? "video" : "",
         mediaName: String(data.media_name ?? ""),
         createdAt: String(data.created_at),
+        replyToId: String(data.reply_to_message_id ?? ""),
+        replyToBody: String(data.reply_to_body ?? ""),
+        replyToSender: data.reply_to_sender === "owner" || data.reply_to_sender === "coach" ? data.reply_to_sender : "",
+        readAt: String(data.read_at ?? ""),
       });
       setBody("");
       setFile(null);
+      onCancelReply?.();
       if (fileInput.current) fileInput.current.value = "";
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "送信できませんでした");
@@ -147,8 +170,15 @@ export default function ChatInput({ ownerId, dogId, sender, placeholder = "メ�
 
   return (
     <form className="media-chat-input" onSubmit={submit}>
+      {replyTo && (
+        <div className="chat-reply-preview" aria-label="引用返信するメッセージ">
+          <span aria-hidden="true">↩</span>
+          <div><small>{replyTo.sender === sender ? "あなたのメッセージ" : "相手のメッセージ"}に返信</small><p>{replyTo.body}</p></div>
+          <button type="button" onClick={onCancelReply} aria-label="引用返信を取り消す">×</button>
+        </div>
+      )}
       {file && <div className="media-file-chip"><span>{file.type.startsWith("image/") ? "画像" : "動画"}</span><b>{file.name}</b><button type="button" onClick={() => { setFile(null); if (fileInput.current) fileInput.current.value = ""; }} aria-label="選択したファイルを外す">×</button></div>}
-      <textarea rows={3} value={body} onChange={(event) => setBody(event.target.value)} placeholder={placeholder} maxLength={3000} />
+      <textarea ref={textInput} rows={3} value={body} onChange={(event) => setBody(event.target.value)} placeholder={placeholder} maxLength={3000} />
       {error && <p className="media-chat-error" role="alert">{error}</p>}
       <div className="media-chat-actions">
         <label><span>画像・動画</span><input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" onChange={chooseFile} disabled={busy} /></label>

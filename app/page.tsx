@@ -70,6 +70,10 @@ type CoachMessage = {
   mediaType: "image" | "video" | "";
   mediaName: string;
   createdAt: string;
+  replyToId: string;
+  replyToBody: string;
+  replyToSender: "owner" | "coach" | "";
+  readAt: string;
 };
 
 function mapCoachMessage(item: Record<string, unknown>): CoachMessage {
@@ -81,6 +85,10 @@ function mapCoachMessage(item: Record<string, unknown>): CoachMessage {
     mediaType: item.media_type === "image" || item.media_type === "video" ? item.media_type : "",
     mediaName: String(item.media_name ?? ""),
     createdAt: String(item.created_at),
+    replyToId: String(item.reply_to_message_id ?? ""),
+    replyToBody: String(item.reply_to_body ?? ""),
+    replyToSender: item.reply_to_sender === "owner" || item.reply_to_sender === "coach" ? item.reply_to_sender : "",
+    readAt: String(item.read_at ?? ""),
   };
 }
 
@@ -149,6 +157,75 @@ function MessageBody({ body }: { body: string }) {
   if (cursor < body.length) parts.push(body.slice(cursor));
   const firstUrl = urlsInMessage(body).find((value) => safeExternalUrl(value));
   return <><p>{parts}</p>{firstUrl && <UrlPreview value={firstUrl} />}</>;
+}
+
+function ChatMessageRow({
+  message,
+  selfSender,
+  onReply,
+  onOpenMedia,
+  showReadReceipt = false,
+}: {
+  message: CoachMessage;
+  selfSender: "owner" | "coach";
+  onReply: (message: CoachMessage) => void;
+  onOpenMedia?: (message: CoachMessage) => void;
+  showReadReceipt?: boolean;
+}) {
+  const [replyMenuOpen, setReplyMenuOpen] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSelf = message.sender === selfSender;
+  const time = new Intl.DateTimeFormat("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Tokyo",
+  }).format(new Date(message.createdAt));
+
+  function clearLongPress() {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    longPressTimer.current = null;
+  }
+
+  function startLongPress() {
+    clearLongPress();
+    longPressTimer.current = setTimeout(() => setReplyMenuOpen(true), 520);
+  }
+
+  useEffect(() => clearLongPress, []);
+
+  const quoteLabel = message.replyToSender === selfSender ? "あなた" : selfSender === "owner" ? "担当コーチ" : "飼い主";
+  const metadata = (
+    <div className="chat-message-meta">
+      {showReadReceipt && isSelf && <small className={`chat-read-status ${message.readAt ? "is-read" : "is-unread"}`}>{message.readAt ? "既読" : "未読"}</small>}
+      <time dateTime={message.createdAt}>{time}</time>
+      <button type="button" className="message-reply-action" onClick={() => { onReply(message); setReplyMenuOpen(false); }} aria-label="このメッセージに引用返信">↩ 引用返信</button>
+    </div>
+  );
+
+  return (
+    <div
+      className={`chat-message-row ${isSelf ? "is-self" : "is-received"} ${replyMenuOpen ? "is-reply-menu-open" : ""}`}
+      onPointerDown={startLongPress}
+      onPointerUp={clearLongPress}
+      onPointerCancel={clearLongPress}
+      onPointerLeave={clearLongPress}
+      onContextMenu={(event) => { event.preventDefault(); clearLongPress(); setReplyMenuOpen(true); }}
+    >
+      {isSelf && metadata}
+      <article className={`message ${message.sender}`}>
+        {message.replyToBody && (
+          <div className="message-quote">
+            <small>{quoteLabel}のメッセージ</small>
+            <p>{message.replyToBody}</p>
+          </div>
+        )}
+        <MessageMedia message={message} onOpen={onOpenMedia} />
+        {message.body && <MessageBody body={message.body} />}
+      </article>
+      {!isSelf && metadata}
+    </div>
+  );
 }
 
 type CareGoal = {
@@ -719,6 +796,8 @@ export default function Home() {
   const [selectedAdminCustomer, setSelectedAdminCustomer] = useState<AdminCustomer | null>(null);
   const [adminDetailRecords, setAdminDetailRecords] = useState<DailyRecord[]>([]);
   const [adminDetailMessages, setAdminDetailMessages] = useState<CoachMessage[]>([]);
+  const [adminReplyTo, setAdminReplyTo] = useState<CoachMessage | null>(null);
+  const adminMessageListRef = useRef<HTMLDivElement>(null);
   const [adminDetailGoals, setAdminDetailGoals] = useState<AdminGoalProgress[]>([]);
   const [adminDetailOwnerProfile, setAdminDetailOwnerProfile] = useState<OwnerProfile | null>(null);
   const [adminDetailDogProfile, setAdminDetailDogProfile] = useState<DogProfile | null>(null);
@@ -758,6 +837,7 @@ export default function Home() {
   const [coachingOutcome, setCoachingOutcome] = useState("");
   const [coachingNote, setCoachingNote] = useState("");
   const [ownerCoachTab, setOwnerCoachTab] = useState<"sessions" | "chat">("chat");
+  const [ownerReplyTo, setOwnerReplyTo] = useState<CoachMessage | null>(null);
   const ownerMessageListRef = useRef<HTMLDivElement>(null);
   const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
   const [selectedMediaId, setSelectedMediaId] = useState("");
@@ -830,11 +910,49 @@ export default function Home() {
   useEffect(() => {
     if (ownerCoachTab !== "chat") return;
     const frame = window.requestAnimationFrame(() => {
-      const messageList = ownerMessageListRef.current;
-      if (messageList) messageList.scrollTop = messageList.scrollHeight;
+      const list = ownerMessageListRef.current;
+      list?.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [ownerCoachTab, messages]);
+
+  useEffect(() => {
+    if (!selectedAdminCustomer) return;
+    const frame = window.requestAnimationFrame(() => {
+      const list = adminMessageListRef.current;
+      list?.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedAdminCustomer, adminDetailMessages]);
+
+  useEffect(() => {
+    if (view !== "coach" || ownerCoachTab !== "chat" || !currentUserId || !profile.id || connection !== "online") return;
+    let cancelled = false;
+    async function markCoachMessagesRead() {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return;
+      const response = await fetch("/api/chat/read", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ owner_id: currentUserId, dog_id: profile.id }),
+      });
+      const result = await response.json().catch(() => null) as { messages?: Array<{ id: string; read_at: string }>; error?: string } | null;
+      if (!response.ok) {
+        console.warn("Chat read receipt update skipped", result?.error ?? response.statusText);
+        return;
+      }
+      if (cancelled || !result?.messages?.length) return;
+      const readTimes = new Map(result.messages.map((message) => [String(message.id), String(message.read_at)]));
+      setMessages((current) => {
+        const next = current.map((message) => readTimes.has(message.id) ? { ...message, readAt: readTimes.get(message.id) ?? message.readAt } : message);
+        writeLocal(MESSAGES_KEY, next);
+        return next;
+      });
+    }
+    void markCoachMessagesRead();
+    return () => { cancelled = true; };
+  }, [connection, currentUserId, messages.length, ownerCoachTab, profile.id, view]);
 
   useEffect(() => {
     if (view !== "coach" || ownerCoachTab !== "chat") return;
@@ -1157,7 +1275,16 @@ export default function Home() {
       behaviorCustomTexts: record.behaviorCustomTexts?.length ? record.behaviorCustomTexts : record.behaviorCustomText ? [record.behaviorCustomText] : [],
       behaviorIntensity: record.behaviorIntensity ?? null,
     }));
-    const localMessages = readLocal<CoachMessage[]>(MESSAGES_KEY, []).map((message) => ({ ...message, mediaUrl: message.mediaUrl ?? "", mediaType: message.mediaType ?? "", mediaName: message.mediaName ?? "" }));
+    const localMessages = readLocal<CoachMessage[]>(MESSAGES_KEY, []).map((message) => ({
+      ...message,
+      mediaUrl: message.mediaUrl ?? "",
+      mediaType: message.mediaType ?? "",
+      mediaName: message.mediaName ?? "",
+      replyToId: message.replyToId ?? "",
+      replyToBody: message.replyToBody ?? "",
+      replyToSender: message.replyToSender ?? "",
+      readAt: message.readAt ?? "",
+    }));
     const localCareGoals = readLocal<CareGoal[]>(CARE_GOALS_KEY, []).map((goal) => ({ ...goal, reminderTime: goal.reminderTime ?? null }));
     const localGoalCompletions = readLocal<GoalCompletion[]>(GOAL_COMPLETIONS_KEY, []);
     const savedCustomBehaviors = readLocal<string[]>(CUSTOM_BEHAVIORS_KEY, []);
@@ -1640,6 +1767,7 @@ export default function Home() {
 
   async function openAdminCustomer(customer: AdminCustomer) {
     setSelectedAdminCustomer(customer);
+    setAdminReplyTo(null);
     setAdminDetailLoading(true);
     setAdminDetailOwnerProfile(null);
     setAdminDetailDogProfile(null);
@@ -2365,11 +2493,12 @@ export default function Home() {
     if (!authenticated || !currentUserId) return;
     const channel = supabase
       .channel(`owner-chat-${currentUserId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wt_coach_messages", filter: `owner_id=eq.${currentUserId}` }, (payload) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "wt_coach_messages", filter: `owner_id=eq.${currentUserId}` }, (payload) => {
+        if (payload.eventType === "DELETE") return;
         const message = mapCoachMessage(payload.new);
         setMessages((current) => {
-          if (current.some((item) => item.id === message.id)) return current;
-          const next = [...current, message];
+          const exists = current.some((item) => item.id === message.id);
+          const next = exists ? current.map((item) => item.id === message.id ? message : item) : [...current, message];
           writeLocal(MESSAGES_KEY, next);
           return next;
         });
@@ -2383,9 +2512,12 @@ export default function Home() {
     const dogId = selectedAdminCustomer.dogId;
     const channel = supabase
       .channel(`staff-chat-${dogId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wt_coach_messages", filter: `dog_id=eq.${dogId}` }, (payload) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "wt_coach_messages", filter: `dog_id=eq.${dogId}` }, (payload) => {
+        if (payload.eventType === "DELETE") return;
         const message = mapCoachMessage(payload.new);
-        setAdminDetailMessages((current) => current.some((item) => item.id === message.id) ? current : [...current, message]);
+        setAdminDetailMessages((current) => current.some((item) => item.id === message.id)
+          ? current.map((item) => item.id === message.id ? message : item)
+          : [...current, message]);
       })
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
@@ -3305,15 +3437,11 @@ export default function Home() {
                   )}
                   <div className="message-list" aria-live="polite" ref={ownerMessageListRef}>
                     {chronologicalMessages.length ? chronologicalMessages.map((message) => (
-                      <div key={message.id} className={`message ${message.sender}`}>
-                        <MessageMedia message={message} onOpen={openMediaGallery} />
-                        {message.body && <MessageBody body={message.body} />}
-                        <time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time>
-                      </div>
+                      <ChatMessageRow key={message.id} message={message} selfSender="owner" onReply={setOwnerReplyTo} onOpenMedia={openMediaGallery} />
                     )) : <div className="coach-empty"><div className="coach-avatar"><NavGlyph name="coach" /></div><h3>担当コーチへ、最初のメッセージを。</h3><p>例：いちばん困っているのは散歩中の引っ張りです。記録のどこを見ればよいですか？</p></div>}
                   </div>
                   {connection === "online" && currentUserId && profile.id
-                    ? <ChatInput ownerId={currentUserId} dogId={profile.id} sender="owner" placeholder="困っている場面や、写真・動画を共有してください" onSent={addOwnerMessage} />
+                    ? <ChatInput ownerId={currentUserId} dogId={profile.id} sender="owner" placeholder="困っている場面や、写真・動画を共有してください" onSent={addOwnerMessage} replyTo={ownerReplyTo} onCancelReply={() => setOwnerReplyTo(null)} />
                     : <p className="media-chat-unavailable">オンライン接続後にメッセージや画像・動画を送信できます。</p>}
                 </div>
               )}
@@ -3580,8 +3708,8 @@ export default function Home() {
                 </div>
                 <section className="admin-panel admin-chat-panel">
                   <div className="admin-panel-heading"><div><p className="card-label">CHAT</p><h2>飼い主との会話</h2></div><span>{adminDetailMessages.length}件</span></div>
-                  <div className="admin-chat-history">{adminDetailMessages.map((message) => <article className={message.sender} key={message.id}><MessageMedia message={message} />{message.body && <MessageBody body={message.body} />}<time>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(message.createdAt))}</time></article>)}{!adminDetailMessages.length && <p className="admin-muted">まだ相談はありません。コーチから声をかけることもできます。</p>}</div>
-                  <ChatInput ownerId={selectedAdminCustomer.ownerId} dogId={selectedAdminCustomer.dogId} sender="coach" placeholder={`${selectedAdminCustomer.dogName}の飼い主へメッセージ`} onSent={addAdminMessage} />
+                  <div className="admin-chat-history" ref={adminMessageListRef}>{adminDetailMessages.map((message) => <ChatMessageRow key={message.id} message={message} selfSender="coach" onReply={setAdminReplyTo} showReadReceipt />)}{!adminDetailMessages.length && <p className="admin-muted">まだ相談はありません。コーチから声をかけることもできます。</p>}</div>
+                  <ChatInput ownerId={selectedAdminCustomer.ownerId} dogId={selectedAdminCustomer.dogId} sender="coach" placeholder={`${selectedAdminCustomer.dogName}の飼い主へメッセージ`} onSent={addAdminMessage} replyTo={adminReplyTo} onCancelReply={() => setAdminReplyTo(null)} />
                 </section>
               </>
             )}
