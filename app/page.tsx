@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, MouseEvent as ReactMouseEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, Fragment, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import ChatInput, { SentChatMessage } from "@/components/ChatInput";
 import { usePushNotification } from "@/hooks/usePushNotification";
@@ -173,7 +173,11 @@ function ChatMessageRow({
   showReadReceipt?: boolean;
 }) {
   const [replyMenuOpen, setReplyMenuOpen] = useState(false);
+  const [swipeOffset, setSwipeOffset] = useState(0);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const swipeStart = useRef<{ x: number; y: number; pointerId: number; dragging: boolean } | null>(null);
+  const swipeOffsetRef = useRef(0);
+  const suppressClick = useRef(false);
   const isSelf = message.sender === selfSender;
   const time = new Intl.DateTimeFormat("ja-JP", {
     hour: "2-digit",
@@ -187,9 +191,64 @@ function ChatMessageRow({
     longPressTimer.current = null;
   }
 
-  function startLongPress() {
+  function startLongPress(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
     clearLongPress();
+    swipeStart.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId, dragging: false };
+    swipeOffsetRef.current = 0;
     longPressTimer.current = setTimeout(() => setReplyMenuOpen(true), 520);
+  }
+
+  function moveSwipe(event: ReactPointerEvent<HTMLDivElement>) {
+    const start = swipeStart.current;
+    if (!start || start.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+    if (!start.dragging) {
+      if (Math.abs(deltaY) > 10 && Math.abs(deltaY) > Math.abs(deltaX)) {
+        clearLongPress();
+        swipeStart.current = null;
+        return;
+      }
+      if (deltaX < -8 && Math.abs(deltaX) > Math.abs(deltaY) * 1.15) {
+        start.dragging = true;
+        clearLongPress();
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+      }
+    }
+    if (!start.dragging) return;
+    event.preventDefault();
+    const nextOffset = Math.max(-72, Math.min(0, deltaX));
+    swipeOffsetRef.current = nextOffset;
+    setSwipeOffset(nextOffset);
+  }
+
+  function finishSwipe(event: ReactPointerEvent<HTMLDivElement>) {
+    const start = swipeStart.current;
+    clearLongPress();
+    if (!start || start.pointerId !== event.pointerId) return;
+    const shouldReply = start.dragging && swipeOffsetRef.current <= -52;
+    if (start.dragging) {
+      suppressClick.current = true;
+      window.setTimeout(() => { suppressClick.current = false; }, 350);
+    }
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    swipeStart.current = null;
+    swipeOffsetRef.current = 0;
+    setSwipeOffset(0);
+    if (shouldReply) {
+      onReply(message);
+      setReplyMenuOpen(false);
+      navigator.vibrate?.(12);
+    }
+  }
+
+  function cancelSwipe(event?: ReactPointerEvent<HTMLDivElement>) {
+    clearLongPress();
+    if (event && event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    swipeStart.current = null;
+    swipeOffsetRef.current = 0;
+    setSwipeOffset(0);
   }
 
   useEffect(() => clearLongPress, []);
@@ -205,27 +264,80 @@ function ChatMessageRow({
 
   return (
     <div
-      className={`chat-message-row ${isSelf ? "is-self" : "is-received"} ${replyMenuOpen ? "is-reply-menu-open" : ""}`}
+      className={`chat-message-row ${isSelf ? "is-self" : "is-received"} ${replyMenuOpen ? "is-reply-menu-open" : ""} ${swipeOffset < 0 ? "is-swiping" : ""} ${swipeOffset <= -52 ? "is-swipe-ready" : ""}`}
       onPointerDown={startLongPress}
-      onPointerUp={clearLongPress}
-      onPointerCancel={clearLongPress}
-      onPointerLeave={clearLongPress}
+      onPointerMove={moveSwipe}
+      onPointerUp={finishSwipe}
+      onPointerCancel={cancelSwipe}
+      onPointerLeave={(event) => { if (event.pointerType === "mouse") cancelSwipe(event); }}
+      onClickCapture={(event) => {
+        if (!suppressClick.current) return;
+        event.preventDefault();
+        event.stopPropagation();
+        suppressClick.current = false;
+      }}
       onContextMenu={(event) => { event.preventDefault(); clearLongPress(); setReplyMenuOpen(true); }}
     >
-      {isSelf && metadata}
-      <article className={`message ${message.sender}`}>
-        {message.replyToBody && (
-          <div className="message-quote">
-            <small>{quoteLabel}のメッセージ</small>
-            <p>{message.replyToBody}</p>
-          </div>
-        )}
-        <MessageMedia message={message} onOpen={onOpenMedia} />
-        {message.body && <MessageBody body={message.body} />}
-      </article>
-      {!isSelf && metadata}
+      <span className="message-swipe-reply" aria-hidden="true" style={{ opacity: Math.min(1, Math.abs(swipeOffset) / 52) }}>
+        <svg viewBox="0 0 24 24"><path d="M9 7 4 12l5 5M5 12h8a6 6 0 0 1 6 6" /></svg>
+      </span>
+      <div className="chat-message-slide" style={{ transform: `translateX(${swipeOffset}px)` }}>
+        {isSelf && metadata}
+        <article className={`message ${message.sender}`}>
+          {message.replyToBody && (
+            <div className="message-quote">
+              <small>{quoteLabel}のメッセージ</small>
+              <p>{message.replyToBody}</p>
+            </div>
+          )}
+          <MessageMedia message={message} onOpen={onOpenMedia} />
+          {message.body && <MessageBody body={message.body} />}
+        </article>
+        {!isSelf && metadata}
+      </div>
     </div>
   );
+}
+
+function messageDateParts(value: string) {
+  const date = new Date(value);
+  const key = date.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+    timeZone: "Asia/Tokyo",
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  return { key, label: `${part("year")}/${part("month")}/${part("day")} (${part("weekday")})` };
+}
+
+function ChatMessageTimeline({
+  messages,
+  selfSender,
+  onReply,
+  onOpenMedia,
+  showReadReceipt = false,
+}: {
+  messages: CoachMessage[];
+  selfSender: "owner" | "coach";
+  onReply: (message: CoachMessage) => void;
+  onOpenMedia?: (message: CoachMessage) => void;
+  showReadReceipt?: boolean;
+}) {
+  let previousDate = "";
+  return messages.map((message) => {
+    const date = messageDateParts(message.createdAt);
+    const showDate = date.key !== previousDate;
+    previousDate = date.key;
+    return (
+      <Fragment key={message.id}>
+        {showDate && <div className="chat-date-separator"><span>{date.label}</span></div>}
+        <ChatMessageRow message={message} selfSender={selfSender} onReply={onReply} onOpenMedia={onOpenMedia} showReadReceipt={showReadReceipt} />
+      </Fragment>
+    );
+  });
 }
 
 type CareGoal = {
@@ -339,6 +451,20 @@ type OnlineSession = {
   calendarSyncError: string;
 };
 
+type AppHistoryLayer =
+  | { kind: "owner-view"; nextView: View; previousView: View }
+  | { kind: "coach-tab"; nextTab: "sessions" | "chat"; previousTab: "sessions" | "chat" }
+  | { kind: "admin-customer"; customer: AdminCustomer }
+  | { kind: "media-gallery"; messageId: string }
+  | { kind: "celebration"; value: { title: string; message: string } }
+  | { kind: "push-prompt" }
+  | { kind: "account-delete" };
+
+type AppHistoryMarker = {
+  depth: number;
+  layer: AppHistoryLayer | null;
+};
+
 const PROFILE_KEY = "wan-tone-profile-v1";
 const RECORDS_KEY = "wan-tone-records-v1";
 const MESSAGES_KEY = "wan-tone-messages-v1";
@@ -348,6 +474,7 @@ const CUSTOM_BEHAVIORS_KEY = "wan-tone-custom-behaviors-v1";
 const CARE_GOALS_KEY = "wan-tone-care-goals-v1";
 const GOAL_COMPLETIONS_KEY = "wan-tone-goal-completions-v1";
 const REMINDER_SENT_KEY = "wan-tone-reminder-sent-v1";
+const APP_HISTORY_STATE_KEY = "__wanToneUi";
 
 const initialProfile: DogProfile = { name: "", breed: "", birthday: "", isFirstTimeOwner: "", gender: "", trainingExperience: "", daycareFrequency: "", walkFrequency: "", concerns: "", profileCompletedAt: "" };
 const initialOwnerProfile: OwnerProfile = { fullName: "", fullNameKana: "", phoneNumber: "", prefecture: "", address: "", birthDate: "", completedAt: "" };
@@ -771,6 +898,9 @@ export default function Home() {
   const { subscribeUser, permissionStatus, subscriptionStatus, isSubscribed, refreshSubscriptionStatus } = usePushNotification();
   const [pushBusy, setPushBusy] = useState(false);
   const [showPushPrompt, setShowPushPrompt] = useState(false);
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
+  const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState("");
   const [showPwaInstallBanner, setShowPwaInstallBanner] = useState(false);
   const [isIOSDevice, setIsIOSDevice] = useState(false);
   const [authReady, setAuthReady] = useState(false);
@@ -865,13 +995,182 @@ export default function Home() {
   const [customGoalCount, setCustomGoalCount] = useState(1);
   const [customGoalPeriod, setCustomGoalPeriod] = useState<GoalPeriod>("week");
   const [celebration, setCelebration] = useState<{ title: string; message: string } | null>(null);
+  const appHistoryDepthRef = useRef(0);
+  const appHistoryLayersRef = useRef<Array<{ depth: number; layer: AppHistoryLayer }>>([]);
+  const appHistoryTransitioningRef = useRef(false);
+
+  const pushAppHistory = useCallback((layer: AppHistoryLayer) => {
+    appHistoryTransitioningRef.current = false;
+    const depth = appHistoryDepthRef.current + 1;
+    const marker: AppHistoryMarker = { depth, layer };
+    appHistoryDepthRef.current = depth;
+    appHistoryLayersRef.current = [...appHistoryLayersRef.current, { depth, layer }];
+    const url = new URL(window.location.href);
+    const suffix = layer.kind === "owner-view"
+      ? layer.nextView
+      : layer.kind === "coach-tab"
+        ? `coach-${layer.nextTab}`
+        : layer.kind === "admin-customer"
+          ? `customer-${layer.customer.dogId}`
+          : layer.kind === "media-gallery"
+            ? "shared-media"
+            : layer.kind === "celebration"
+              ? "celebration"
+              : layer.kind === "push-prompt"
+                ? "notification"
+                : "account-delete";
+    url.hash = `wan-tone-${suffix}`;
+    window.history.pushState(
+      { ...(window.history.state ?? {}), [APP_HISTORY_STATE_KEY]: marker },
+      "",
+      url,
+    );
+  }, []);
+
+  const closeAppHistoryLayer = useCallback((kind: AppHistoryLayer["kind"], fallback: () => void) => {
+    const top = appHistoryLayersRef.current.at(-1);
+    if (top?.layer.kind === kind && appHistoryDepthRef.current > 0) {
+      if (!appHistoryTransitioningRef.current) {
+        appHistoryTransitioningRef.current = true;
+        window.history.back();
+      }
+      return;
+    }
+    fallback();
+  }, []);
+
+  const returnToOwnerHome = useCallback(() => {
+    const depth = appHistoryDepthRef.current;
+    if (depth > 0) {
+      if (!appHistoryTransitioningRef.current) {
+        appHistoryTransitioningRef.current = true;
+        window.history.go(-depth);
+      }
+      return;
+    }
+    setView("home");
+  }, []);
+
+  function navigateOwnerView(nextView: View) {
+    if (nextView === view) return;
+    if (nextView === "home") {
+      returnToOwnerHome();
+      return;
+    }
+    pushAppHistory({ kind: "owner-view", nextView, previousView: view });
+    setView(nextView);
+  }
+
+  function navigateCoachTab(nextTab: "sessions" | "chat") {
+    if (nextTab === ownerCoachTab) return;
+    pushAppHistory({ kind: "coach-tab", nextTab, previousTab: ownerCoachTab });
+    setOwnerCoachTab(nextTab);
+  }
+
+  const closeMediaGallery = useCallback(() => {
+    closeAppHistoryLayer("media-gallery", () => setMediaGalleryOpen(false));
+  }, [closeAppHistoryLayer]);
+
+  const closeCelebration = useCallback(() => {
+    closeAppHistoryLayer("celebration", () => setCelebration(null));
+  }, [closeAppHistoryLayer]);
+
+  const closePushPrompt = useCallback(() => {
+    closeAppHistoryLayer("push-prompt", () => setShowPushPrompt(false));
+  }, [closeAppHistoryLayer]);
+
+  const closeDeleteAccountDialog = useCallback(() => {
+    closeAppHistoryLayer("account-delete", () => setShowDeleteAccountDialog(false));
+  }, [closeAppHistoryLayer]);
+
+  const closeAdminCustomer = useCallback(() => {
+    closeAppHistoryLayer("admin-customer", () => {
+      setSelectedAdminCustomer(null);
+      setAdminReplyTo(null);
+    });
+  }, [closeAppHistoryLayer]);
+
+  useEffect(() => {
+    appHistoryDepthRef.current = 0;
+    appHistoryLayersRef.current = [];
+    appHistoryTransitioningRef.current = false;
+    const initialUrl = new URL(window.location.href);
+    if (initialUrl.hash.startsWith("#wan-tone-")) initialUrl.hash = "";
+    const baseMarker: AppHistoryMarker = { depth: 0, layer: null };
+    window.history.replaceState(
+      { ...(window.history.state ?? {}), [APP_HISTORY_STATE_KEY]: baseMarker },
+      "",
+      initialUrl,
+    );
+
+    const applyLayer = (layer: AppHistoryLayer, opening: boolean) => {
+      switch (layer.kind) {
+        case "owner-view":
+          setView(opening ? layer.nextView : layer.previousView);
+          break;
+        case "coach-tab":
+          setOwnerCoachTab(opening ? layer.nextTab : layer.previousTab);
+          break;
+        case "admin-customer":
+          setSelectedAdminCustomer(opening ? layer.customer : null);
+          if (!opening) setAdminReplyTo(null);
+          break;
+        case "media-gallery":
+          if (opening) setSelectedMediaId(layer.messageId);
+          setMediaGalleryOpen(opening);
+          break;
+        case "celebration":
+          setCelebration(opening ? layer.value : null);
+          break;
+        case "push-prompt":
+          setShowPushPrompt(opening);
+          break;
+        case "account-delete":
+          setShowDeleteAccountDialog(opening);
+          if (!opening) setDeleteAccountError("");
+          break;
+      }
+    };
+
+    const handlePopState = (event: PopStateEvent) => {
+      appHistoryTransitioningRef.current = false;
+      const candidate = event.state?.[APP_HISTORY_STATE_KEY] as AppHistoryMarker | undefined;
+      const marker = candidate && Number.isInteger(candidate.depth) ? candidate : { depth: 0, layer: null };
+      const targetDepth = Math.max(0, marker.depth);
+      const currentDepth = appHistoryDepthRef.current;
+
+      if (targetDepth < currentDepth) {
+        const removed = appHistoryLayersRef.current
+          .filter((entry) => entry.depth > targetDepth)
+          .sort((left, right) => right.depth - left.depth);
+        removed.forEach((entry) => applyLayer(entry.layer, false));
+        appHistoryLayersRef.current = appHistoryLayersRef.current.filter((entry) => entry.depth <= targetDepth);
+        if (targetDepth > 0 && marker.layer && !appHistoryLayersRef.current.some((entry) => entry.depth === targetDepth)) {
+          appHistoryLayersRef.current.push({ depth: targetDepth, layer: marker.layer });
+        }
+      } else if (targetDepth > currentDepth && marker.layer) {
+        applyLayer(marker.layer, true);
+        appHistoryLayersRef.current = [
+          ...appHistoryLayersRef.current.filter((entry) => entry.depth < targetDepth),
+          { depth: targetDepth, layer: marker.layer },
+        ];
+      }
+      appHistoryDepthRef.current = targetDepth;
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      if (new URLSearchParams(window.location.search).get("view") === "coach") setView("coach");
+      if (new URLSearchParams(window.location.search).get("view") === "coach") {
+        pushAppHistory({ kind: "owner-view", nextView: "coach", previousView: "home" });
+        setView("coach");
+      }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, []);
+  }, [pushAppHistory]);
 
   useEffect(() => {
     if (authenticated) void refreshSubscriptionStatus();
@@ -882,9 +1181,12 @@ export default function Home() {
     if (!("Notification" in window) || Notification.permission === "granted") return;
     if (window.sessionStorage.getItem(PUSH_PROMPT_SESSION_KEY) === "1") return;
     window.sessionStorage.setItem(PUSH_PROMPT_SESSION_KEY, "1");
-    const frame = window.requestAnimationFrame(() => setShowPushPrompt(true));
+    const frame = window.requestAnimationFrame(() => {
+      pushAppHistory({ kind: "push-prompt" });
+      setShowPushPrompt(true);
+    });
     return () => window.cancelAnimationFrame(frame);
-  }, [authReady, authenticated, anonymousUser, userRole, onboardingRequired]);
+  }, [authReady, authenticated, anonymousUser, userRole, onboardingRequired, pushAppHistory]);
 
   useEffect(() => {
     const navigatorWithStandalone = window.navigator as Navigator & { standalone?: boolean };
@@ -967,11 +1269,11 @@ export default function Home() {
   useEffect(() => {
     if (!mediaGalleryOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMediaGalleryOpen(false);
+      if (event.key === "Escape") closeMediaGallery();
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [mediaGalleryOpen]);
+  }, [closeMediaGallery, mediaGalleryOpen]);
 
   const streak = useMemo(() => calculateStreak(records), [records]);
   const todaysRecord = records.find((record) => record.recordedOn === today());
@@ -1568,7 +1870,7 @@ export default function Home() {
       else showNotice("Google Calendar連携を完了できませんでした。Google Cloudの設定を確認してください");
       setStaffMode("staff");
       setAdminTab("coachProfile");
-      window.history.replaceState({}, "", window.location.pathname);
+      window.history.replaceState(window.history.state, "", window.location.pathname);
       void loadStaffBookingWorkspace();
     }, 0);
     return () => window.clearTimeout(timer);
@@ -1614,7 +1916,7 @@ export default function Home() {
     setPushBusy(true);
     try {
       const subscription = await subscribeUser();
-      if (subscription) setShowPushPrompt(false);
+      if (subscription) closePushPrompt();
       showNotice(subscription ? "新着メッセージの通知をオンにしました" : permissionStatus === "denied" ? "ブラウザまたは端末の設定から通知を許可してください" : "通知の許可が必要です");
     } catch (error) {
       showNotice(error instanceof Error ? `通知を設定できませんでした（${error.message}）` : "通知を設定できませんでした");
@@ -1713,6 +2015,38 @@ export default function Home() {
     window.location.reload();
   }
 
+  function openDeleteAccountDialog() {
+    setDeleteAccountError("");
+    pushAppHistory({ kind: "account-delete" });
+    setShowDeleteAccountDialog(true);
+  }
+
+  async function deleteAccount() {
+    if (deleteAccountBusy) return;
+    setDeleteAccountBusy(true);
+    setDeleteAccountError("");
+    try {
+      const response = await authorizedFetch("/api/user/delete", { method: "DELETE" });
+      const result = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !result?.ok) throw new Error(result?.error || "アカウントを削除できませんでした");
+
+      if ("serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration();
+        const subscription = await registration?.pushManager.getSubscription();
+        await subscription?.unsubscribe().catch(() => false);
+      }
+      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+      clearOwnerCache();
+      window.sessionStorage.removeItem(PUSH_PROMPT_SESSION_KEY);
+      window.location.replace("/");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "アカウントを削除できませんでした";
+      console.error("[Account deletion] request failed", { message, error });
+      setDeleteAccountError(message);
+      setDeleteAccountBusy(false);
+    }
+  }
+
   async function changeAccountRole(account: AdminAccount, role: UserRole) {
     if (account.userId === currentUserId && role !== "admin") {
       showNotice("自分自身の管理者権限は解除できません");
@@ -1766,6 +2100,7 @@ export default function Home() {
   }
 
   async function openAdminCustomer(customer: AdminCustomer) {
+    pushAppHistory({ kind: "admin-customer", customer });
     setSelectedAdminCustomer(customer);
     setAdminReplyTo(null);
     setAdminDetailLoading(true);
@@ -1863,7 +2198,7 @@ export default function Home() {
     event.preventDefault();
     if (!profile.name) {
       showNotice("先に愛犬プロフィールを登録してください");
-      setView("profile");
+      navigateOwnerView("profile");
       return;
     }
     if (!coachingConcerns.length || !coachingOutcome.trim()) {
@@ -2214,7 +2549,7 @@ export default function Home() {
     setSleep("ふつう");
     setBehaviorNote("");
     setGoodMoment("");
-    setView("record");
+    navigateOwnerView("record");
   }
 
   const behaviorSelectionCount = behaviorTypes.filter((type) => type !== "other").length + selectedCustomBehaviors.length;
@@ -2305,7 +2640,7 @@ export default function Home() {
       } else {
         showNotice("この端末にプロフィールを保存しました");
       }
-      setView("home");
+      returnToOwnerHome();
     } catch {
       setConnection("local");
       showNotice("この端末にプロフィールを保存しました");
@@ -2458,7 +2793,7 @@ export default function Home() {
       setProfile(next);
       writeLocal(PROFILE_KEY, next);
       setOnboardingRequired(false);
-      setView("home");
+      returnToOwnerHome();
       router.replace("/");
       showNotice("登録が完了しました。今日から一緒に記録を始めましょう");
     } catch (error) {
@@ -2603,7 +2938,7 @@ export default function Home() {
       setSaving(false);
       setRecordCategory(null);
       setEditingRecordId(null);
-      setView("home");
+      returnToOwnerHome();
     }
   }
 
@@ -2668,10 +3003,12 @@ export default function Home() {
     const willComplete = goalProgress(goal) + 1 >= goal.targetCount;
     showNotice(willComplete ? `「${goal.title}」目標達成！` : `「${goal.title}」を1回できました`);
     if (willComplete) {
-      setCelebration({
+      const nextCelebration = {
         title: `${goal.title}、達成！`,
         message: `今日のひと手間が、${dogName}とのいい毎日につながっています。`,
-      });
+      };
+      pushAppHistory({ kind: "celebration", value: nextCelebration });
+      setCelebration(nextCelebration);
     }
     if (connection !== "online") return;
     try {
@@ -2732,13 +3069,13 @@ export default function Home() {
           <h1>{profile.name ? `${profile.name}ちゃん、今日も一緒に。` : "今日から、少しずつ。"}</h1>
           <p className="welcome-copy">やろうと思っていたケアを、今日ひとつ。</p>
         </div>
-        <button className="avatar" onClick={() => setView("profile")} aria-label="愛犬プロフィールを開く">
+        <button className="avatar" onClick={() => navigateOwnerView("profile")} aria-label="愛犬プロフィールを開く">
           {profile.name ? profile.name.slice(0, 1) : "＋"}
         </button>
       </section>
 
       {!profile.name && (
-        <button className="profile-nudge" onClick={() => setView("profile")}>
+        <button className="profile-nudge" onClick={() => navigateOwnerView("profile")}>
           <span className="profile-nudge-mark">01</span>
           <span><strong>まずは、愛犬の名前を教えてください</strong><small>記録とコーチの助言が、その子の物語になります。</small></span>
           <span aria-hidden="true">→</span>
@@ -2751,7 +3088,7 @@ export default function Home() {
           {careGoals.length > 0 && <span><b>{completedGoalCount}</b> / {careGoals.length} 達成</span>}
         </div>
         {careGoals.length === 0 ? (
-          <button className="care-empty" onClick={() => setView("goals")}>
+          <button className="care-empty" onClick={() => navigateOwnerView("goals")}>
             <span className="care-empty-icon"><CareIcon name="paws" /></span>
             <span><strong>うちの子の習慣を決める</strong><small>歯磨き、ブラッシングなどから無理なく始められます。</small></span>
             <b aria-hidden="true">→</b>
@@ -2769,7 +3106,7 @@ export default function Home() {
                 </div>
               );
             })}
-            <button className="care-manage" onClick={() => setView("goals")}>{nextCareGoals.length ? `あと${nextCareGoals.length}個の習慣を見る` : "達成状況を見る"} →</button>
+            <button className="care-manage" onClick={() => navigateOwnerView("goals")}>{nextCareGoals.length ? `あと${nextCareGoals.length}個の習慣を見る` : "達成状況を見る"} →</button>
           </div>
         )}
       </section>
@@ -2827,7 +3164,7 @@ export default function Home() {
             <span>気になる状態 <b>{recentConcernCount}</b></span>
             <span>困りごと <b>{recentBehaviorCount}</b></span>
           </div>
-          <button className="text-button" onClick={() => setView("report")}>詳しい変化を見る →</button>
+          <button className="text-button" onClick={() => navigateOwnerView("report")}>詳しい変化を見る →</button>
           <small className="condition-note">日々の記録から見た目安で、診断ではありません。</small>
         </div>
       </section>
@@ -2851,7 +3188,7 @@ export default function Home() {
               : coachingApplication.status === "offered" ? "相談内容と記録を確認中です。引き受けが確定すると、この画面とメールでお知らせします。"
               : "日々の記録を共有できるので、毎回ゼロから説明せずに相談できます。"
             : "記録で見えるのは「何が起きたか」。コーチと一緒なら、その理由と次に試すことまで整理できます。"}</p>
-          <button onClick={() => setView("coach")}>{coachingApplication ? "コーチルームを確認する" : "コーチングについて相談する"}<span>→</span></button>
+          <button onClick={() => navigateOwnerView("coach")}>{coachingApplication ? "コーチルームを確認する" : "コーチングについて相談する"}<span>→</span></button>
         </div>
       </section>
 
@@ -2876,7 +3213,7 @@ export default function Home() {
             </div>
             <div className="weekly-insight">
               <p>{recentRecords.length === 0 ? "まずは今日だけ。1分の記録から始めましょう。" : recentConcernCount > 0 ? `気になる記録が${recentConcernCount}件あります。コーチに共有しておくと安心です。` : recentGoodCount > 0 ? `「できた」が${recentGoodCount}件たまりました。小さな変化が見えています。` : "記録が少しずつつながっています。短いメモでも十分です。"}</p>
-              <button onClick={() => recentConcernCount > 0 ? setView("coach") : openNewRecord()}>{recentConcernCount > 0 ? "コーチに相談する" : "今日を記録する"} →</button>
+              <button onClick={() => recentConcernCount > 0 ? navigateOwnerView("coach") : openNewRecord()}>{recentConcernCount > 0 ? "コーチに相談する" : "今日を記録する"} →</button>
             </div>
           </>
         ) : (
@@ -2931,7 +3268,7 @@ export default function Home() {
         {records.length ? (
           <div className="record-list">
             {records.slice(0, 3).map((record) => (
-              <button key={record.id} onClick={() => { setEditingRecordId(record.id); setRecordCategory(record.category ?? "daily"); setRecordDate(record.recordedOn); setRecordTime(record.recordedTime ?? "12:00"); setDurationMinutes(record.durationMinutes ?? 20); setBehaviorTypes(record.behaviorTypes?.filter((type) => type !== "other").length ? record.behaviorTypes.filter((type) => type !== "other") : []); setSelectedCustomBehaviors(record.behaviorCustomTexts?.length ? record.behaviorCustomTexts : record.behaviorCustomText ? [record.behaviorCustomText] : []); setBehaviorCustomText(""); setBehaviorIntensity(record.behaviorIntensity ?? 5); setMood(record.mood); setAppetite(record.appetite); setActivity(record.activity); setToilet(record.toilet); setSleep(record.sleep); setBehaviorNote(record.behaviorNote); setGoodMoment(record.goodMoment); setView("record"); }}>
+              <button key={record.id} onClick={() => { setEditingRecordId(record.id); setRecordCategory(record.category ?? "daily"); setRecordDate(record.recordedOn); setRecordTime(record.recordedTime ?? "12:00"); setDurationMinutes(record.durationMinutes ?? 20); setBehaviorTypes(record.behaviorTypes?.filter((type) => type !== "other").length ? record.behaviorTypes.filter((type) => type !== "other") : []); setSelectedCustomBehaviors(record.behaviorCustomTexts?.length ? record.behaviorCustomTexts : record.behaviorCustomText ? [record.behaviorCustomText] : []); setBehaviorCustomText(""); setBehaviorIntensity(record.behaviorIntensity ?? 5); setMood(record.mood); setAppetite(record.appetite); setActivity(record.activity); setToilet(record.toilet); setSleep(record.sleep); setBehaviorNote(record.behaviorNote); setGoodMoment(record.goodMoment); navigateOwnerView("record"); }}>
                 <span className="record-date"><strong>{record.recordedTime ?? "12:00"}</strong><small>{formatDate(record.recordedOn)}</small></span>
                 <span className="timeline-topic-icon"><TopicIcon name={categoryInfo(record.category).icon} /></span>
                 <span className="record-summary"><b>{record.category === "barking" ? [...record.behaviorTypes.filter((type) => type !== "other").map((type) => behaviorInfo(type).label), ...(record.behaviorCustomTexts?.length ? record.behaviorCustomTexts : record.behaviorCustomText ? [record.behaviorCustomText] : [])].join("・") : categoryInfo(record.category).label}</b>{record.category === "walk" && record.durationMinutes ? ` · ${record.durationMinutes}分` : ""}<small>{record.category === "barking" && record.behaviorIntensity ? `気になり度 ${record.behaviorIntensity}/10 · ` : ""}気分 {record.mood}/5</small></span>
@@ -2948,7 +3285,7 @@ export default function Home() {
           <p className="card-label">COACH ROOM</p>
           <h2>ひとりで抱え込まない場所</h2>
           <p>{messages.length ? "相談履歴を確認できます。" : "日々の記録をもとに、気になることをコーチへ相談できます。"}</p>
-          <button className="text-button" onClick={() => setView("coach")}>コーチルームを開く →</button>
+          <button className="text-button" onClick={() => navigateOwnerView("coach")}>コーチルームを開く →</button>
         </div>
       </section>
     </>
@@ -2962,11 +3299,11 @@ export default function Home() {
           <h1>{profile.name ? `${profile.name}ちゃんと、今日もひとつ。` : "今日から、ひとつずつ。"}</h1>
           <p className="welcome-copy">完璧じゃなくて大丈夫。できたことを一緒に増やそう。</p>
         </div>
-        <button className="avatar" onClick={() => setView("profile")} aria-label="愛犬プロフィールを開く">{profile.name ? profile.name.slice(0, 1) : "＋"}</button>
+        <button className="avatar" onClick={() => navigateOwnerView("profile")} aria-label="愛犬プロフィールを開く">{profile.name ? profile.name.slice(0, 1) : "＋"}</button>
       </section>
 
       {!profile.name && (
-        <button className="profile-nudge" onClick={() => setView("profile")}>
+        <button className="profile-nudge" onClick={() => navigateOwnerView("profile")}>
           <span className="profile-nudge-mark">01</span>
           <span><strong>まず、愛犬を登録する</strong><small>その子に合う記録と目標を始められます。</small></span>
           <span aria-hidden="true">→</span>
@@ -2982,7 +3319,7 @@ export default function Home() {
         </div>
         <LifeMoment scene="home" eyebrow="CARE AT HOME" text="小さなお世話が、今日の心地よさをつくります。" />
         {careGoals.length === 0 ? (
-          <button className="mission-empty" onClick={() => setView("goals")}>
+          <button className="mission-empty" onClick={() => navigateOwnerView("goals")}>
             <span><CareIcon name="paws" /></span>
             <b>続けたいことを、ひとつ決める</b><i>→</i>
           </button>
@@ -3001,7 +3338,7 @@ export default function Home() {
             })}
           </div>
         )}
-        <button className="mission-manage" onClick={() => setView("goals")}>目標とお知らせを編集する →</button>
+        <button className="mission-manage" onClick={() => navigateOwnerView("goals")}>目標とお知らせを編集する →</button>
       </section>
 
       <section className="quick-log" aria-labelledby="quick-log-title">
@@ -3022,12 +3359,12 @@ export default function Home() {
 
       <LifeMoment scene="cafe" eyebrow="SLOW TIME" text="一緒にくつろぐ時間も、大切な記録のひとつ。" />
 
-      <button className="insight-spotlight" onClick={() => setView("report")}>
+      <button className="insight-spotlight" onClick={() => navigateOwnerView("report")}>
         <span className="insight-spark" aria-hidden="true">✦</span>
         <span><small>{growthMessage ? "SMALL WIN" : "THIS WEEK"}</small><strong>{growthMessage || diaryInsight}</strong><em>変化を見る →</em></span>
       </button>
 
-      <button className="coach-bridge" onClick={() => setView("coach")}>
+      <button className="coach-bridge" onClick={() => navigateOwnerView("coach")}>
         <span className="coach-bridge-icon"><NavGlyph name="coach" /></span>
         <span><small>COACH ROOM</small><strong>{messages.length ? "コーチとの相談を続ける" : "記録を見ながら、コーチに相談"}</strong></span>
         <b aria-hidden="true">→</b>
@@ -3295,7 +3632,7 @@ export default function Home() {
 
       <section className="report-coaching-cta">
         <div><p className="card-label">FROM DATA TO ACTION</p><h2>この変化、どう見ればいい？</h2><p>回数だけでは分からない背景もあります。記録をコーチと一緒に読み、次に試すことを整理できます。</p></div>
-        <button onClick={() => setView("coach")}>{coachingApplication ? "担当状況を確認する" : "コーチングについて相談する"}<span>→</span></button>
+        <button onClick={() => navigateOwnerView("coach")}>{coachingApplication ? "担当状況を確認する" : "コーチングについて相談する"}<span>→</span></button>
       </section>
 
       <button className="primary-button report-add" onClick={() => { openNewRecord("barking"); if (reportBehaviorType === "other") setBehaviorTypes([]); else setBehaviorTypes([reportBehaviorType]); }}>{behaviorInfo(reportBehaviorType).label}を記録する<span>→</span></button>
@@ -3310,6 +3647,7 @@ export default function Home() {
   const mediaMessages = chronologicalMessages.filter((message) => message.mediaUrl && message.mediaType);
   const selectedMedia = mediaMessages.find((message) => message.id === selectedMediaId) ?? mediaMessages[mediaMessages.length - 1];
   const openMediaGallery = (message: CoachMessage) => {
+    pushAppHistory({ kind: "media-gallery", messageId: message.id });
     setSelectedMediaId(message.id);
     setMediaGalleryOpen(true);
   };
@@ -3371,8 +3709,8 @@ export default function Home() {
           ) : (
             <>
               <div className="owner-coach-tabs" role="tablist" aria-label="コーチメニュー">
-                <button type="button" role="tab" aria-selected={ownerCoachTab === "chat"} className={ownerCoachTab === "chat" ? "is-active" : ""} onClick={() => setOwnerCoachTab("chat")}><span className="owner-tab-icon"><NavGlyph name="coach" /></span><span><strong>チャット</strong><small>{messages.length ? `${messages.length}件のやりとり` : "コーチに相談"}</small></span></button>
-                <button type="button" role="tab" aria-selected={ownerCoachTab === "sessions"} className={ownerCoachTab === "sessions" ? "is-active" : ""} onClick={() => setOwnerCoachTab("sessions")}><span className="owner-tab-icon"><NavGlyph name="goals" /></span><span><strong>オンライン診断</strong><small>{ownerBookedSessions.length ? `予約 ${ownerBookedSessions.length}件` : "予約・履歴"}</small></span></button>
+                <button type="button" role="tab" aria-selected={ownerCoachTab === "chat"} className={ownerCoachTab === "chat" ? "is-active" : ""} onClick={() => navigateCoachTab("chat")}><span className="owner-tab-icon"><NavGlyph name="coach" /></span><span><strong>チャット</strong><small>{messages.length ? `${messages.length}件のやりとり` : "コーチに相談"}</small></span></button>
+                <button type="button" role="tab" aria-selected={ownerCoachTab === "sessions"} className={ownerCoachTab === "sessions" ? "is-active" : ""} onClick={() => navigateCoachTab("sessions")}><span className="owner-tab-icon"><NavGlyph name="goals" /></span><span><strong>オンライン診断</strong><small>{ownerBookedSessions.length ? `予約 ${ownerBookedSessions.length}件` : "予約・履歴"}</small></span></button>
               </div>
 
               {ownerCoachTab === "sessions" ? (
@@ -3436,9 +3774,9 @@ export default function Home() {
                     </section>
                   )}
                   <div className="message-list" aria-live="polite" ref={ownerMessageListRef}>
-                    {chronologicalMessages.length ? chronologicalMessages.map((message) => (
-                      <ChatMessageRow key={message.id} message={message} selfSender="owner" onReply={setOwnerReplyTo} onOpenMedia={openMediaGallery} />
-                    )) : <div className="coach-empty"><div className="coach-avatar"><NavGlyph name="coach" /></div><h3>担当コーチへ、最初のメッセージを。</h3><p>例：いちばん困っているのは散歩中の引っ張りです。記録のどこを見ればよいですか？</p></div>}
+                    {chronologicalMessages.length
+                      ? <ChatMessageTimeline messages={chronologicalMessages} selfSender="owner" onReply={setOwnerReplyTo} onOpenMedia={openMediaGallery} />
+                      : <div className="coach-empty"><div className="coach-avatar"><NavGlyph name="coach" /></div><h3>担当コーチへ、最初のメッセージを。</h3><p>例：いちばん困っているのは散歩中の引っ張りです。記録のどこを見ればよいですか？</p></div>}
                   </div>
                   {connection === "online" && currentUserId && profile.id
                     ? <ChatInput ownerId={currentUserId} dogId={profile.id} sender="owner" placeholder="困っている場面や、写真・動画を共有してください" onSent={addOwnerMessage} replyTo={ownerReplyTo} onCancelReply={() => setOwnerReplyTo(null)} />
@@ -3449,9 +3787,9 @@ export default function Home() {
             </>
           )}
           {mediaGalleryOpen && selectedMedia && (
-            <div className="media-gallery-backdrop" role="dialog" aria-modal="true" aria-label="共有メディアギャラリー" onClick={() => setMediaGalleryOpen(false)}>
+            <div className="media-gallery-backdrop" role="dialog" aria-modal="true" aria-label="共有メディアギャラリー" onClick={closeMediaGallery}>
               <section className="media-gallery" onClick={(event) => event.stopPropagation()}>
-                <header><div><small>SHARED MEDIA</small><h2>画像・動画</h2><p>{mediaMessages.length}件</p></div><button type="button" onClick={() => setMediaGalleryOpen(false)} aria-label="ギャラリーを閉じる">×</button></header>
+                <header><div><small>SHARED MEDIA</small><h2>画像・動画</h2><p>{mediaMessages.length}件</p></div><button type="button" onClick={closeMediaGallery} aria-label="ギャラリーを閉じる">×</button></header>
                 <div className="media-gallery-stage">
                   {selectedMedia.mediaType === "image"
                     ? <img src={selectedMedia.mediaUrl} alt={selectedMedia.mediaName || "共有された画像"} />
@@ -3500,6 +3838,10 @@ export default function Home() {
       <div className="privacy-card"><strong>記録について</strong><p>登録した情報は、あなたと担当コーチのサポートのために使用します。共有範囲は今後プロフィールから管理できるようにします。</p></div>
       <button className="primary-button" disabled={saving}>{saving ? "保存中…" : "プロフィールを保存"}<span>→</span></button>
       <div className="account-card"><span><small>ログイン中</small><strong>{userEmail}</strong></span><button type="button" onClick={() => void signOut()}>ログアウト</button></div>
+      <section className="account-delete-zone">
+        <div><strong>アカウントの削除</strong><p>登録情報、愛犬の記録、相談履歴、画像・動画をすべて削除します。</p></div>
+        <button type="button" onClick={openDeleteAccountDialog}>アカウントを削除（退会）</button>
+      </section>
     </form>
   );
 
@@ -3655,7 +3997,7 @@ export default function Home() {
       <main className="admin-main">
         {selectedAdminCustomer ? (
           <div className="admin-detail">
-            <button className="admin-back" onClick={() => setSelectedAdminCustomer(null)}>← 担当顧客へ戻る</button>
+            <button className="admin-back" onClick={closeAdminCustomer}>← 担当顧客へ戻る</button>
             <section className="admin-detail-hero">
               <div className="admin-dog-avatar">{selectedAdminCustomer.dogName.slice(0, 1)}</div>
               <div><p className="card-label">CUSTOMER DETAIL</p><h1>{selectedAdminCustomer.dogName}</h1><span>{selectedAdminCustomer.breed || "犬種未登録"} · 直近30日</span></div>
@@ -3708,7 +4050,7 @@ export default function Home() {
                 </div>
                 <section className="admin-panel admin-chat-panel">
                   <div className="admin-panel-heading"><div><p className="card-label">CHAT</p><h2>飼い主との会話</h2></div><span>{adminDetailMessages.length}件</span></div>
-                  <div className="admin-chat-history" ref={adminMessageListRef}>{adminDetailMessages.map((message) => <ChatMessageRow key={message.id} message={message} selfSender="coach" onReply={setAdminReplyTo} showReadReceipt />)}{!adminDetailMessages.length && <p className="admin-muted">まだ相談はありません。コーチから声をかけることもできます。</p>}</div>
+                  <div className="admin-chat-history" ref={adminMessageListRef}>{adminDetailMessages.length ? <ChatMessageTimeline messages={adminDetailMessages} selfSender="coach" onReply={setAdminReplyTo} showReadReceipt /> : <p className="admin-muted">まだ相談はありません。コーチから声をかけることもできます。</p>}</div>
                   <ChatInput ownerId={selectedAdminCustomer.ownerId} dogId={selectedAdminCustomer.dogId} sender="coach" placeholder={`${selectedAdminCustomer.dogName}の飼い主へメッセージ`} onSent={addAdminMessage} replyTo={adminReplyTo} onCancelReply={() => setAdminReplyTo(null)} />
                 </section>
               </>
@@ -3869,7 +4211,7 @@ export default function Home() {
     <div className="app-stage">
       <div className="app-shell">
         <header className="app-header">
-          <button className="wordmark" onClick={() => setView("home")} aria-label="Wan Tone ホームへ">
+          <button className="wordmark" onClick={returnToOwnerHome} aria-label="Wan Tone ホームへ">
             <strong>Wan Tone</strong><span>by BarKnow</span>
           </button>
           <div className="app-header-actions">
@@ -3885,21 +4227,21 @@ export default function Home() {
           {view === "profile" && profileView}
         </main>
         <nav className="bottom-nav" aria-label="メインメニュー">
-          <button className={view === "home" ? "active" : ""} onClick={() => setView("home")}><Icon><NavGlyph name="home" /></Icon><span>ホーム</span></button>
-          <button className={view === "report" ? "active" : ""} onClick={() => setView("report")}><Icon><NavGlyph name="report" /></Icon><span>変化</span></button>
+          <button className={view === "home" ? "active" : ""} onClick={returnToOwnerHome}><Icon><NavGlyph name="home" /></Icon><span>ホーム</span></button>
+          <button className={view === "report" ? "active" : ""} onClick={() => navigateOwnerView("report")}><Icon><NavGlyph name="report" /></Icon><span>変化</span></button>
           <button className={view === "record" ? "active" : ""} onClick={() => openNewRecord()}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>
-          <button className={view === "coach" ? "active" : ""} onClick={() => setView("coach")}><Icon><NavGlyph name="coach" /></Icon><span>コーチ</span></button>
-          <button className={view === "profile" ? "active" : ""} onClick={() => setView("profile")}><Icon><NavGlyph name="profile" /></Icon><span>設定</span></button>
+          <button className={view === "coach" ? "active" : ""} onClick={() => navigateOwnerView("coach")}><Icon><NavGlyph name="coach" /></Icon><span>コーチ</span></button>
+          <button className={view === "profile" ? "active" : ""} onClick={() => navigateOwnerView("profile")}><Icon><NavGlyph name="profile" /></Icon><span>設定</span></button>
         </nav>
         {celebration && (
-          <div className="celebration-backdrop" role="dialog" aria-modal="true" aria-labelledby="celebration-title" onClick={() => setCelebration(null)}>
+          <div className="celebration-backdrop" role="dialog" aria-modal="true" aria-labelledby="celebration-title" onClick={closeCelebration}>
             <div className="celebration-card" onClick={(event) => event.stopPropagation()}>
               <div className="celebration-rays" aria-hidden="true">✦</div>
               <span className="celebration-paw"><CareIcon name="paws" /></span>
               <p>SMALL WIN</p>
               <h2 id="celebration-title">{celebration.title}</h2>
               <span>{celebration.message}</span>
-              <button onClick={() => setCelebration(null)}>今日のできたを喜ぶ</button>
+              <button onClick={closeCelebration}>今日のできたを喜ぶ</button>
             </div>
           </div>
         )}
@@ -3912,7 +4254,27 @@ export default function Home() {
               <span>担当コーチから新しいメッセージが届いたとき、この端末へ通知します。</span>
               {permissionStatus === "denied" && <small>通知が拒否されています。端末の設定からWanToneの通知を許可してください。</small>}
               <button type="button" onClick={() => void enablePushNotifications()} disabled={pushBusy}>{pushBusy ? "設定中…" : "メッセージ通知をONにする"}</button>
-              <button type="button" className="notification-prompt-later" onClick={() => setShowPushPrompt(false)}>あとで設定する</button>
+              <button type="button" className="notification-prompt-later" onClick={closePushPrompt}>あとで設定する</button>
+            </section>
+          </div>
+        )}
+        {showDeleteAccountDialog && (
+          <div className="account-delete-backdrop" role="dialog" aria-modal="true" aria-labelledby="account-delete-title" onClick={() => { if (!deleteAccountBusy) closeDeleteAccountDialog(); }}>
+            <section className="account-delete-dialog" onClick={(event) => event.stopPropagation()}>
+              <span className="account-delete-icon" aria-hidden="true">!</span>
+              <p>DELETE ACCOUNT</p>
+              <h2 id="account-delete-title">本当に退会しますか？</h2>
+              <strong>すべてのデータが削除され、復元できません。</strong>
+              <ul>
+                <li>飼い主・愛犬のプロフィール</li>
+                <li>日々の記録、目標、相談・チャット履歴</li>
+                <li>アップロードした画像・動画、通知設定</li>
+              </ul>
+              {deleteAccountError && <div className="account-delete-error" role="alert">{deleteAccountError}</div>}
+              <div className="account-delete-actions">
+                <button type="button" onClick={closeDeleteAccountDialog} disabled={deleteAccountBusy}>キャンセル</button>
+                <button type="button" className="is-danger" onClick={() => void deleteAccount()} disabled={deleteAccountBusy}>{deleteAccountBusy ? "削除しています…" : "削除して退会する"}</button>
+              </div>
             </section>
           </div>
         )}
