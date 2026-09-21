@@ -340,6 +340,64 @@ function ChatMessageTimeline({
   });
 }
 
+function LockedCoachingPreview({
+  tab,
+  onTabChange,
+  onDetails,
+}: {
+  tab: "sessions" | "chat";
+  onTabChange: (tab: "sessions" | "chat") => void;
+  onDetails: () => void;
+}) {
+  return (
+    <section className="free-coaching-preview" aria-label="コーチングプランの機能紹介">
+      <div className="owner-coach-tabs" role="tablist" aria-label="コーチングプランの機能">
+        <button type="button" role="tab" aria-selected={tab === "chat"} className={tab === "chat" ? "is-active" : ""} onClick={() => onTabChange("chat")}><span className="owner-tab-icon"><NavGlyph name="coach" /></span><span><strong>チャット</strong><small>コーチに相談</small></span></button>
+        <button type="button" role="tab" aria-selected={tab === "sessions"} className={tab === "sessions" ? "is-active" : ""} onClick={() => onTabChange("sessions")}><span className="owner-tab-icon"><NavGlyph name="goals" /></span><span><strong>オンライン診断</strong><small>月4回のレッスン</small></span></button>
+      </div>
+
+      {tab === "chat" ? (
+        <div className="locked-feature-preview locked-chat-preview" role="tabpanel" aria-label="チャット機能のプレビュー">
+          <div className="locked-preview-content" aria-hidden="true">
+            <div className="locked-chat-date">2026/09/20 (日)</div>
+            <div className="locked-sample-message is-coach"><span>散歩の記録、拝見しました。犬とすれ違う少し前の様子も教えてください。</span><small>14:28</small></div>
+            <div className="locked-sample-message is-owner"><small>14:31</small><span>リードを短く持つと、少し落ち着けました。</span></div>
+            <div className="locked-sample-message is-coach"><span>いい変化ですね。次は犬が見えた距離も記録してみましょう。</span><small>14:32</small></div>
+            <div className="locked-sample-message is-owner"><small>14:35</small><span>今日の散歩から試してみます！</span></div>
+          </div>
+          <div className="locked-gradient-blur" aria-hidden="true"></div>
+          <section className="locked-plan-card">
+            <span aria-hidden="true"><NavGlyph name="coach" /></span>
+            <div><strong>プロのコーチとリアルタイムで相談できます</strong><p>コーチングプラン限定</p></div>
+            <button type="button" onClick={onDetails}>詳細を確認する</button>
+          </section>
+        </div>
+      ) : (
+        <div className="locked-feature-preview locked-session-preview" role="tabpanel" aria-label="オンラインレッスン予約のプレビュー">
+          <div className="locked-preview-content" aria-hidden="true">
+            <header><div><small>SEPTEMBER 2026</small><strong>レッスン予約</strong></div><span>日本時間</span></header>
+            <div className="locked-calendar-days">
+              <span><small>月</small><b>21</b></span><span className="is-selected"><small>火</small><b>22</b></span><span><small>水</small><b>23</b></span><span><small>木</small><b>24</b></span><span><small>金</small><b>25</b></span>
+            </div>
+            <div className="locked-slot-list">
+              <button type="button" disabled><span><strong>9/22 14:00〜</strong><small>60分・オンライン</small></span><b>○</b></button>
+              <button type="button" disabled><span><strong>9/22 16:30〜</strong><small>60分・オンライン</small></span><b>○</b></button>
+              <button type="button" disabled><span><strong>9/25 10:00〜</strong><small>60分・オンライン</small></span><b>○</b></button>
+              <button type="button" disabled><span><strong>9/25 15:00〜</strong><small>60分・オンライン</small></span><b>○</b></button>
+            </div>
+          </div>
+          <div className="locked-gradient-blur" aria-hidden="true"></div>
+          <section className="locked-plan-card">
+            <span aria-hidden="true"><NavGlyph name="goals" /></span>
+            <div><strong>月4回のオンラインレッスン予約はこちら</strong><p>コーチングプラン限定</p></div>
+            <button type="button" onClick={onDetails}>詳細を確認する</button>
+          </section>
+        </div>
+      )}
+    </section>
+  );
+}
+
 type CareGoal = {
   id: string;
   title: string;
@@ -1082,6 +1140,10 @@ export default function Home() {
   const closeDeleteAccountDialog = useCallback(() => {
     closeAppHistoryLayer("account-delete", () => setShowDeleteAccountDialog(false));
   }, [closeAppHistoryLayer]);
+
+  function openCoachingDetails() {
+    window.open("https://barknow-official.vercel.app/app/", "_blank", "noopener,noreferrer");
+  }
 
   const closeAdminCustomer = useCallback(() => {
     closeAppHistoryLayer("admin-customer", () => {
@@ -3664,6 +3726,7 @@ export default function Home() {
       <SectionTitle eyebrow="COACHING" title={coachingChatOpen ? "担当コーチに相談" : "記録を、変化につなげる"} />
       {!coachingApplication || coachingApplication.status === "closed" ? (
         <>
+          <LockedCoachingPreview tab={ownerCoachTab} onTabChange={navigateCoachTab} onDetails={openCoachingDetails} />
           <section className="coaching-intro">
             <div className="coaching-intro-icon"><NavGlyph name="coach" /></div>
             <p className="card-label">WAN TONE COACHING</p>
