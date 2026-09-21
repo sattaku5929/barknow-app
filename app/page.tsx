@@ -2033,7 +2033,12 @@ export default function Home() {
         if (error) throw error;
       }
       clearOwnerCache();
-      window.location.reload();
+      const nextPath = new URLSearchParams(window.location.search).get("next");
+      if (nextPath?.startsWith("/") && !nextPath.startsWith("//")) {
+        window.location.assign(nextPath);
+      } else {
+        window.location.reload();
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "認証に失敗しました";
       const normalized = message.toLowerCase();
