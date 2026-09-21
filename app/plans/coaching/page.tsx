@@ -87,7 +87,7 @@ export default function CoachingPlanPage() {
           <p className="mt-[18px] max-w-[620px] text-[13px] leading-8 text-[#505a54] sm:mt-[25px] sm:text-[15px]">日々の記録をプロコーチと共有しながら、愛犬に合う方法を一緒に見つける継続サポートです。</p>
           <div className="mt-[27px] grid border-y border-[#0086612e] sm:mt-[38px]">
             <article className="grid grid-cols-[39px_minmax(0,1fr)] gap-[13px] border-b border-[#00866121] py-4 sm:py-5"><b className="text-[10px] tracking-[.12em] text-[#008661]">01</b><div><strong className="block text-sm font-semibold sm:text-base">月4回の個別オンラインレッスン</strong><p className="mt-1.5 text-xs leading-7 text-[#6f7873]">愛犬の様子と記録を見ながら、次に試すことを具体的に整理します。</p></div></article>
-            <article className="grid grid-cols-[39px_minmax(0,1fr)] gap-[13px] py-4 sm:py-5"><b className="text-[10px] tracking-[.12em] text-[#008661]">02</b><div><strong className="block text-sm font-semibold sm:text-base">24時間チャット相談・回数無制限</strong><p className="mt-1.5 text-xs leading-7 text-[#6f7873]">迷った場面をそのまま共有。写真や動画も使って担当コーチに相談できます。</p></div></article>
+            <article className="grid grid-cols-[39px_minmax(0,1fr)] gap-[13px] py-4 sm:py-5"><b className="text-[10px] tracking-[.12em] text-[#008661]">02</b><div><strong className="block text-sm font-semibold sm:text-base">専属トレーナーによるチャットサポート</strong><p className="mt-1.5 text-xs leading-7 text-[#6f7873]">日々の迷いや小さな変化も、記録や写真を共有しながら継続的に相談できます。</p></div></article>
           </div>
         </div>
 
@@ -101,7 +101,7 @@ export default function CoachingPlanPage() {
           </div>
           <ul className="m-0 grid list-none gap-[9px] p-0 text-xs text-[#4d5852]">
             <li className="before:mr-[9px] before:font-black before:text-[#008661] before:content-['✓']">個別オンラインレッスン 月4回</li>
-            <li className="before:mr-[9px] before:font-black before:text-[#008661] before:content-['✓']">担当コーチへのチャット相談 無制限</li>
+            <li className="before:mr-[9px] before:font-black before:text-[#008661] before:content-['✓']">専属トレーナーによるチャットサポート</li>
             <li className="before:mr-[9px] before:font-black before:text-[#008661] before:content-['✓']">日々の記録・写真・動画を共有</li>
           </ul>
 

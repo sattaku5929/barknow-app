@@ -1142,7 +1142,7 @@ export default function Home() {
   }, [closeAppHistoryLayer]);
 
   function openCoachingDetails() {
-    window.open("https://barknow-official.vercel.app/app/", "_blank", "noopener,noreferrer");
+    router.push("/plans/coaching");
   }
 
   const closeAdminCustomer = useCallback(() => {
