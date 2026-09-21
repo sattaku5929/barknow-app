@@ -974,7 +974,7 @@ export default function Home() {
   const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>([]);
   const [adminAccounts, setAdminAccounts] = useState<AdminAccount[]>([]);
   const [adminAccountsError, setAdminAccountsError] = useState("");
-  const [adminAccountFilter, setAdminAccountFilter] = useState<"all" | UserRole>("all");
+  const [adminAccountFilter, setAdminAccountFilter] = useState<"all" | UserRole | "unassigned">("all");
   const [adminNameDrafts, setAdminNameDrafts] = useState<Record<string, string>>({});
   const [adminApplications, setAdminApplications] = useState<AdminCoachingApplication[]>([]);
   const [adminApplicationsError, setAdminApplicationsError] = useState("");
@@ -4003,9 +4003,14 @@ export default function Home() {
     coach: adminAccounts.filter((account) => account.role === "coach").length,
     admin: adminAccounts.filter((account) => account.role === "admin").length,
   };
-  const filteredAdminAccounts = adminAccountFilter === "all"
+  const isUnassignedOwner = (account: AdminAccount) => account.role === "owner" && Boolean(account.dogId) && !account.assignedCoachId;
+  const unassignedOwnerCount = adminAccounts.filter(isUnassignedOwner).length;
+  const filteredAdminAccounts = [...(adminAccountFilter === "all"
     ? adminAccounts
-    : adminAccounts.filter((account) => account.role === adminAccountFilter);
+    : adminAccountFilter === "unassigned"
+      ? adminAccounts.filter(isUnassignedOwner)
+      : adminAccounts.filter((account) => account.role === adminAccountFilter))]
+    .sort((left, right) => Number(isUnassignedOwner(right)) - Number(isUnassignedOwner(left)) || new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
   const scheduleCoaches = Array.from(new Map(onlineSessions.filter((session) => session.coachId).map((session) => [session.coachId, session.coachName])).entries());
   const scheduleOwners = Array.from(new Map(onlineSessions.filter((session) => session.ownerId).map((session) => [session.ownerId, session.ownerName])).entries());
   const slotCoachOptions = adminAccounts.filter((account) => account.role === "coach");
@@ -4140,7 +4145,7 @@ export default function Home() {
             ))}</div>
           </section>
         )}
-        {userRole === "admin" ? <nav className="admin-tabs has-four" aria-label="管理メニュー"><button className={adminTab === "applications" ? "is-selected" : ""} onClick={() => setAdminTab("applications")}>申込み{pendingApplicationCount > 0 && <b>{pendingApplicationCount}</b>}</button><button className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button className={adminTab === "schedule" ? "is-selected" : ""} onClick={() => setAdminTab("schedule")}>予約</button><button className={adminTab === "accounts" ? "is-selected" : ""} onClick={() => setAdminTab("accounts")}>ユーザー</button></nav> : <nav className="admin-tabs has-three" aria-label="コーチメニュー"><button className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button className={adminTab === "schedule" ? "is-selected" : ""} onClick={() => setAdminTab("schedule")}>予約・空き枠</button><button className={adminTab === "coachProfile" ? "is-selected" : ""} onClick={() => setAdminTab("coachProfile")}>プロフィール</button></nav>}
+        {userRole === "admin" ? <nav className="admin-tabs has-four" aria-label="管理メニュー"><button type="button" aria-current={adminTab === "applications" ? "page" : undefined} className={adminTab === "applications" ? "is-selected" : ""} onClick={() => setAdminTab("applications")}>申込み{pendingApplicationCount > 0 && <b>{pendingApplicationCount}</b>}</button><button type="button" aria-current={adminTab === "customers" ? "page" : undefined} className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button type="button" aria-current={adminTab === "schedule" ? "page" : undefined} className={adminTab === "schedule" ? "is-selected" : ""} onClick={() => setAdminTab("schedule")}>予約</button><button type="button" aria-current={adminTab === "accounts" ? "page" : undefined} className={adminTab === "accounts" ? "is-selected" : ""} onClick={() => setAdminTab("accounts")}>ユーザー</button></nav> : <nav className="admin-tabs has-three" aria-label="コーチメニュー"><button type="button" aria-current={adminTab === "customers" ? "page" : undefined} className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button type="button" aria-current={adminTab === "schedule" ? "page" : undefined} className={adminTab === "schedule" ? "is-selected" : ""} onClick={() => setAdminTab("schedule")}>予約・空き枠</button><button type="button" aria-current={adminTab === "coachProfile" ? "page" : undefined} className={adminTab === "coachProfile" ? "is-selected" : ""} onClick={() => setAdminTab("coachProfile")}>プロフィール</button></nav>}
         {adminTab === "applications" && <div className="admin-inbox-status"><span><i className={pendingApplicationCount ? "has-new" : ""}></i>{adminApplicationsError ? "申込みを取得できませんでした" : pendingApplicationCount ? `未対応の申込みが${pendingApplicationCount}件あります` : "未対応の申込みはありません"}<small>{adminApplicationsError ? adminApplicationsError : lastAdminRefresh ? `${lastAdminRefresh.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}更新 · 30秒ごとに自動確認` : "確認中"}</small></span><button onClick={() => void loadAdminWorkspace()}>今すぐ更新</button></div>}
         {adminTab === "applications" && (adminApplications.length ? (
           <div className="application-list">
@@ -4237,19 +4242,19 @@ export default function Home() {
               <div><small>登録ユーザー</small><strong>{adminAccounts.length}<span>人</span></strong><p>OWNER {accountRoleCounts.owner} · COACH {accountRoleCounts.coach} · ADMIN {accountRoleCounts.admin}</p></div>
               <span>一覧更新<br /><b>{lastAdminRefresh ? lastAdminRefresh.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "確認中"}</b></span>
             </section>
-            <nav className="account-filters" aria-label="権限で絞り込み">
-              {(["all", "owner", "coach", "admin"] as const).map((role) => <button key={role} className={adminAccountFilter === role ? "is-selected" : ""} onClick={() => setAdminAccountFilter(role)}>{role === "all" ? "全員" : role.toUpperCase()}<b>{role === "all" ? adminAccounts.length : accountRoleCounts[role]}</b></button>)}
+            <nav className="account-filters" aria-label="権限と担当状況で絞り込み">
+              {(["all", "unassigned", "owner", "coach", "admin"] as const).map((filter) => <button type="button" key={filter} className={`${adminAccountFilter === filter ? "is-selected" : ""} ${filter === "unassigned" ? "is-unassigned-filter" : ""}`} onClick={() => setAdminAccountFilter(filter)}>{filter === "all" ? "全員" : filter === "unassigned" ? "未割り当て" : filter.toUpperCase()}<b>{filter === "all" ? adminAccounts.length : filter === "unassigned" ? unassignedOwnerCount : accountRoleCounts[filter]}</b></button>)}
             </nav>
             <div className="account-list">
             {filteredAdminAccounts.map((account) => {
               const isMe = account.userId === currentUserId;
               const coachAccounts = adminAccounts.filter((item) => item.role === "coach");
               return (
-                <article className="admin-account" key={account.userId}>
+                <article className={`admin-account ${isUnassignedOwner(account) ? "is-unassigned" : ""}`} key={account.userId}>
                   <div className="admin-account-main">
                     <span>{account.role === "owner" ? <NavGlyph name="profile" /> : <NavGlyph name="coach" />}</span>
                     <div><strong>{account.displayName || account.email}</strong><small>{account.email} · 最終ログイン {account.lastSignInAt ? new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(account.lastSignInAt)) : "未確認"}</small></div>
-                    <b className={account.role}>{account.role.toUpperCase()}</b>
+                    <div className="admin-account-badges">{isUnassignedOwner(account) && <b className="unassigned">未割り当て</b>}<b className={account.role}>{account.role.toUpperCase()}</b></div>
                   </div>
                   <div className="admin-account-actions">
                     <label className="account-name-field">ユーザー名<span><input value={adminNameDrafts[account.userId] ?? ""} onChange={(event) => setAdminNameDrafts((current) => ({ ...current, [account.userId]: event.target.value }))} placeholder="管理用の名前" maxLength={60} /><button onClick={() => void saveAccountDisplayName(account)} disabled={saving || !(adminNameDrafts[account.userId] ?? "").trim()}>保存</button></span></label>
@@ -4260,7 +4265,7 @@ export default function Home() {
               );
             })}
             {!adminAccounts.length && <section className="admin-empty"><h2>{adminAccountsError ? "ユーザー情報を取得できません" : "登録ユーザーはまだいません"}</h2><p>{adminAccountsError || "新規登録されたユーザーがここに表示されます。"}</p></section>}
-            {!!adminAccounts.length && !filteredAdminAccounts.length && <section className="admin-empty"><h2>該当するユーザーはいません</h2><p>別の権限フィルターを選択してください。</p></section>}
+            {!!adminAccounts.length && !filteredAdminAccounts.length && <section className="admin-empty"><h2>該当するユーザーはいません</h2><p>{adminAccountFilter === "unassigned" ? "現在、担当コーチを割り当てられるオーナーはいません。" : "別の権限フィルターを選択してください。"}</p></section>}
             </div>
           </div>
         )}
