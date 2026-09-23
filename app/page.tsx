@@ -1670,18 +1670,41 @@ export default function Home() {
     writeLocal(CUSTOM_BEHAVIORS_KEY, initialCustomBehaviors);
 
     async function connect() {
+      const showSignedOutState = () => {
+        setAuthenticated(false);
+        setAnonymousUser(false);
+        setCurrentUserId("");
+        setUserEmail("");
+        setUserRole("owner");
+        setOnboardingRequired(false);
+        setOnboardingStep("owner");
+        setAuthMode("login");
+        setConnection("local");
+      };
+
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         const session = sessionData.session;
-        if (!session) {
-          setConnection("local");
+        if (sessionError || !session) {
+          showSignedOutState();
           return;
         }
-        const userId = session.user.id;
-        const isAnonymous = Boolean(session.user.is_anonymous);
+
+        // getSession() reads the locally cached token. Verify it with Supabase
+        // before allowing the user into onboarding or any authenticated screen.
+        const { data: verifiedUserData, error: verifiedUserError } = await supabase.auth.getUser();
+        const verifiedUser = verifiedUserData.user;
+        if (verifiedUserError || !verifiedUser || verifiedUser.id !== session.user.id) {
+          await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+          showSignedOutState();
+          return;
+        }
+
+        const userId = verifiedUser.id;
+        const isAnonymous = Boolean(verifiedUser.is_anonymous);
         setAuthenticated(true);
         setAnonymousUser(isAnonymous);
-        setUserEmail(session.user.email ?? "");
+        setUserEmail(verifiedUser.email ?? "");
         setCurrentUserId(userId);
 
         let role: UserRole = "owner";
@@ -2894,7 +2917,11 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (!authReady || !authenticated || anonymousUser) return;
+    if (!authReady) return;
+    if (!authenticated || anonymousUser) {
+      if (pathname === "/onboarding") router.replace("/");
+      return;
+    }
     if (userRole === "owner" && onboardingRequired && pathname !== "/onboarding") router.replace("/onboarding");
     if ((!onboardingRequired || userRole !== "owner") && pathname === "/onboarding") router.replace("/");
   }, [authReady, authenticated, anonymousUser, onboardingRequired, pathname, router, userRole]);
@@ -3433,17 +3460,6 @@ export default function Home() {
       </section>
 
       <LifeMoment scene="cafe" eyebrow="SLOW TIME" text="一緒にくつろぐ時間も、大切な記録のひとつ。" />
-
-      <button className="insight-spotlight" onClick={() => navigateOwnerView("report")}>
-        <span className="insight-spark" aria-hidden="true">✦</span>
-        <span><small>{growthMessage ? "SMALL WIN" : "THIS WEEK"}</small><strong>{growthMessage || diaryInsight}</strong><em>変化を見る →</em></span>
-      </button>
-
-      <button className="coach-bridge" onClick={() => navigateOwnerView("coach")}>
-        <span className="coach-bridge-icon"><NavGlyph name="coach" /></span>
-        <span><small>COACH ROOM</small><strong>{messages.length ? "コーチとの相談を続ける" : "記録を見ながら、コーチに相談"}</strong></span>
-        <b aria-hidden="true">→</b>
-      </button>
     </>
   );
 

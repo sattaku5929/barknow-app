@@ -1745,19 +1745,6 @@ body { font-size: 16px; }
 .quick-log-grid strong { overflow:hidden; max-width:100%; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
 .quick-log-grid > button > b { position:absolute; top:6px; right:7px; display:grid; min-width:19px; height:19px; place-items:center; border-radius:10px; background:var(--category); color:#fff; font-size:10px; }
 
-.insight-spotlight { display:grid; width:100%; grid-template-columns:44px 1fr; gap:13px; margin-top:25px; padding:19px; border:0; border-radius:22px; background:linear-gradient(135deg,#fff3d9,#f8e7c4); color:var(--ink); cursor:pointer; text-align:left; box-shadow:0 10px 28px rgba(96,72,30,.08); }
-.insight-spark { display:grid; width:44px; height:44px; place-items:center; border-radius:50%; background:#fff; color:#bd7f37; font-size:20px; }
-.insight-spotlight small,.insight-spotlight strong,.insight-spotlight em { display:block; }
-.insight-spotlight small { color:#9a6e29; font-family:var(--font-display); font-size:10px; font-weight:700; letter-spacing:.14em; }
-.insight-spotlight strong { margin-top:6px; font-size:14px; line-height:1.7; }
-.insight-spotlight em { margin-top:8px; color:#8d621f; font-size:11px; font-style:normal; font-weight:700; }
-.coach-bridge { display:grid; width:100%; grid-template-columns:44px 1fr auto; align-items:center; gap:12px; margin-top:12px; padding:16px 18px; border:1px solid rgba(71,127,156,.14); border-radius:21px; background:var(--soft-blue); cursor:pointer; text-align:left; }
-.coach-bridge-icon { display:grid; width:44px; height:44px; place-items:center; border-radius:14px; background:#fff; color:#477f9c; }
-.coach-bridge svg { width:24px; fill:none; stroke:currentColor; stroke-width:1.6; }
-.coach-bridge small,.coach-bridge strong { display:block; }
-.coach-bridge small { color:#477f9c; font-family:var(--font-display); font-size:9px; font-weight:700; letter-spacing:.14em; }
-.coach-bridge strong { margin-top:5px; font-size:13px; line-height:1.45; }
-
 .goal-reminder { display:flex; min-height:45px; align-items:center; gap:8px; margin-top:8px; padding:7px 10px; border-radius:12px; background:#f5f7f5; color:var(--muted); font-size:11px; font-weight:700; }
 .goal-reminder span { flex:1; }
 .goal-reminder input { width:92px; min-height:32px; padding:0 6px; border:1px solid rgba(27,61,49,.12); border-radius:9px; background:#fff; color:var(--ink); font-size:13px; }
@@ -1834,9 +1821,7 @@ body { font-size: 16px; }
 .home-flat .focused-welcome .avatar,
 .home-flat .profile-nudge,
 .home-flat .today-mission,
-.home-flat .quick-log-grid > button,
-.home-flat .insight-spotlight,
-.home-flat .coach-bridge { box-shadow:none; }
+.home-flat .quick-log-grid > button { box-shadow:none; }
 .home-flat .focused-welcome h1 { font-weight:650; letter-spacing:0; }
 .home-flat .profile-nudge { border-color:#d9e5df; border-radius:16px; background:#fff; }
 
@@ -1899,11 +1884,6 @@ body { font-size: 16px; }
 .home-flat .quick-log-grid strong { font-size:13px; }
 .home-flat .quick-log-grid > button > b { top:8px; right:8px; border:2px solid var(--category-soft); box-shadow:none; }
 
-.home-flat .insight-spotlight { border:1px solid #ead9b7; border-radius:18px; background:#fbf3e3; }
-.home-flat .insight-spark { border:1px solid #ead9b7; border-radius:12px; background:#fffaf0; }
-.home-flat .coach-bridge { border-color:#cbdde2; border-radius:18px; background:#edf4f5; }
-.home-flat .coach-bridge-icon { border:1px solid #d3e3e6; border-radius:12px; }
-
 /* Soft, filled owner UI */
 .flat-icon-svg { fill:currentColor !important; stroke:none !important; }
 .flat-icon-svg > * { fill:currentColor; stroke:none; }
@@ -1954,12 +1934,6 @@ body { font-size: 16px; }
 .home-flat .quick-log-grid > button > b { top:7px; right:9px; min-width:24px; height:24px; border:3px solid var(--category-soft); border-radius:50%; font-size:11px; }
 .timeline-topic-icon { border:0; background:var(--mint); box-shadow:none; --flat-icon-cutout:var(--mint); }
 .timeline-topic-icon .flat-icon-svg { fill:currentColor !important; stroke:none !important; }
-
-.home-flat .insight-spotlight { padding:20px; border:0; border-radius:28px 28px 28px 15px; background:#f9edcf; }
-.home-flat .insight-spark { border:0; border-radius:50%; background:#fff8e7; }
-.home-flat .coach-bridge { padding:18px; border:0; border-radius:28px 15px 28px 28px; background:#e8f1f3; }
-.home-flat .coach-bridge-icon { border:0; border-radius:50%; background:#d8e9ed; color:#477f9c; --flat-icon-cutout:#d8e9ed; }
-.home-flat .coach-bridge-icon .flat-icon-detail { fill:#d8e9ed !important; }
 
 .app-shell:has(.home-flat) .bottom-nav { padding-top:9px; border-top:0; background:rgba(255,253,249,.96); }
 .bottom-nav .nav-icon { width:35px; height:35px; border-radius:50%; background:#f0f1ed; color:#7c8882; --flat-icon-cutout:#f0f1ed; }
