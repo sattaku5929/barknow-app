@@ -547,6 +547,8 @@ const PREFECTURES = [
   "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県",
 ] as const;
 
+const FULL_WIDTH_KATAKANA_PATTERN = /^[\u30A0-\u30FF\u3000]+$/u;
+
 type CategoryInfo = {
   readonly id: RecordCategory;
   readonly label: string;
@@ -2741,6 +2743,12 @@ export default function Home() {
       showNotice(message);
       return;
     }
+    if (!FULL_WIDTH_KATAKANA_PATTERN.test(normalized.fullNameKana)) {
+      const message = "フリガナは全角カタカナで入力してください。";
+      setOnboardingError(message);
+      showNotice(message);
+      return;
+    }
     const phoneDigits = normalized.phoneNumber.replace(/\D/g, "");
     if (phoneDigits.length < 10 || phoneDigits.length > 11) {
       const message = "電話番号を10〜11桁で入力してください。";
@@ -3885,7 +3893,7 @@ export default function Home() {
       <p className="lead">担当コーチが、ご家族とその子に合った提案をするための情報です。</p>
       <section className="profile-form-section"><div className="profile-section-heading"><span>01</span><div><h2>飼い主さまについて</h2><p>連絡とサポートに必要な情報</p></div></div>
         <label className="field-label">お名前（氏名）<input autoComplete="name" value={ownerProfile.fullName} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullName: event.target.value })} placeholder="例：三宅 太郎" required /></label>
-        <label className="field-label">フリガナ<input value={ownerProfile.fullNameKana} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullNameKana: event.target.value })} placeholder="例：ミヤケ タロウ" maxLength={150} required /></label>
+        <label className="field-label">フリガナ<input value={ownerProfile.fullNameKana} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullNameKana: event.target.value })} placeholder="例：ミヤケ　タロウ" maxLength={150} required /></label>
         <label className="field-label">電話番号<input type="tel" inputMode="tel" autoComplete="tel" value={ownerProfile.phoneNumber} onChange={(event) => setOwnerProfile({ ...ownerProfile, phoneNumber: event.target.value })} placeholder="例：09012345678" required /></label>
         <label className="field-label">生年月日<input type="date" autoComplete="bday" max={today()} value={ownerProfile.birthDate} onChange={(event) => setOwnerProfile({ ...ownerProfile, birthDate: event.target.value })} required /></label>
         <label className="field-label">都道府県<select value={ownerProfile.prefecture} onChange={(event) => setOwnerProfile({ ...ownerProfile, prefecture: event.target.value })} required><option value="">選択してください</option>{PREFECTURES.map((prefecture) => <option key={prefecture} value={prefecture}>{prefecture}</option>)}</select></label>
@@ -3899,7 +3907,7 @@ export default function Home() {
         <label className="field-label">犬を飼うのは初めてですか？<select value={profile.isFirstTimeOwner} onChange={(event) => setProfile({ ...profile, isFirstTimeOwner: event.target.value as DogProfile["isFirstTimeOwner"] })} required><option value="">選択してください</option><option value="yes">はい、初めてです</option><option value="no">いいえ、飼った経験があります</option></select></label>
         <label className="field-label">性別<select value={profile.gender} onChange={(event) => setProfile({ ...profile, gender: event.target.value as DogProfile["gender"] })} required><option value="">選択してください</option><option value="male">男の子</option><option value="female">女の子</option><option value="unknown">不明・回答しない</option></select></label>
         <label className="field-label">しつけトレーニングの経験回数<select value={profile.trainingExperience} onChange={(event) => setProfile({ ...profile, trainingExperience: event.target.value as DogProfile["trainingExperience"] })} required><option value="">選択してください</option><option value="first_time">初めて</option><option value="once">1回</option><option value="twice">2回</option><option value="three_or_more">3回以上</option></select></label>
-        <label className="field-label">保育園への頻度<select value={profile.daycareFrequency} onChange={(event) => setProfile({ ...profile, daycareFrequency: event.target.value })} required><option value="">選択してください</option><option>通っていない</option><option>月に数回</option><option>週1回</option><option>週2〜3回</option><option>週4回以上</option></select></label>
+        <label className="field-label">保育園への頻度<select value={profile.daycareFrequency} onChange={(event) => setProfile({ ...profile, daycareFrequency: event.target.value })} required><option value="">選択してください</option><option>通っていない</option><option>不定期</option><option>月に数回</option><option>週1回</option><option>週2〜3回</option><option>週4回以上</option></select></label>
         <label className="field-label">散歩の頻度<select value={profile.walkFrequency} onChange={(event) => setProfile({ ...profile, walkFrequency: event.target.value })} required><option value="">選択してください</option><option>ほとんど行かない</option><option>週に数回</option><option>毎日1回</option><option>毎日2回</option><option>毎日3回以上</option></select></label>
         <label className="field-label">主な悩み・気になっていること<textarea rows={5} value={profile.concerns} onChange={(event) => setProfile({ ...profile, concerns: event.target.value })} placeholder="例：散歩中に犬を見ると吠える。来客時に落ち着けない。" required /></label>
       </section>
@@ -3920,7 +3928,7 @@ export default function Home() {
         <div className="onboarding-progress"><span className={onboardingStep === "owner" ? "is-current" : "is-done"}>1<b>飼い主情報</b></span><i></i><span className={onboardingStep === "dog" ? "is-current" : ""}>2<b>愛犬情報</b></span></div>
         {onboardingStep === "owner" ? <form noValidate onSubmit={saveOwnerOnboarding} onInput={() => { if (onboardingError) setOnboardingError(""); }}><p className="card-label">WELCOME TO WAN TONE</p><h1>まず、飼い主さまのことを<br />教えてください。</h1><p className="onboarding-lead">担当コーチが安心してご連絡し、ご家族に合ったサポートを始めるための情報です。</p>
           <label className="field-label">お名前（氏名）<input autoFocus autoComplete="name" value={ownerProfile.fullName} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullName: event.target.value })} placeholder="例：三宅 太郎" required /></label>
-          <label className="field-label">フリガナ<input value={ownerProfile.fullNameKana} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullNameKana: event.target.value })} placeholder="例：ミヤケ タロウ" maxLength={150} required /></label>
+          <label className="field-label">フリガナ<input value={ownerProfile.fullNameKana} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullNameKana: event.target.value })} placeholder="例：ミヤケ　タロウ" maxLength={150} required /></label>
           <label className="field-label">電話番号<input type="tel" inputMode="tel" autoComplete="tel" value={ownerProfile.phoneNumber} onChange={(event) => setOwnerProfile({ ...ownerProfile, phoneNumber: event.target.value })} placeholder="例：09012345678" required /></label>
           <label className="field-label">生年月日<input type="date" autoComplete="bday" max={today()} value={ownerProfile.birthDate} onChange={(event) => setOwnerProfile({ ...ownerProfile, birthDate: event.target.value })} required /></label>
           <label className="field-label">都道府県<select className="onboarding-select" value={ownerProfile.prefecture} onChange={(event) => setOwnerProfile({ ...ownerProfile, prefecture: event.target.value })} required><option value="">選択してください</option>{PREFECTURES.map((prefecture) => <option key={prefecture} value={prefecture}>{prefecture}</option>)}</select></label>
@@ -3932,7 +3940,7 @@ export default function Home() {
           <label className="field-label">誕生日<input type="date" max={today()} value={profile.birthday} onChange={(event) => setProfile({ ...profile, birthday: event.target.value })} required />{ageLabel(profile.birthday) && <small className="age-preview">{ageLabel(profile.birthday)}</small>}</label>
           <div className="onboarding-grid"><label className="field-label">犬を飼うのは初めて？<select className="onboarding-select" value={profile.isFirstTimeOwner} onChange={(event) => setProfile({ ...profile, isFirstTimeOwner: event.target.value as DogProfile["isFirstTimeOwner"] })} required><option value="">選択してください</option><option value="yes">はい</option><option value="no">いいえ</option></select></label><label className="field-label">性別<select className="onboarding-select" value={profile.gender} onChange={(event) => setProfile({ ...profile, gender: event.target.value as DogProfile["gender"] })} required><option value="">選択してください</option><option value="male">男の子</option><option value="female">女の子</option><option value="unknown">不明・回答しない</option></select></label></div>
           <label className="field-label">しつけトレーニングの経験回数<select className="onboarding-select" value={profile.trainingExperience} onChange={(event) => setProfile({ ...profile, trainingExperience: event.target.value as DogProfile["trainingExperience"] })} required><option value="">選択してください</option><option value="first_time">初めて</option><option value="once">1回</option><option value="twice">2回</option><option value="three_or_more">3回以上</option></select></label>
-          <div className="onboarding-grid"><label className="field-label">保育園への頻度<select className="onboarding-select" value={profile.daycareFrequency} onChange={(event) => setProfile({ ...profile, daycareFrequency: event.target.value })} required><option value="">選択してください</option><option>通っていない</option><option>月に数回</option><option>週1回</option><option>週2〜3回</option><option>週4回以上</option></select></label><label className="field-label">散歩の頻度<select className="onboarding-select" value={profile.walkFrequency} onChange={(event) => setProfile({ ...profile, walkFrequency: event.target.value })} required><option value="">選択してください</option><option>ほとんど行かない</option><option>週に数回</option><option>毎日1回</option><option>毎日2回</option><option>毎日3回以上</option></select></label></div>
+          <div className="onboarding-grid"><label className="field-label">保育園への頻度<select className="onboarding-select" value={profile.daycareFrequency} onChange={(event) => setProfile({ ...profile, daycareFrequency: event.target.value })} required><option value="">選択してください</option><option>通っていない</option><option>不定期</option><option>月に数回</option><option>週1回</option><option>週2〜3回</option><option>週4回以上</option></select></label><label className="field-label">散歩の頻度<select className="onboarding-select" value={profile.walkFrequency} onChange={(event) => setProfile({ ...profile, walkFrequency: event.target.value })} required><option value="">選択してください</option><option>ほとんど行かない</option><option>週に数回</option><option>毎日1回</option><option>毎日2回</option><option>毎日3回以上</option></select></label></div>
           <label className="field-label">主な悩み・気になっていること<textarea rows={5} value={profile.concerns} onChange={(event) => setProfile({ ...profile, concerns: event.target.value })} placeholder="吠える場面、散歩で困ること、日々気になる様子など" required /></label>
           {onboardingError && <p className="onboarding-error" role="alert">{onboardingError}</p>}
           <div className="onboarding-actions"><button type="button" onClick={() => { setOnboardingError(""); setOnboardingStep("owner"); }}>← 戻る</button><button type="submit" className="onboarding-next" disabled={saving}>{saving ? "登録中…" : "登録して始める"}<span>→</span></button></div>
