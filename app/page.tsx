@@ -4247,8 +4247,14 @@ export default function Home() {
         )}
         {adminTab === "coachProfile" && userRole === "coach" && (
           <form className="staff-profile-form" onSubmit={saveCoachProfile}>
-            <div className="staff-profile-preview"><div className={`coach-avatar coach-profile-avatar preset-${coachProfile.avatarPreset}`}>{coachProfile.avatarUrl ? <img src={coachProfile.avatarUrl} alt="" /> : <CareIcon name="paws" />}</div><div><p className="card-label">PROFILE PREVIEW</p><h2>{coachProfile.displayName || "コーチ名"}</h2><strong>{coachProfile.headline || "専門分野や大切にしていること"}</strong></div></div>
-            <fieldset className="avatar-settings"><legend>プロフィールアイコン</legend><div className="avatar-presets">{["paw-green", "paw-blue", "paw-coral"].map((preset) => <button type="button" key={preset} className={`preset-${preset} ${!coachProfile.avatarUrl && coachProfile.avatarPreset === preset ? "is-selected" : ""}`} onClick={() => setCoachProfile({ ...coachProfile, avatarUrl: "", avatarPreset: preset })}><CareIcon name="paws" /></button>)}<label className="avatar-upload">画像を選ぶ<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadCoachAvatar(file); }} /></label></div><p>JPEG・PNG・WebPに対応。中央を正方形に切り抜き、512pxへ自動調整します。</p></fieldset>
+            <section className="staff-profile-preview" aria-label="オーナー画面でのプロフィール表示プレビュー">
+              <p className="card-label">OWNER VIEW PREVIEW</p>
+              <div className="staff-profile-preview-card">
+                <div className={`coach-avatar coach-profile-avatar ${coachProfile.avatarUrl ? "" : "coach-avatar-placeholder"}`}>{coachProfile.avatarUrl ? <img src={coachProfile.avatarUrl} alt="設定中のプロフィール画像" /> : <CareIcon name="paws" />}</div>
+                <div className="staff-profile-preview-copy"><small>あなたの担当コーチ</small><h2>{coachProfile.displayName || "コーチ名"}</h2><strong>{coachProfile.headline || "専門分野や大切にしていること"}</strong><p>{coachProfile.bio || "自己紹介を入力すると、オーナーにはこの場所に表示されます。"}</p>{coachProfile.credentials && <em>{coachProfile.credentials}</em>}</div>
+              </div>
+            </section>
+            <fieldset className="avatar-settings"><legend>プロフィール画像</legend><div className="avatar-upload-only"><div><strong>{coachProfile.avatarUrl ? "画像を設定済みです" : "プロフィール画像を選択してください"}</strong><small>顔や雰囲気が伝わる正方形に近い画像がおすすめです。</small></div><label className="avatar-upload">{saving ? "画像を処理中…" : coachProfile.avatarUrl ? "画像を変更" : "画像をアップロード"}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadCoachAvatar(file); event.currentTarget.value = ""; }} /></label></div><p>JPEG・PNG・WebP（8MB以下）に対応。中央を正方形に切り抜き、512pxへ自動調整します。</p></fieldset>
             <div className="staff-profile-fields">
               <label>表示名<input value={coachProfile.displayName} onChange={(event) => setCoachProfile({ ...coachProfile, displayName: event.target.value })} placeholder="例：三宅コーチ" required /></label>
               <label>肩書き・ひとこと<input value={coachProfile.headline} onChange={(event) => setCoachProfile({ ...coachProfile, headline: event.target.value })} placeholder="例：行動の理由を一緒に考えます" /></label>
