@@ -18,6 +18,7 @@ type UserRole = "owner" | "coach" | "admin";
 type AuthMode = "login" | "signup";
 type CoachingStatus = "submitted" | "offered" | "assigned" | "consulting" | "payment_pending" | "active" | "closed";
 type AdminTab = "applications" | "customers" | "accounts" | "schedule" | "coachProfile";
+type SettingsPanel = "menu" | "profile" | "disclaimer" | "terms" | "privacy";
 
 type DogProfile = {
   id?: string;
@@ -511,6 +512,7 @@ type OnlineSession = {
 
 type AppHistoryLayer =
   | { kind: "owner-view"; nextView: View; previousView: View }
+  | { kind: "settings-panel"; nextPanel: SettingsPanel; previousPanel: SettingsPanel }
   | { kind: "coach-tab"; nextTab: "sessions" | "chat"; previousTab: "sessions" | "chat" }
   | { kind: "admin-customer"; customer: AdminCustomer }
   | { kind: "media-gallery"; messageId: string }
@@ -824,6 +826,20 @@ function NavGlyph({ name }: { name: "home" | "goals" | "report" | "record" | "co
   return <svg className="flat-icon-svg" viewBox="0 0 24 24">{paths[name]}</svg>;
 }
 
+function SettingsGlyph({ name }: { name: "mail" | "dog" | "bell" | "info" | "document" | "shield" | "logout" | "account" }) {
+  const paths: Record<typeof name, ReactNode> = {
+    mail: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></>,
+    dog: <><circle cx="8" cy="7" r="2" /><circle cx="16" cy="7" r="2" /><circle cx="5.5" cy="12" r="2" /><circle cx="18.5" cy="12" r="2" /><path d="M12 11c-3.6 0-6.2 3.2-5.2 6.1.7 2.1 2.8 2.4 5.2 1.2 2.4 1.2 4.5.9 5.2-1.2C18.2 14.2 15.6 11 12 11Z" /></>,
+    bell: <><path d="M6 17h12l-1.7-2.2V10a4.3 4.3 0 0 0-8.6 0v4.8L6 17Z" /><path d="M10 20h4" /></>,
+    info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6m0-10h.01" /></>,
+    document: <><path d="M6 3h8l4 4v14H6V3Z" /><path d="M14 3v5h5M9 12h6m-6 4h6" /></>,
+    shield: <><path d="M12 3 5 6v5c0 4.7 2.7 8.3 7 10 4.3-1.7 7-5.3 7-10V6l-7-3Z" /><path d="M12 10v5m0-8h.01" /></>,
+    logout: <><path d="M10 5H5v14h5m4-3 4-4-4-4m4 4H9" /></>,
+    account: <><circle cx="10" cy="8" r="3" /><path d="M4 19c.5-4 2.5-6 6-6 2 0 3.6.7 4.6 2M17 13v6m-3-3h6" /></>,
+  };
+  return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
+}
+
 function CareIcon({ name }: { name: CareGoalType }) {
   const paths: Record<CareGoalType, ReactNode> = {
     brush: <><rect x="4" y="3.5" width="12" height="6" rx="2" /><rect x="15" y="5" width="5" height="3" rx="1.5" /><rect x="5.5" y="8.5" width="2.5" height="12" rx="1.25" /><rect x="9" y="8.5" width="2.5" height="12" rx="1.25" /><rect x="12.5" y="8.5" width="2.5" height="12" rx="1.25" /></>,
@@ -985,6 +1001,7 @@ export default function Home() {
   const [deleteAccountError, setDeleteAccountError] = useState("");
   const [showPwaInstallBanner, setShowPwaInstallBanner] = useState(false);
   const [isIOSDevice, setIsIOSDevice] = useState(false);
+  const [settingsPanel, setSettingsPanel] = useState<SettingsPanel>("menu");
   const [authReady, setAuthReady] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [anonymousUser, setAnonymousUser] = useState(false);
@@ -1090,6 +1107,8 @@ export default function Home() {
     const url = new URL(window.location.href);
     const suffix = layer.kind === "owner-view"
       ? layer.nextView
+      : layer.kind === "settings-panel"
+        ? `settings-${layer.nextPanel}`
       : layer.kind === "coach-tab"
         ? `coach-${layer.nextTab}`
         : layer.kind === "admin-customer"
@@ -1143,6 +1162,25 @@ export default function Home() {
     setView(nextView);
   }
 
+  function navigateSettingsPanel(nextPanel: SettingsPanel) {
+    if (nextPanel === settingsPanel) return;
+    pushAppHistory({ kind: "settings-panel", nextPanel, previousPanel: settingsPanel });
+    setSettingsPanel(nextPanel);
+  }
+
+  const closeSettingsPanel = useCallback(() => {
+    closeAppHistoryLayer("settings-panel", () => setSettingsPanel("menu"));
+  }, [closeAppHistoryLayer]);
+
+  function openSettingsMenu() {
+    if (view === "profile" && settingsPanel !== "menu") {
+      closeSettingsPanel();
+      return;
+    }
+    setSettingsPanel("menu");
+    navigateOwnerView("profile");
+  }
+
   function navigateCoachTab(nextTab: "sessions" | "chat") {
     if (nextTab === ownerCoachTab) return;
     pushAppHistory({ kind: "coach-tab", nextTab, previousTab: ownerCoachTab });
@@ -1193,6 +1231,9 @@ export default function Home() {
       switch (layer.kind) {
         case "owner-view":
           setView(opening ? layer.nextView : layer.previousView);
+          break;
+        case "settings-panel":
+          setSettingsPanel(opening ? layer.nextPanel : layer.previousPanel);
           break;
         case "coach-tab":
           setOwnerCoachTab(opening ? layer.nextTab : layer.previousTab);
@@ -2103,6 +2144,28 @@ export default function Home() {
       showNotice(subscription ? "新着メッセージの通知をオンにしました" : permissionStatus === "denied" ? "ブラウザまたは端末の設定から通知を許可してください" : "通知の許可が必要です");
     } catch (error) {
       showNotice(error instanceof Error ? `通知を設定できませんでした（${error.message}）` : "通知を設定できませんでした");
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  async function disablePushNotifications() {
+    if (pushBusy) return;
+    setPushBusy(true);
+    try {
+      if ("serviceWorker" in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration("/sw.js");
+        const subscription = await registration?.pushManager.getSubscription();
+        await subscription?.unsubscribe();
+      }
+      const response = await authorizedFetch("/api/push-subscriptions", { method: "DELETE" });
+      const result = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(result?.error || "通知設定を解除できませんでした");
+      await refreshSubscriptionStatus();
+      showNotice("新着メッセージの通知をオフにしました");
+    } catch (error) {
+      console.error("[Web Push] unsubscribe failed", error);
+      showNotice(error instanceof Error ? error.message : "通知設定を解除できませんでした");
     } finally {
       setPushBusy(false);
     }
@@ -4066,8 +4129,9 @@ export default function Home() {
     </section>
   );
 
-  const profileView = (
-    <form className="screen-form" onSubmit={saveProfile}>
+  const profileEditorView = (
+    <form className="screen-form settings-profile-editor" onSubmit={saveProfile}>
+      <button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
       <SectionTitle eyebrow="PROFILE" title="飼い主・愛犬プロフィール" />
       <p className="lead">担当コーチが、ご家族とその子に合った提案をするための情報です。</p>
       <section className="profile-form-section"><div className="profile-section-heading"><span>01</span><div><h2>飼い主さまについて</h2><p>連絡とサポートに必要な情報</p></div></div>
@@ -4099,6 +4163,74 @@ export default function Home() {
       </section>
     </form>
   );
+
+  const settingsDocuments: Record<Exclude<SettingsPanel, "menu" | "profile">, { eyebrow: string; title: string; sections: Array<{ heading: string; body: string }> }> = {
+    disclaimer: {
+      eyebrow: "DISCLAIMER",
+      title: "免責事項",
+      sections: [
+        { heading: "記録・分析について", body: "WanToneに表示されるスコアや傾向は、入力された記録を整理するための目安です。獣医療上の診断、治療、専門家の判断に代わるものではありません。" },
+        { heading: "体調に異変がある場合", body: "食欲不振、嘔吐、下痢、呼吸の異常、強い痛みなどがある場合は、アプリ上の表示にかかわらず速やかに動物病院へご相談ください。" },
+        { heading: "外部サービス", body: "オンライン通話や決済などの外部サービスは、各サービスの利用条件に基づいて提供されます。" },
+      ],
+    },
+    terms: {
+      eyebrow: "TERMS OF USE",
+      title: "利用規約",
+      sections: [
+        { heading: "サービスの利用", body: "ユーザーは、正確な登録情報を用いてご自身の責任でWanToneを利用するものとします。アカウントを第三者へ貸与・譲渡することはできません。" },
+        { heading: "禁止事項", body: "他の利用者やコーチへの迷惑行為、不正アクセス、サービス運営を妨げる行為、法令または公序良俗に反する行為を禁止します。" },
+        { heading: "変更・停止", body: "安全性や利便性向上のため、サービス内容を変更または一時停止する場合があります。重要な変更はアプリまたは登録先へお知らせします。" },
+      ],
+    },
+    privacy: {
+      eyebrow: "PRIVACY POLICY",
+      title: "プライバシーポリシー",
+      sections: [
+        { heading: "取得する情報", body: "アカウント情報、飼い主情報、愛犬情報、日々の記録、相談内容、アップロードされた画像・動画、通知購読情報などを取得します。" },
+        { heading: "利用目的", body: "サービス提供、担当コーチによるサポート、通知、本人確認、不具合対応、機能改善のために利用します。" },
+        { heading: "管理と削除", body: "取得した情報は適切に管理します。退会手続きを行うと、法令上の保存義務がある情報を除き、アカウントに紐づくデータを削除します。" },
+      ],
+    },
+  };
+
+  const settingsDocumentView = settingsPanel !== "menu" && settingsPanel !== "profile" ? (
+    <section className="settings-document">
+      <button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
+      <p className="card-label">{settingsDocuments[settingsPanel].eyebrow}</p>
+      <h1>{settingsDocuments[settingsPanel].title}</h1>
+      <p className="settings-document-date">2026年9月27日 現在</p>
+      <div>{settingsDocuments[settingsPanel].sections.map((section) => <article key={section.heading}><h2>{section.heading}</h2><p>{section.body}</p></article>)}</div>
+      <p className="settings-document-note">内容についてご不明な点がある場合は、「お問い合わせ・ご要望」からご連絡ください。</p>
+    </section>
+  ) : null;
+
+  const settingsMenuView = (
+    <section className="settings-screen">
+      <header><p className="card-label">ACCOUNT &amp; APP</p><h1>設定</h1></header>
+      <div className="settings-user-summary">
+        <span>{profile.name ? profile.name.slice(0, 1) : <SettingsGlyph name="dog" />}</span>
+        <div><strong>{profile.name ? `${profile.name}ちゃん` : "愛犬を登録してください"}</strong><small>{userEmail}</small></div>
+      </div>
+
+      <div className="settings-list" aria-label="設定メニュー">
+        <a href="https://barknow-official.vercel.app/#contact" target="_blank" rel="noopener noreferrer"><span className="settings-row-icon"><SettingsGlyph name="mail" /></span><strong>お問い合わせ・ご要望</strong><i aria-hidden="true">›</i></a>
+        <button type="button" onClick={() => navigateSettingsPanel("profile")}><span className="settings-row-icon"><SettingsGlyph name="dog" /></span><span><strong>愛犬プロフィール管理</strong><small>飼い主情報・愛犬情報を編集</small></span><i aria-hidden="true">›</i></button>
+        <div className="settings-notification-row"><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>通知</strong><small>{isSubscribed ? "新着メッセージを通知します" : permissionStatus === "denied" ? "端末の設定で通知が拒否されています" : "新着メッセージ通知はオフです"}</small></span><button type="button" className={`settings-toggle ${isSubscribed ? "is-on" : ""}`} role="switch" aria-checked={isSubscribed} aria-label={`通知を${isSubscribed ? "オフ" : "オン"}にする`} disabled={pushBusy || subscriptionStatus === "checking" || subscriptionStatus === "unsupported"} onClick={() => void (isSubscribed ? disablePushNotifications() : enablePushNotifications())}><i></i></button></div>
+        <button type="button" onClick={() => navigateSettingsPanel("disclaimer")}><span className="settings-row-icon"><SettingsGlyph name="info" /></span><strong>免責事項</strong><i aria-hidden="true">›</i></button>
+        <button type="button" onClick={() => navigateSettingsPanel("terms")}><span className="settings-row-icon"><SettingsGlyph name="document" /></span><strong>利用規約</strong><i aria-hidden="true">›</i></button>
+        <button type="button" onClick={() => navigateSettingsPanel("privacy")}><span className="settings-row-icon"><SettingsGlyph name="shield" /></span><strong>プライバシーポリシー</strong><i aria-hidden="true">›</i></button>
+      </div>
+
+      <div className="settings-list settings-account-actions" aria-label="アカウント操作">
+        <button type="button" onClick={() => void signOut()}><span className="settings-row-icon"><SettingsGlyph name="logout" /></span><strong>ログアウト</strong><i aria-hidden="true">›</i></button>
+        <button type="button" onClick={openDeleteAccountDialog}><span className="settings-row-icon"><SettingsGlyph name="account" /></span><strong>アカウントを削除</strong><i aria-hidden="true">›</i></button>
+      </div>
+      <footer><strong>WanTone</strong><span>by BarKnow</span><small>大切な家族との毎日を、記録に。</small></footer>
+    </section>
+  );
+
+  const profileView = settingsPanel === "menu" ? settingsMenuView : settingsPanel === "profile" ? profileEditorView : settingsDocumentView;
 
   const onboardingView = (
     <div className="onboarding-stage">
@@ -4497,7 +4629,7 @@ export default function Home() {
           <button className={view === "report" ? "active" : ""} onClick={() => navigateOwnerView("report")}><Icon><NavGlyph name="report" /></Icon><span>変化</span></button>
           <button className={view === "record" ? "active" : ""} onClick={() => openNewRecord()}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>
           <button className={view === "coach" ? "active" : ""} onClick={() => navigateOwnerView("coach")}><Icon><NavGlyph name="coach" /></Icon><span>コーチ</span></button>
-          <button className={view === "profile" ? "active" : ""} onClick={() => navigateOwnerView("profile")}><Icon><NavGlyph name="profile" /></Icon><span>設定</span></button>
+          <button className={view === "profile" ? "active" : ""} onClick={openSettingsMenu}><Icon><NavGlyph name="profile" /></Icon><span>設定</span></button>
         </nav>
         {celebration && (
           <div className="celebration-backdrop" role="dialog" aria-modal="true" aria-labelledby="celebration-title" onClick={closeCelebration}>

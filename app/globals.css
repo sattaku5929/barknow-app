@@ -2104,6 +2104,63 @@ body { font-size: 16px; }
   .home-dashboard button { transition:none; }
 }
 
+/* Owner settings */
+.app-shell:has(.settings-screen),.app-shell:has(.settings-document) { background:#f4f6f5; }
+.app-main:has(.settings-screen) { padding-top:0; padding-right:0; padding-left:0; background:#f4f6f5; }
+.settings-screen { min-height:calc(100svh - 176px); color:#29312d; }
+.settings-screen > header { padding:27px 22px 21px; background:#fff; text-align:center; }
+.settings-screen > header .card-label { margin-bottom:5px; font-size:9px; }
+.settings-screen > header h1 { margin:0; font-size:27px; font-weight:600; letter-spacing:.04em; }
+.settings-user-summary { display:grid; grid-template-columns:48px minmax(0,1fr); align-items:center; gap:13px; margin:14px 16px; padding:15px; border-radius:18px; background:#eaf4ef; }
+.settings-user-summary > span { display:grid; width:48px; height:48px; overflow:hidden; place-items:center; border-radius:50%; background:var(--green); color:#fff; font-size:18px; font-weight:800; }
+.settings-user-summary svg { width:25px; height:25px; fill:none; stroke:currentColor; stroke-width:1.75; }
+.settings-user-summary div { min-width:0; }
+.settings-user-summary strong,.settings-user-summary small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.settings-user-summary strong { font-size:14px; }
+.settings-user-summary small { margin-top:4px; color:#708078; font-size:9px; }
+.settings-list { border-top:1px solid #dfe4e1; border-bottom:1px solid #dfe4e1; background:#fff; }
+.settings-list > button,.settings-list > a,.settings-notification-row { display:grid; width:100%; min-height:72px; grid-template-columns:38px minmax(0,1fr) 24px; align-items:center; gap:12px; padding:12px 18px; border:0; border-bottom:1px solid #e3e7e5; background:#fff; color:#303733; text-align:left; text-decoration:none; }
+.settings-list > button,.settings-list > a { cursor:pointer; }
+.settings-list > :last-child { border-bottom:0; }
+.settings-list strong { display:block; font-size:14px; font-weight:500; }
+.settings-list small { display:block; margin-top:3px; color:#89928d; font-size:9px; line-height:1.45; }
+.settings-list > button > i,.settings-list > a > i { color:#aab2ae; font-size:26px; font-style:normal; font-weight:300; text-align:right; }
+.settings-row-icon { display:grid; width:38px; height:38px; place-items:center; color:#7c8781; }
+.settings-row-icon svg { width:27px; height:27px; fill:none; stroke:currentColor; stroke-width:1.65; stroke-linecap:round; stroke-linejoin:round; }
+.settings-notification-row { grid-template-columns:38px minmax(0,1fr) auto; }
+.settings-toggle { position:relative; width:52px; height:31px; padding:0; border:0; border-radius:999px; background:#d8ddda; cursor:pointer; transition:background .2s ease; }
+.settings-toggle > i { position:absolute; top:4px; left:4px; width:23px; height:23px; border-radius:50%; background:#fff; box-shadow:0 2px 7px rgba(35,54,46,.18); transition:transform .2s ease; }
+.settings-toggle.is-on { background:var(--green); }
+.settings-toggle.is-on > i { transform:translateX(21px); }
+.settings-toggle:disabled { cursor:not-allowed; opacity:.5; }
+.settings-account-actions { margin-top:14px; }
+.settings-account-actions > button { color:#e05246; }
+.settings-account-actions .settings-row-icon { color:#e05246; }
+.settings-screen > footer { display:grid; justify-items:center; padding:27px 20px 12px; color:#a2aaa6; text-align:center; }
+.settings-screen > footer strong { color:#829089; font-size:14px; }
+.settings-screen > footer span { margin-top:2px; font-size:8px; font-weight:750; letter-spacing:.1em; text-transform:uppercase; }
+.settings-screen > footer small { margin-top:9px; font-size:9px; }
+.settings-back { min-height:38px; margin:0 0 20px; padding:0 12px; border:1px solid rgba(0,134,97,.13); border-radius:999px; background:#edf5f1; color:var(--green-dark); cursor:pointer; font-size:10px; font-weight:800; }
+.settings-profile-editor > .section-title { margin-top:0; }
+.settings-document { min-height:calc(100svh - 190px); padding:4px 2px 24px; }
+.settings-document > h1 { margin:5px 0 0; font-size:28px; }
+.settings-document-date { margin:8px 0 24px; color:#8a948f; font-size:10px; }
+.settings-document > div { overflow:hidden; border:1px solid rgba(27,61,49,.09); border-radius:21px; background:#fff; }
+.settings-document article { padding:19px; border-bottom:1px solid #e8ece9; }
+.settings-document article:last-child { border-bottom:0; }
+.settings-document article h2 { margin:0; color:#31443b; font-size:14px; }
+.settings-document article p { margin:8px 0 0; color:#68756e; font-size:11px; line-height:1.85; }
+.settings-document-note { margin:15px 3px 0; color:#89928d; font-size:9px; line-height:1.7; }
+
+@media (hover:hover) {
+  .settings-list > button:hover,.settings-list > a:hover { background:#f4f8f6; }
+}
+
+@media (min-width:700px) {
+  .app-main:has(.settings-screen) { padding-right:38px; padding-left:38px; background:#f4f6f5; }
+  .settings-screen { overflow:hidden; border-radius:27px; box-shadow:0 16px 45px rgba(34,65,53,.08); }
+}
+
 
 
 /* Owner and dog onboarding */

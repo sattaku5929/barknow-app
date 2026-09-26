@@ -86,3 +86,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: errorDetail(error) }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  const user = await authenticatedUser(request);
+  if (!user) return NextResponse.json({ error: "ログイン情報を確認できませんでした" }, { status: 401 });
+
+  try {
+    const admin = serviceSupabase();
+    const { error: deleteError } = await admin.from("push_subscriptions").delete().eq("user_id", user.id);
+    if (deleteError) throw deleteError;
+
+    const { data: authData, error: readError } = await admin.auth.admin.getUserById(user.id);
+    if (readError) throw readError;
+    const metadata = { ...(authData.user?.user_metadata ?? {}) };
+    delete metadata.push_subscription;
+    const { error: metadataError } = await admin.auth.admin.updateUserById(user.id, { user_metadata: metadata });
+    if (metadataError) throw metadataError;
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("[Web Push] subscription delete failed", { userId: user.id, error });
+    return NextResponse.json({ error: errorDetail(error) }, { status: 500 });
+  }
+}
