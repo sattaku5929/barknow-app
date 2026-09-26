@@ -786,6 +786,28 @@ function recordConditionScore(record: DailyRecord) {
   return Math.round((moodScore + categoryScore) / 2);
 }
 
+type WellbeingMetricId = "appetite" | "walk" | "sleep" | "toilet" | "mood";
+
+function wellbeingRecordScore(record: DailyRecord, metric: WellbeingMetricId) {
+  if (metric === "mood") return Math.max(20, Math.min(100, record.mood * 20));
+  if (metric === "appetite" && record.category === "meal") return statusScore(record.appetite);
+  if (metric === "walk" && record.category === "walk") return statusScore(record.activity);
+  if (metric === "sleep" && record.category === "sleep") return statusScore(record.sleep);
+  if (metric === "toilet" && record.category === "toilet") return statusScore(record.toilet);
+  return null;
+}
+
+function averageScore(values: number[]) {
+  return values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : null;
+}
+
+function wellbeingLevel(score: number | null) {
+  if (score === null) return "記録なし";
+  if (score >= 82) return "安定";
+  if (score >= 62) return "様子見";
+  return "気になる";
+}
+
 function Icon({ children }: { children: ReactNode }) {
   return <span className="nav-icon" aria-hidden="true">{children}</span>;
 }
@@ -944,7 +966,7 @@ function StatusSelector({
             onClick={() => onChange(option)}
             aria-pressed={value === option}
           >
-            {option}
+            <span>{option}</span><small>{statusScore(option)}点</small>
           </button>
         ))}
       </div>
@@ -1464,6 +1486,80 @@ export default function Home() {
       };
     });
   }, []);
+  const wellbeingMetrics = useMemo(() => {
+    const definitions: Array<{ id: WellbeingMetricId; label: string; icon: RecordCategory }> = [
+      { id: "appetite", label: "食欲", icon: "meal" },
+      { id: "walk", label: "散歩後の元気", icon: "walk" },
+      { id: "sleep", label: "睡眠", icon: "sleep" },
+      { id: "toilet", label: "排泄", icon: "toilet" },
+      { id: "mood", label: "気分", icon: "daily" },
+    ];
+    const previousDays = reportDays.slice(0, 7);
+    const currentDays = reportDays.slice(7);
+    return definitions.map((definition) => {
+      const scoreForDay = (value: string) => averageScore(
+        records
+          .filter((record) => record.recordedOn === value)
+          .map((record) => wellbeingRecordScore(record, definition.id))
+          .filter((score): score is number => score !== null),
+      );
+      const previousSeries = previousDays.map((day) => scoreForDay(day.value));
+      const currentSeries = currentDays.map((day) => scoreForDay(day.value));
+      const previousScore = averageScore(previousSeries.filter((score): score is number => score !== null));
+      const currentScore = averageScore(currentSeries.filter((score): score is number => score !== null));
+      const trend = currentScore !== null && previousScore !== null ? currentScore - previousScore : null;
+      const category = definition.id === "appetite" ? "meal" : definition.id === "walk" ? "walk" : definition.id;
+      const currentCategoryRecords = records.filter((record) => currentDays.some((day) => day.value === record.recordedOn) && (definition.id === "mood" || record.category === category));
+      const previousCategoryRecords = records.filter((record) => previousDays.some((day) => day.value === record.recordedOn) && (definition.id === "mood" || record.category === category));
+      return {
+        ...definition,
+        currentScore,
+        previousScore,
+        trend,
+        series: currentSeries,
+        currentCount: currentCategoryRecords.length,
+        previousCount: previousCategoryRecords.length,
+        currentTotal: definition.id === "walk" ? currentCategoryRecords.reduce((sum, record) => sum + (record.durationMinutes ?? 0), 0) : 0,
+        previousTotal: definition.id === "walk" ? previousCategoryRecords.reduce((sum, record) => sum + (record.durationMinutes ?? 0), 0) : 0,
+      };
+    });
+  }, [records, reportDays]);
+  const wellbeingInsights = useMemo(() => {
+    const appetiteMetric = wellbeingMetrics.find((metric) => metric.id === "appetite");
+    const walkMetric = wellbeingMetrics.find((metric) => metric.id === "walk");
+    const sleepMetric = wellbeingMetrics.find((metric) => metric.id === "sleep");
+    const toiletMetric = wellbeingMetrics.find((metric) => metric.id === "toilet");
+    const notes: Array<{ tone: "watch" | "notice" | "good"; title: string; body: string }> = [];
+    const appetiteDown = appetiteMetric?.trend !== null && appetiteMetric?.trend !== undefined && appetiteMetric.trend <= -10;
+    const walkVolumeDown = !!walkMetric && walkMetric.previousCount > 0 && (walkMetric.currentCount < walkMetric.previousCount || walkMetric.currentTotal < walkMetric.previousTotal * .75);
+
+    if (appetiteDown && walkVolumeDown && appetiteMetric && walkMetric) {
+      notes.push({
+        tone: "watch",
+        title: "食欲とお散歩に、同じ向きの変化",
+        body: `食欲は前の7日間より${Math.abs(appetiteMetric.trend ?? 0)}点低く、お散歩は${walkMetric.previousCount}回から${walkMetric.currentCount}回になっています。原因とは断定できませんが、食欲が落ちた日の活動量を一緒に見てみましょう。`,
+      });
+    } else if (appetiteDown && appetiteMetric) {
+      notes.push({
+        tone: "watch",
+        title: "食欲スコアが下がっています",
+        body: `前の7日間と比べて${Math.abs(appetiteMetric.trend ?? 0)}点低下しています。食事量や元気、嘔吐など気になる変化もあれば記録し、続く場合は獣医師へ相談してください。`,
+      });
+    }
+    if (sleepMetric?.trend !== null && sleepMetric?.trend !== undefined && sleepMetric.trend <= -10) {
+      notes.push({ tone: "notice", title: "睡眠の様子に変化があります", body: `睡眠スコアが前の7日間より${Math.abs(sleepMetric.trend)}点低めです。就寝前の運動や室温など、環境の変化も一緒に残すと比較しやすくなります。` });
+    }
+    if (toiletMetric?.currentScore !== null && toiletMetric?.currentScore !== undefined && toiletMetric.currentScore < 62) {
+      notes.push({ tone: "watch", title: "排泄の様子を見守りましょう", body: "直近の排泄スコアが低めです。回数・便の状態・水分量などもメモしておくと、相談時に役立ちます。" });
+    }
+    if (!notes.length && recordedConditionDays.length >= 3) {
+      notes.push({ tone: "good", title: "直近の状態は大きく崩れていません", body: "今のところ複数項目が同時に下がる変化は見つかっていません。このまま短い記録を続けると、その子らしい普段の状態が見えてきます。" });
+    }
+    if (recordedConditionDays.length < 3) {
+      notes.push({ tone: "notice", title: "まずは3日分をためましょう", body: "食事・散歩・睡眠などを3日ほど記録すると、直近の状態と変化の方向を比べられるようになります。" });
+    }
+    return notes.slice(0, 2);
+  }, [recordedConditionDays.length, wellbeingMetrics]);
   const selectedBehaviorRecords = records.filter(
     (record) => record.category === "barking" && record.behaviorTypes.includes(reportBehaviorType),
   );
@@ -3684,6 +3780,41 @@ export default function Home() {
           <span><strong>{recordedConditionDays.length ? conditionScore : "–"}</strong><small>{recordedConditionDays.length ? "/100" : "集計中"}</small></span>
         </div>
         <div><p className="card-label">LIFE CONDITION</p><h2>{conditionLevel}</h2><p>{conditionCopy}</p><small>診断ではなく、記録から見た目安です。</small></div>
+      </section>
+
+      <section className="wellbeing-analysis" aria-labelledby="wellbeing-analysis-title">
+        <div className="wellbeing-analysis-head">
+          <div><p className="card-label">WELLBEING ANALYSIS</p><h2 id="wellbeing-analysis-title">直近7日間の状態</h2></div>
+          <span>100点換算</span>
+        </div>
+        <p className="wellbeing-analysis-lead">「できた・できなかった」ではなく、食欲や元気などの状態と変化を見ています。</p>
+        <div className="wellbeing-metric-grid">
+          {wellbeingMetrics.map((metric) => (
+            <article className={`wellbeing-metric category-${metric.icon} ${metric.currentScore === null ? "is-empty" : metric.currentScore >= 82 ? "is-good" : metric.currentScore >= 62 ? "is-middle" : "is-watch"}`} key={metric.id}>
+              <div className="wellbeing-metric-title">
+                <span className="topic-mark"><TopicIcon name={metric.icon} /></span>
+                <div><h3>{metric.label}</h3><small>{wellbeingLevel(metric.currentScore)}</small></div>
+              </div>
+              <div className="wellbeing-metric-score"><strong>{metric.currentScore ?? "–"}</strong><span>{metric.currentScore === null ? "未集計" : "/100"}</span></div>
+              <div className="wellbeing-mini-chart" role="img" aria-label={`${metric.label}の直近7日間の推移`}>
+                {metric.series.map((score, index) => <i className={score === null ? "is-missing" : ""} style={{ height: `${score === null ? 5 : Math.max(12, score)}%` }} key={`${metric.id}-${reportDays[index + 7].value}`}></i>)}
+              </div>
+              <div className="wellbeing-metric-foot">
+                <span>{metric.id === "walk" ? `${metric.currentCount}回${metric.currentTotal ? `・${metric.currentTotal}分` : ""}` : `${metric.currentCount}件の記録`}</span>
+                {metric.trend === null ? <b>比較データ待ち</b> : <b className={metric.trend >= 5 ? "is-up" : metric.trend <= -5 ? "is-down" : "is-flat"}>{metric.trend > 0 ? "+" : ""}{metric.trend}pt</b>}
+              </div>
+            </article>
+          ))}
+        </div>
+        <div className="wellbeing-insights" aria-label="記録から見つかった気づき">
+          {wellbeingInsights.map((insight) => (
+            <article className={`is-${insight.tone}`} key={insight.title}>
+              <span aria-hidden="true">{insight.tone === "watch" ? "!" : insight.tone === "good" ? "✓" : "i"}</span>
+              <div><h3>{insight.title}</h3><p>{insight.body}</p></div>
+            </article>
+          ))}
+        </div>
+        <p className="wellbeing-analysis-note">スコアは「良い 100点・ふつう 72点・気になる 38点」を基準に集計しています。未記録日は0点にせず、因果関係や病気を判定するものではありません。</p>
       </section>
 
       <section className="report-calendar">

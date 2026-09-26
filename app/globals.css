@@ -255,7 +255,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .status-field { margin: 0; }
 .segmented { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 9px; padding: 4px; border-radius: 14px; background: #efeee9; }
 .segmented button { min-height: 42px; border: 0; border-radius: 11px; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; }
+.segmented button span,.segmented button small { display:block; }
+.segmented button small { margin-top:2px; color:#8a948f; font-size:8px; font-weight:700; }
 .segmented button.is-selected { background: white; color: var(--green-dark); font-weight: 800; box-shadow: 0 3px 10px rgba(37,40,37,.06); }
+.segmented button.is-selected small { color:var(--green); }
 .good-field { margin-bottom: 24px; padding: 18px; border-radius: 18px; background: var(--mint); }
 .screen-form > .primary-button { margin-top: 24px; }
 .profile-symbol { width: 82px; height: 82px; margin: 28px auto; font-size: 27px; }
@@ -411,6 +414,45 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .behavior-picker fieldset button { min-height: 43px; padding: 6px; border: 1px solid rgba(37,40,37,.1); border-radius: 12px; background: white; color: var(--muted); cursor: pointer; font-size: 9px; }
 
 /* Progress report */
+.wellbeing-analysis { margin-top:20px; padding:21px; border-radius:25px; background:#fff; box-shadow:0 14px 38px rgba(42,74,61,.065); }
+.wellbeing-analysis-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
+.wellbeing-analysis-head .card-label { margin-bottom:5px; }
+.wellbeing-analysis-head h2 { margin:0; font-size:20px; font-weight:650; }
+.wellbeing-analysis-head > span { flex:0 0 auto; padding:6px 9px; border-radius:999px; background:#edf5f1; color:var(--green-dark); font-size:9px; font-weight:800; }
+.wellbeing-analysis-lead { margin:8px 0 17px; color:var(--muted); font-size:11px; line-height:1.65; }
+.wellbeing-metric-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+.wellbeing-metric { min-width:0; padding:13px; border:1px solid color-mix(in srgb,var(--category) 13%,white); border-radius:18px; background:color-mix(in srgb,var(--category-soft) 68%,white); }
+.wellbeing-metric:last-child:nth-child(odd) { grid-column:1 / -1; }
+.wellbeing-metric-title { display:flex; min-width:0; align-items:center; gap:8px; }
+.wellbeing-metric-title .topic-mark { display:grid; width:34px; height:34px; flex:0 0 auto; place-items:center; border-radius:50%; background:#fff; color:var(--category); --flat-icon-cutout:#fff; }
+.wellbeing-metric-title svg { width:19px; height:19px; }
+.wellbeing-metric-title div { min-width:0; }
+.wellbeing-metric-title h3 { margin:0; overflow:hidden; font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
+.wellbeing-metric-title small { display:block; margin-top:2px; color:var(--category); font-size:8px; font-weight:800; }
+.wellbeing-metric-score { display:flex; align-items:baseline; margin-top:12px; }
+.wellbeing-metric-score strong { color:#294038; font-size:30px; font-weight:650; line-height:1; }
+.wellbeing-metric-score span { margin-left:3px; color:#7e8984; font-size:8px; }
+.wellbeing-mini-chart { display:flex; height:39px; align-items:flex-end; gap:4px; margin-top:9px; }
+.wellbeing-mini-chart i { width:100%; min-height:2px; border-radius:4px 4px 2px 2px; background:var(--category); opacity:.72; }
+.wellbeing-mini-chart i.is-missing { height:3px !important; background:#d8dedb; opacity:1; }
+.wellbeing-metric-foot { display:flex; min-width:0; align-items:center; justify-content:space-between; gap:5px; margin-top:8px; padding-top:8px; border-top:1px solid rgba(37,40,37,.07); }
+.wellbeing-metric-foot span { overflow:hidden; color:#7a8680; font-size:8px; text-overflow:ellipsis; white-space:nowrap; }
+.wellbeing-metric-foot b { flex:0 0 auto; padding:3px 5px; border-radius:7px; background:#edf0ee; color:#7a8580; font-size:7px; }
+.wellbeing-metric-foot b.is-up { background:#e1f2ea; color:#087052; }
+.wellbeing-metric-foot b.is-down { background:#fff0eb; color:#a4553d; }
+.wellbeing-metric-foot b.is-flat { background:#edf0ee; color:#68716c; }
+.wellbeing-metric.is-empty { background:#f5f7f6; filter:saturate(.4); }
+.wellbeing-metric.is-watch { border-color:rgba(190,103,72,.16); }
+.wellbeing-insights { display:grid; gap:8px; margin-top:15px; }
+.wellbeing-insights article { display:grid; grid-template-columns:31px minmax(0,1fr); gap:10px; padding:13px; border-radius:15px; background:#f2f6f4; }
+.wellbeing-insights article > span { display:grid; width:31px; height:31px; place-items:center; border-radius:50%; background:#dfece6; color:var(--green-dark); font-size:11px; font-weight:900; }
+.wellbeing-insights article h3 { margin:0; color:#31443c; font-size:11px; }
+.wellbeing-insights article p { margin:4px 0 0; color:#69756f; font-size:9px; line-height:1.7; }
+.wellbeing-insights article.is-watch { background:#fff4ef; }
+.wellbeing-insights article.is-watch > span { background:#f5d9ce; color:#9b4e37; }
+.wellbeing-insights article.is-good { background:#eaf5f0; }
+.wellbeing-analysis-note { margin:12px 2px 0; color:#8b948f; font-size:8px; line-height:1.65; }
+
 .report-filter { display: flex; gap: 7px; margin: 24px -20px 0; padding: 0 20px 7px; overflow-x: auto; scrollbar-width: none; }
 .report-filter::-webkit-scrollbar { display: none; }
 .report-filter button { flex: 0 0 auto; min-height: 38px; padding: 0 14px; border: 1px solid rgba(37,40,37,.1); border-radius: 19px; background: white; color: var(--muted); cursor: pointer; font-size: 10px; }
@@ -443,6 +485,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .report-empty p { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.7; }
 .report-add { margin-top: 18px; }
 .report-note { margin: 13px 3px 0; color: #8a918d; font-size: 8px; line-height: 1.65; }
+
+@media (max-width:359px) {
+  .wellbeing-analysis { padding:18px 15px; }
+  .wellbeing-metric-grid { grid-template-columns:1fr; }
+  .wellbeing-metric:last-child:nth-child(odd) { grid-column:auto; }
+}
 
 /* Multi-select behavior details */
 .behavior-picker-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
