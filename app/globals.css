@@ -1959,6 +1959,103 @@ body { font-size: 16px; }
   .home-flat .quick-log-grid > button:last-child { grid-column:auto; }
 }
 
+/* Owner dashboard */
+.home-dashboard { width:100%; max-width:960px; margin:0 auto; }
+.home-hero { display:grid; overflow:hidden; grid-template-columns:minmax(0,1fr); border-radius:34px; background:#fff; box-shadow:0 18px 50px rgba(39,72,59,.07); }
+.home-hero-copy { position:relative; z-index:2; padding:25px 22px 18px; }
+.home-hero-copy::before { position:absolute; z-index:-1; top:-58px; left:-60px; width:170px; height:170px; border-radius:50%; background:rgba(0,134,97,.055); content:""; }
+.home-hero-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.home-hero .eyebrow { margin-bottom:8px; font-size:10px; letter-spacing:.12em; }
+.home-hero h1 { max-width:440px; margin:0; color:#213b31; font-size:clamp(25px,6.7vw,38px); font-weight:650; line-height:1.42; letter-spacing:0; }
+.home-hero .welcome-copy { max-width:410px; margin:12px 0 0; color:#64736c; font-size:13px; line-height:1.8; }
+.home-hero .avatar { width:54px; height:54px; border:0; background:#dcefe6; color:var(--green-dark); box-shadow:inset 0 0 0 6px rgba(255,255,255,.6); }
+.home-hero-actions { display:flex; align-items:center; gap:9px; margin-top:20px; }
+.home-hero-actions button { display:flex; min-height:47px; align-items:center; justify-content:center; gap:7px; padding:0 17px; border-radius:999px; cursor:pointer; font-size:12px; font-weight:800; }
+.home-primary-action { border:0; background:var(--green); color:#fff; box-shadow:0 9px 22px rgba(0,134,97,.2); }
+.home-primary-action > span { font-size:17px; font-weight:400; }
+.home-secondary-action { border:1px solid rgba(0,104,75,.13); background:#f2f7f4; color:var(--green-dark); }
+.home-hero > .life-moment { align-self:end; margin:0; border-radius:0; background:#edf6e9; }
+.home-hero > .life-moment figcaption { padding:7px 15px 13px; }
+
+.home-dashboard > .profile-nudge { margin-top:14px; }
+.home-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:15px; }
+.home-summary > button { position:relative; display:grid; min-width:0; min-height:96px; grid-template-columns:40px minmax(0,1fr); align-items:center; gap:9px; padding:14px 26px 14px 13px; overflow:hidden; border:0; border-radius:22px; background:#fff; color:var(--ink); cursor:pointer; text-align:left; box-shadow:0 8px 26px rgba(39,72,59,.055); }
+.home-summary > button > span:nth-child(2) { min-width:0; }
+.home-summary small { display:block; overflow:hidden; color:#78847e; font-size:9px; font-weight:750; text-overflow:ellipsis; white-space:nowrap; }
+.home-summary strong { display:block; margin-top:3px; color:#263d34; font-size:24px; font-weight:650; line-height:1; }
+.home-summary strong em { margin-left:2px; color:#718078; font-size:10px; font-style:normal; font-weight:700; }
+.home-summary > button > i { position:absolute; top:10px; right:10px; color:#91a098; font-size:14px; font-style:normal; }
+.home-summary-icon { display:grid; width:40px; height:40px; place-items:center; border-radius:50%; color:var(--green-dark); }
+.home-summary-icon svg { width:21px; height:21px; fill:currentColor; stroke:none; }
+.home-summary-icon.is-log { background:#e6f3ed; --flat-icon-cutout:#e6f3ed; }
+.home-summary-icon.is-care { background:#f7ecd6; color:#9b6f35; --flat-icon-cutout:#f7ecd6; }
+.home-summary-icon.is-rhythm { background:#e8eff4; color:#557282; --flat-icon-cutout:#e8eff4; }
+
+.home-action-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:15px; margin-top:15px; }
+.home-dashboard .today-mission,.home-dashboard .quick-log { margin:0; padding:22px; border-radius:30px; }
+.home-dashboard .today-mission { background:#e4f2eb; }
+.home-dashboard .quick-log { background:#fff; box-shadow:0 12px 34px rgba(39,72,59,.06); }
+.home-dashboard .compact-section-head { align-items:flex-start; }
+.home-dashboard .compact-section-head > span { padding:6px 9px; border-radius:999px; background:#f0f4f1; color:#66756e; font-size:10px; font-weight:750; }
+.home-dashboard .mission-head h2,.home-dashboard .compact-section-head h2 { font-size:21px; }
+.home-section-copy { margin:6px 0 15px; color:#718078; font-size:11px; line-height:1.6; }
+.home-dashboard .mission-list { margin-top:0; }
+.home-dashboard .mission-manage { min-height:38px; margin-top:8px; color:var(--green-dark); text-align:left; }
+.home-dashboard .mission-manage span { float:right; }
+.home-dashboard .quick-log-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:0; }
+.home-dashboard .quick-log-grid > button { min-height:70px; flex-direction:row; justify-content:flex-start; gap:10px; padding:10px 11px; border-radius:20px; text-align:left; }
+.home-dashboard .quick-log-grid > button:last-child { grid-column:1 / -1; }
+.home-dashboard .quick-log-grid .topic-mark { width:42px; height:42px; flex:0 0 auto; }
+.home-dashboard .quick-log-grid strong { font-size:12px; }
+
+.home-insight { display:grid; grid-template-columns:46px minmax(0,1fr); align-items:center; gap:13px; margin-top:15px; padding:19px; border-radius:27px; background:#263f35; color:#fff; }
+.home-insight-mark { display:grid; width:46px; height:46px; place-items:center; border-radius:50%; background:rgba(255,255,255,.12); color:#bce2d2; font-size:19px; }
+.home-insight .card-label { margin-bottom:5px; color:#8fd0b6; }
+.home-insight h2 { margin:0; font-size:17px; }
+.home-insight p:not(.card-label) { margin:5px 0 0; color:rgba(255,255,255,.7); font-size:11px; line-height:1.65; }
+.home-insight > button { grid-column:1 / -1; min-height:42px; padding:0 14px; border:0; border-radius:14px; background:rgba(255,255,255,.1); color:#fff; cursor:pointer; font-size:11px; font-weight:800; text-align:left; }
+.home-insight > button span { float:right; }
+
+.home-dashboard button { -webkit-tap-highlight-color:transparent; transition:transform .16s ease,box-shadow .16s ease,background-color .16s ease; }
+.home-dashboard button:not(:disabled):active { transform:scale(.98); }
+
+@media (max-width:390px) {
+  .home-hero-copy { padding:22px 18px 16px; }
+  .home-hero-actions { align-items:stretch; flex-direction:column; }
+  .home-hero-actions button { width:100%; }
+  .home-summary { gap:7px; }
+  .home-summary > button { min-height:92px; grid-template-columns:1fr; align-content:center; gap:6px; padding:11px 8px; text-align:center; }
+  .home-summary-icon { width:35px; height:35px; margin:auto; }
+  .home-summary > button > i { display:none; }
+  .home-summary strong { font-size:21px; }
+  .home-dashboard .today-mission,.home-dashboard .quick-log { padding:19px 17px; }
+}
+
+@media (min-width:720px) {
+  .app-shell:has(.home-flat) { max-width:1040px; }
+  .app-shell:has(.home-flat) .app-main { padding-right:40px; padding-left:40px; }
+  .home-hero { grid-template-columns:minmax(0,1.08fr) minmax(310px,.92fr); align-items:stretch; }
+  .home-hero-copy { display:flex; min-height:300px; flex-direction:column; justify-content:center; padding:34px 36px; }
+  .home-hero > .life-moment { display:flex; flex-direction:column; justify-content:flex-end; border-radius:34px 0 0 34px; }
+  .home-hero > .life-moment figcaption { padding-right:22px; padding-left:22px; }
+  .home-summary { gap:14px; margin-top:18px; }
+  .home-summary > button { min-height:108px; padding:16px 32px 16px 16px; }
+  .home-action-grid { grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px; margin-top:18px; }
+  .home-dashboard .today-mission,.home-dashboard .quick-log { padding:25px; }
+  .home-insight { grid-template-columns:48px minmax(0,1fr) auto; margin-top:18px; padding:20px 22px; }
+  .home-insight > button { grid-column:auto; min-width:125px; }
+}
+
+@media (hover:hover) {
+  .home-summary > button:hover,.home-dashboard .quick-log-grid > button:hover { transform:translateY(-2px); box-shadow:0 13px 30px rgba(39,72,59,.1); }
+  .home-primary-action:hover { background:var(--green-dark); }
+  .home-secondary-action:hover { background:#e7f2ec; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .home-dashboard button { transition:none; }
+}
+
 
 
 /* Owner and dog onboarding */

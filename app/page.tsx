@@ -3394,14 +3394,23 @@ export default function Home() {
   );
 
   const focusedHomeView = (
-    <>
-      <section className="welcome focused-welcome">
-        <div>
-          <p className="eyebrow">{todayLabel}</p>
-          <h1>{profile.name ? `${profile.name}ちゃんと、今日もひとつ。` : "今日から、ひとつずつ。"}</h1>
-          <p className="welcome-copy">完璧じゃなくて大丈夫。できたことを一緒に増やそう。</p>
+    <div className="home-dashboard">
+      <section className="home-hero" aria-labelledby="home-greeting-title">
+        <div className="home-hero-copy">
+          <div className="home-hero-heading">
+            <div>
+              <p className="eyebrow">{todayLabel}</p>
+              <h1 id="home-greeting-title">{profile.name ? `${profile.name}ちゃんと、今日もいい日に。` : "今日から、ひとつずつ。"}</h1>
+            </div>
+            <button className="avatar" onClick={() => navigateOwnerView("profile")} aria-label="愛犬プロフィールを開く">{profile.name ? profile.name.slice(0, 1) : "＋"}</button>
+          </div>
+          <p className="welcome-copy">完璧じゃなくて大丈夫。小さな「できた」を残すことから始めよう。</p>
+          <div className="home-hero-actions">
+            <button className="home-primary-action" onClick={() => openNewRecord()}><span aria-hidden="true">＋</span>今日を記録する</button>
+            <button className="home-secondary-action" onClick={() => navigateOwnerView("goals")}>お世話を確認 <span aria-hidden="true">→</span></button>
+          </div>
         </div>
-        <button className="avatar" onClick={() => navigateOwnerView("profile")} aria-label="愛犬プロフィールを開く">{profile.name ? profile.name.slice(0, 1) : "＋"}</button>
+        <LifeMoment scene="park" eyebrow="LIFE WITH MY DOG" text="いつもの毎日を、かけがえのない記録に。" />
       </section>
 
       {!profile.name && (
@@ -3412,55 +3421,78 @@ export default function Home() {
         </button>
       )}
 
-      <LifeMoment scene="park" eyebrow="WALK TOGETHER" text="いつもの散歩にも、ふたりだけの発見を。" />
+      <section className="home-summary" aria-label="今日のサマリー">
+        <button onClick={() => openNewRecord()}>
+          <span className="home-summary-icon is-log"><TopicIcon name="daily" /></span>
+          <span><small>今日の記録</small><strong>{todaysEntries.length}<em>件</em></strong></span>
+          <i aria-hidden="true">＋</i>
+        </button>
+        <button onClick={() => navigateOwnerView("goals")}>
+          <span className="home-summary-icon is-care"><CareIcon name="paws" /></span>
+          <span><small>今日のお世話</small><strong>{completedGoalCount}<em>/{careGoals.length || "–"}</em></strong></span>
+          <i aria-hidden="true">→</i>
+        </button>
+        <button onClick={() => navigateOwnerView("report")}>
+          <span className="home-summary-icon is-rhythm"><NavGlyph name="report" /></span>
+          <span><small>7日間の記録</small><strong>{recentDays.filter((day) => day.entries.length > 0).length}<em>日</em></strong></span>
+          <i aria-hidden="true">→</i>
+        </button>
+      </section>
 
-      <section className="today-mission" aria-labelledby="today-mission-title">
-        <div className="mission-head">
-          <div><p className="card-label">TODAY</p><h2 id="today-mission-title">今日のお世話</h2></div>
-          <div className="mission-score"><strong>{completedGoalCount}</strong><span>/{careGoals.length || "–"}</span></div>
-        </div>
-        <LifeMoment scene="home" eyebrow="CARE AT HOME" text="小さなお世話が、今日の心地よさをつくります。" />
-        {careGoals.length === 0 ? (
-          <button className="mission-empty" onClick={() => navigateOwnerView("goals")}>
-            <span><CareIcon name="paws" /></span>
-            <b>続けたいことを、ひとつ決める</b><i>→</i>
-          </button>
-        ) : (
-          <div className="mission-list">
-            {careGoals.slice(0, 4).map((goal) => {
-              const progress = goalProgress(goal);
-              const done = progress >= goal.targetCount;
+      <div className="home-action-grid">
+        <section className="today-mission" aria-labelledby="today-mission-title">
+          <div className="mission-head">
+            <div><p className="card-label">TODAY&apos;S CARE</p><h2 id="today-mission-title">今日のお世話</h2></div>
+            <div className="mission-score"><strong>{completedGoalCount}</strong><span>/{careGoals.length || "–"}</span></div>
+          </div>
+          <p className="home-section-copy">できたものから、ぽんとチェック。</p>
+          {careGoals.length === 0 ? (
+            <button className="mission-empty" onClick={() => navigateOwnerView("goals")}>
+              <span><CareIcon name="paws" /></span>
+              <b>続けたいことを、ひとつ決める</b><i>→</i>
+            </button>
+          ) : (
+            <div className="mission-list">
+              {careGoals.slice(0, 4).map((goal) => {
+                const progress = goalProgress(goal);
+                const done = progress >= goal.targetCount;
+                return (
+                  <button key={goal.id} className={done ? "is-done" : ""} onClick={() => void completeCareGoal(goal)} disabled={done}>
+                    <span className={`care-icon care-${goal.goalType}`}><CareIcon name={goal.goalType} /></span>
+                    <span><strong>{goal.title}</strong><small>{done ? "できた！" : `${goalFrequency(goal)} · ${progress}/${goal.targetCount}`}</small></span>
+                    <b aria-hidden="true">{done ? "✓" : "できた"}</b>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <button className="mission-manage" onClick={() => navigateOwnerView("goals")}>目標とお知らせを編集する <span aria-hidden="true">→</span></button>
+        </section>
+
+        <section className="quick-log" aria-labelledby="quick-log-title">
+          <div className="compact-section-head"><div><p className="card-label">QUICK LOG</p><h2 id="quick-log-title">何を記録する？</h2></div><span>今日 {todaysEntries.length}件</span></div>
+          <p className="home-section-copy">いま残したいテーマを選んでください。</p>
+          <div className="quick-log-grid">
+            {RECORD_CATEGORIES.map((category) => {
+              const count = todaysEntries.filter((record) => record.category === category.id).length;
               return (
-                <button key={goal.id} className={done ? "is-done" : ""} onClick={() => void completeCareGoal(goal)} disabled={done}>
-                  <span className={`care-icon care-${goal.goalType}`}><CareIcon name={goal.goalType} /></span>
-                  <span><strong>{goal.title}</strong><small>{done ? "できた！" : `${goalFrequency(goal)} · ${progress}/${goal.targetCount}`}</small></span>
-                  <b aria-hidden="true">{done ? "✓" : "できた"}</b>
+                <button key={category.id} className={`category-${category.id}`} onClick={() => openNewRecord(category.id)}>
+                  <span className="topic-mark"><TopicIcon name={category.icon} /></span>
+                  {count > 0 && <b>{count}</b>}
+                  <strong>{category.label}</strong>
                 </button>
               );
             })}
           </div>
-        )}
-        <button className="mission-manage" onClick={() => navigateOwnerView("goals")}>目標とお知らせを編集する →</button>
-      </section>
+        </section>
+      </div>
 
-      <section className="quick-log" aria-labelledby="quick-log-title">
-        <div className="compact-section-head"><div><p className="card-label">QUICK LOG</p><h2 id="quick-log-title">何を記録する？</h2></div><span>今日 {todaysEntries.length}件</span></div>
-        <div className="quick-log-grid">
-          {RECORD_CATEGORIES.map((category) => {
-            const count = todaysEntries.filter((record) => record.category === category.id).length;
-            return (
-              <button key={category.id} className={`category-${category.id}`} onClick={() => openNewRecord(category.id)}>
-                <span className="topic-mark"><TopicIcon name={category.icon} /></span>
-                {count > 0 && <b>{count}</b>}
-                <strong>{category.label}</strong>
-              </button>
-            );
-          })}
-        </div>
+      <section className="home-insight" aria-labelledby="home-insight-title">
+        <span className="home-insight-mark" aria-hidden="true">↗</span>
+        <div><p className="card-label">TODAY&apos;S NOTE</p><h2 id="home-insight-title">小さな気づき</h2><p>{diaryInsight}</p></div>
+        <button onClick={() => navigateOwnerView("report")}>変化を見る <span aria-hidden="true">→</span></button>
       </section>
-
-      <LifeMoment scene="cafe" eyebrow="SLOW TIME" text="一緒にくつろぐ時間も、大切な記録のひとつ。" />
-    </>
+    </div>
   );
 
   const selectedCategory = recordCategory ? categoryInfo(recordCategory) : null;
