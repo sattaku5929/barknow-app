@@ -18,7 +18,7 @@ type UserRole = "owner" | "coach" | "admin";
 type AuthMode = "login" | "signup";
 type CoachingStatus = "submitted" | "offered" | "assigned" | "consulting" | "payment_pending" | "active" | "closed";
 type AdminTab = "applications" | "customers" | "accounts" | "schedule" | "coachProfile";
-type SettingsPanel = "menu" | "profile" | "disclaimer" | "terms" | "privacy";
+type SettingsPanel = "menu" | "profile" | "owner" | "disclaimer" | "terms" | "privacy";
 
 type DogProfile = {
   id?: string;
@@ -527,6 +527,7 @@ type AppHistoryMarker = {
 };
 
 const PROFILE_KEY = "wan-tone-profile-v1";
+const OWNER_PROFILE_KEY = "wan-tone-owner-profile-v1";
 const RECORDS_KEY = "wan-tone-records-v1";
 const MESSAGES_KEY = "wan-tone-messages-v1";
 const PWA_INSTALL_DISMISSED_KEY = "wan-tone-pwa-install-dismissed-v1";
@@ -827,10 +828,11 @@ function NavGlyph({ name }: { name: "home" | "goals" | "report" | "record" | "co
   return <svg className="flat-icon-svg" viewBox="0 0 24 24">{paths[name]}</svg>;
 }
 
-function SettingsGlyph({ name }: { name: "mail" | "dog" | "bell" | "info" | "document" | "shield" | "logout" | "account" }) {
+function SettingsGlyph({ name }: { name: "mail" | "dog" | "person" | "bell" | "info" | "document" | "shield" | "logout" | "account" }) {
   const paths: Record<typeof name, ReactNode> = {
     mail: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></>,
     dog: <><circle cx="8" cy="7" r="2" /><circle cx="16" cy="7" r="2" /><circle cx="5.5" cy="12" r="2" /><circle cx="18.5" cy="12" r="2" /><path d="M12 11c-3.6 0-6.2 3.2-5.2 6.1.7 2.1 2.8 2.4 5.2 1.2 2.4 1.2 4.5.9 5.2-1.2C18.2 14.2 15.6 11 12 11Z" /></>,
+    person: <><circle cx="12" cy="8" r="4" /><path d="M4.5 21c.6-5.2 3.1-7.8 7.5-7.8s6.9 2.6 7.5 7.8" /></>,
     bell: <><path d="M6 17h12l-1.7-2.2V10a4.3 4.3 0 0 0-8.6 0v4.8L6 17Z" /><path d="M10 20h4" /></>,
     info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6m0-10h.01" /></>,
     document: <><path d="M6 3h8l4 4v14H6V3Z" /><path d="M14 3v5h5M9 12h6m-6 4h6" /></>,
@@ -1044,6 +1046,12 @@ export default function Home() {
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const [notice, setNotice] = useState("");
   const [saving, setSaving] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+  const pullStartRef = useRef({ x: 0, y: 0 });
+  const pullDistanceRef = useRef(0);
+  const pullActiveRef = useRef(false);
+  const pullRefreshingRef = useRef(false);
   const [recordDate, setRecordDate] = useState(today());
   const [recordTime, setRecordTime] = useState(currentTime());
   const [recordCategory, setRecordCategory] = useState<RecordCategory | null>(null);
@@ -1336,6 +1344,69 @@ export default function Home() {
       standaloneQuery.removeEventListener?.("change", updateInstallBanner);
     };
   }, []);
+
+  useEffect(() => {
+    if (!authenticated || anonymousUser || onboardingRequired) return;
+
+    const hasScrollableAncestor = (target: EventTarget | null) => {
+      let element = target instanceof HTMLElement ? target : null;
+      while (element && element !== document.body) {
+        const style = window.getComputedStyle(element);
+        if (/auto|scroll/.test(style.overflowY) && element.scrollHeight > element.clientHeight + 2) return true;
+        element = element.parentElement;
+      }
+      return false;
+    };
+    const resetPull = () => {
+      pullActiveRef.current = false;
+      pullDistanceRef.current = 0;
+      setPullDistance(0);
+    };
+    const handleTouchStart = (event: TouchEvent) => {
+      if (pullRefreshingRef.current || event.touches.length !== 1) return;
+      const scrollTop = Math.max(window.scrollY, document.documentElement.scrollTop, document.body.scrollTop);
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (scrollTop > 1 || hasScrollableAncestor(target) || target?.closest("input,textarea,select,[contenteditable='true']")) return;
+      pullStartRef.current = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+      pullActiveRef.current = true;
+    };
+    const handleTouchMove = (event: TouchEvent) => {
+      if (!pullActiveRef.current || event.touches.length !== 1) return;
+      const deltaX = event.touches[0].clientX - pullStartRef.current.x;
+      const deltaY = event.touches[0].clientY - pullStartRef.current.y;
+      if (deltaY <= 0 || Math.abs(deltaX) > deltaY) {
+        resetPull();
+        return;
+      }
+      event.preventDefault();
+      const distance = Math.min(96, deltaY * 0.48);
+      pullDistanceRef.current = distance;
+      setPullDistance(distance);
+    };
+    const handleTouchEnd = () => {
+      if (!pullActiveRef.current) return;
+      pullActiveRef.current = false;
+      if (pullDistanceRef.current >= 72) {
+        pullRefreshingRef.current = true;
+        setPullRefreshing(true);
+        setPullDistance(72);
+        window.setTimeout(() => window.location.reload(), 320);
+        return;
+      }
+      resetPull();
+    };
+
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+    window.addEventListener("touchcancel", resetPull, { passive: true });
+    return () => {
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("touchcancel", resetPull);
+    };
+  }, [anonymousUser, authenticated, onboardingRequired]);
 
   useEffect(() => {
     if (ownerCoachTab !== "chat") return;
@@ -1768,7 +1839,9 @@ export default function Home() {
 
   useEffect(() => {
     const savedProfile = readLocal<Partial<DogProfile> & { gender?: unknown }>(PROFILE_KEY, {});
+    const savedOwnerProfile = readLocal<Partial<OwnerProfile>>(OWNER_PROFILE_KEY, {});
     const localProfile = { ...initialProfile, ...savedProfile, gender: normalizeDogGender(savedProfile.gender) };
+    const localOwnerProfile = { ...initialOwnerProfile, ...savedOwnerProfile };
     const localRecords: DailyRecord[] = readLocal<DailyRecord[]>(RECORDS_KEY, []).map((record): DailyRecord => ({
       ...record,
       category: record.category ?? "daily",
@@ -1800,6 +1873,7 @@ export default function Home() {
     // Local storage is the offline source of truth during the first hydration.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setProfile(localProfile);
+    setOwnerProfile(localOwnerProfile);
     setRecords(localRecords);
     setMessages(localMessages);
     setCareGoals(localCareGoals);
@@ -1908,6 +1982,7 @@ export default function Home() {
             completedAt: String(owner?.completed_at ?? ""),
           };
           setOwnerProfile(nextOwner);
+          writeLocal(OWNER_PROFILE_KEY, nextOwner);
           if (dog) {
             setProfile((current) => {
               const nextProfile: DogProfile = {
@@ -2186,7 +2261,7 @@ export default function Home() {
   }
 
   function clearOwnerCache() {
-    [PROFILE_KEY, RECORDS_KEY, MESSAGES_KEY, CUSTOM_BEHAVIORS_KEY, CARE_GOALS_KEY, GOAL_COMPLETIONS_KEY, REMINDER_SENT_KEY]
+    [PROFILE_KEY, OWNER_PROFILE_KEY, RECORDS_KEY, MESSAGES_KEY, CUSTOM_BEHAVIORS_KEY, CARE_GOALS_KEY, GOAL_COMPLETIONS_KEY, REMINDER_SENT_KEY]
       .forEach((key) => window.localStorage.removeItem(key));
   }
 
@@ -2663,7 +2738,15 @@ export default function Home() {
     } catch (error) {
       const detail = getSubmissionErrorDetail(error);
       console.error("[Dog avatar] upload failed", { detail, error });
-      showNotice(`画像を保存できませんでした（${detail}）`);
+      const normalizedDetail = detail.toLowerCase();
+      const message = normalizedDetail.includes("bucket not found") || normalizedDetail.includes("the resource was not found")
+        ? "画像の保存先が未設定です。Supabaseで migration 029 を適用してください"
+        : normalizedDetail.includes("row-level security") || normalizedDetail.includes("security policy") || normalizedDetail.includes("unauthorized")
+          ? "画像の保存権限を確認できません。Supabaseで migration 029 のStorageポリシーを再適用してください"
+          : normalizedDetail.includes("avatar_url") || normalizedDetail.includes("schema cache")
+            ? "愛犬画像用のDB更新が未適用です。Supabaseで migration 029 を適用してください"
+            : `画像を保存できませんでした（${detail}）`;
+      showNotice(message);
     } finally {
       setSaving(false);
     }
@@ -2907,7 +2990,7 @@ export default function Home() {
     return data.id as string;
   }
 
-  async function saveProfile(event: FormEvent<HTMLFormElement>) {
+  async function saveDogProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
     writeLocal(PROFILE_KEY, profile);
@@ -2915,20 +2998,42 @@ export default function Home() {
       if (connection === "online") {
         const userId = await getUserId();
         if (!userId) throw new Error("No session");
-        const [{ data, error }, { error: ownerError }] = await Promise.all([
-          supabase.from("wt_dogs").upsert({ owner_id: userId, avatar_url: profile.avatarUrl || null, name: profile.name, breed: profile.breed || null, birthday: profile.birthday || null, birth_date: profile.birthday || null, is_first_time_owner: profile.isFirstTimeOwner === "yes" ? true : profile.isFirstTimeOwner === "no" ? false : null, gender: profile.gender || null, training_experience: profile.trainingExperience, daycare_frequency: profile.daycareFrequency, walk_frequency: profile.walkFrequency, concerns: profile.concerns, profile_completed_at: profile.profileCompletedAt || new Date().toISOString() }, { onConflict: "owner_id" }).select("id").single(),
-          supabase.from("wt_owner_profiles").upsert({ user_id: userId, full_name: ownerProfile.fullName.trim(), full_name_kana: ownerProfile.fullNameKana.trim(), phone_number: ownerProfile.phoneNumber.trim(), prefecture: ownerProfile.prefecture, address: ownerProfile.address.trim(), owner_birth_date: ownerProfile.birthDate || null, onboarding_completed_at: ownerProfile.completedAt || new Date().toISOString(), updated_at: new Date().toISOString() }),
-        ]);
-        if (error || ownerError) throw error ?? ownerError;
+        const { data, error } = await supabase.from("wt_dogs").upsert({ owner_id: userId, avatar_url: profile.avatarUrl || null, name: profile.name, breed: profile.breed || null, birthday: profile.birthday || null, birth_date: profile.birthday || null, is_first_time_owner: profile.isFirstTimeOwner === "yes" ? true : profile.isFirstTimeOwner === "no" ? false : null, gender: profile.gender || null, training_experience: profile.trainingExperience, daycare_frequency: profile.daycareFrequency, walk_frequency: profile.walkFrequency, concerns: profile.concerns, profile_completed_at: profile.profileCompletedAt || new Date().toISOString() }, { onConflict: "owner_id" }).select("id").single();
+        if (error) throw error;
         setProfile((current) => ({ ...current, id: data.id }));
-        showNotice("プロフィールを保存しました");
+        showNotice("愛犬プロフィールを保存しました");
       } else {
-        showNotice("この端末にプロフィールを保存しました");
+        showNotice("この端末に愛犬プロフィールを保存しました");
       }
-      returnToOwnerHome();
-    } catch {
+      closeSettingsPanel();
+    } catch (error) {
+      console.error("[Dog profile] save failed", { profile, error });
       setConnection("local");
-      showNotice("この端末にプロフィールを保存しました");
+      showNotice("この端末に愛犬プロフィールを保存しました");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function saveOwnerProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    writeLocal(OWNER_PROFILE_KEY, ownerProfile);
+    try {
+      if (connection === "online") {
+        const userId = await getUserId();
+        if (!userId) throw new Error("No session");
+        const { error } = await supabase.from("wt_owner_profiles").upsert({ user_id: userId, full_name: ownerProfile.fullName.trim(), full_name_kana: ownerProfile.fullNameKana.trim(), phone_number: ownerProfile.phoneNumber.trim(), prefecture: ownerProfile.prefecture, address: ownerProfile.address.trim(), owner_birth_date: ownerProfile.birthDate || null, onboarding_completed_at: ownerProfile.completedAt || new Date().toISOString(), updated_at: new Date().toISOString() });
+        if (error) throw error;
+        showNotice("飼い主情報を保存しました");
+      } else {
+        showNotice("この端末に飼い主情報を保存しました");
+      }
+      closeSettingsPanel();
+    } catch (error) {
+      console.error("[Owner profile] save failed", { ownerProfile, error });
+      setConnection("local");
+      showNotice("この端末に飼い主情報を保存しました");
     } finally {
       setSaving(false);
     }
@@ -3003,7 +3108,9 @@ export default function Home() {
         break;
       }
       if (ownerSaveError) throw ownerSaveError;
-      setOwnerProfile((current) => ({ ...current, completedAt }));
+      const nextOwnerProfile = { ...ownerProfile, ...normalized, completedAt };
+      setOwnerProfile(nextOwnerProfile);
+      writeLocal(OWNER_PROFILE_KEY, nextOwnerProfile);
       setOnboardingStep("dog");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
@@ -4164,19 +4271,11 @@ export default function Home() {
   );
 
   const profileEditorView = (
-    <form className="screen-form settings-profile-editor" onSubmit={saveProfile}>
+    <form className="screen-form settings-profile-editor" onSubmit={saveDogProfile}>
       <button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
-      <SectionTitle eyebrow="PROFILE" title="飼い主・愛犬プロフィール" />
-      <p className="lead">担当コーチが、ご家族とその子に合った提案をするための情報です。</p>
-      <section className="profile-form-section"><div className="profile-section-heading"><span>01</span><div><h2>飼い主さまについて</h2><p>連絡とサポートに必要な情報</p></div></div>
-        <label className="field-label">お名前（氏名）<input autoComplete="name" value={ownerProfile.fullName} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullName: event.target.value })} placeholder="例：三宅 太郎" required /></label>
-        <label className="field-label">フリガナ<input value={ownerProfile.fullNameKana} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullNameKana: event.target.value })} placeholder="例：ミヤケ　タロウ" maxLength={150} required /></label>
-        <label className="field-label">電話番号<input type="tel" inputMode="tel" autoComplete="tel" value={ownerProfile.phoneNumber} onChange={(event) => setOwnerProfile({ ...ownerProfile, phoneNumber: event.target.value })} placeholder="例：09012345678" required /></label>
-        <label className="field-label">生年月日<input type="date" autoComplete="bday" max={today()} value={ownerProfile.birthDate} onChange={(event) => setOwnerProfile({ ...ownerProfile, birthDate: event.target.value })} required /></label>
-        <label className="field-label">都道府県<select value={ownerProfile.prefecture} onChange={(event) => setOwnerProfile({ ...ownerProfile, prefecture: event.target.value })} required><option value="">選択してください</option>{PREFECTURES.map((prefecture) => <option key={prefecture} value={prefecture}>{prefecture}</option>)}</select></label>
-        <label className="field-label">市区町村・番地・建物名<textarea rows={3} autoComplete="street-address" value={ownerProfile.address} onChange={(event) => setOwnerProfile({ ...ownerProfile, address: event.target.value })} placeholder="例：目黒区〇〇1-2-3 Wan Toneマンション101" required /></label>
-      </section>
-      <section className="profile-form-section"><div className="profile-section-heading"><span>02</span><div><h2>愛犬について</h2><p>生活リズムと気になること</p></div></div>
+      <SectionTitle eyebrow="DOG PROFILE" title="愛犬プロフィール" />
+      <p className="lead">写真や暮らしの変化に合わせて、いつでも更新できます。</p>
+      <section className="profile-form-section"><div className="profile-section-heading"><span>01</span><div><h2>愛犬について</h2><p>画像・基本情報・生活リズム</p></div></div>
         <fieldset className="dog-avatar-editor"><legend>愛犬の画像</legend><div className="dog-avatar-preview">{profile.avatarUrl ? <img src={profile.avatarUrl} alt={`${profile.name || "愛犬"}のプロフィール画像`} /> : <CareIcon name="paws" />}</div><div><strong>{profile.avatarUrl ? "画像を設定済みです" : "お気に入りの1枚を設定"}</strong><p>ホーム画面やプロフィールに表示されます。</p><label>{saving ? "画像を処理中…" : profile.avatarUrl ? "画像を変更" : "画像を選択"}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadDogAvatar(file); event.currentTarget.value = ""; }} /></label></div></fieldset>
         <label className="field-label">名前<input value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} placeholder="例：むぎ" required /></label>
         <label className="field-label">犬種<input value={profile.breed} onChange={(event) => setProfile({ ...profile, breed: event.target.value })} placeholder="例：トイプードル" required /></label>
@@ -4189,16 +4288,29 @@ export default function Home() {
         <label className="field-label">主な悩み・気になっていること<textarea rows={5} value={profile.concerns} onChange={(event) => setProfile({ ...profile, concerns: event.target.value })} placeholder="例：散歩中に犬を見ると吠える。来客時に落ち着けない。" required /></label>
       </section>
       <div className="privacy-card"><strong>記録について</strong><p>登録した情報は、あなたと担当コーチのサポートのために使用します。共有範囲は今後プロフィールから管理できるようにします。</p></div>
-      <button className="primary-button" disabled={saving}>{saving ? "保存中…" : "プロフィールを保存"}<span>→</span></button>
-      <div className="account-card"><span><small>ログイン中</small><strong>{userEmail}</strong></span><button type="button" onClick={() => void signOut()}>ログアウト</button></div>
-      <section className="account-delete-zone">
-        <div><strong>アカウントの削除</strong><p>登録情報、愛犬の記録、相談履歴、画像・動画をすべて削除します。</p></div>
-        <button type="button" onClick={openDeleteAccountDialog}>アカウントを削除（退会）</button>
-      </section>
+      <button className="primary-button" disabled={saving}>{saving ? "保存中…" : "愛犬プロフィールを保存"}<span>→</span></button>
     </form>
   );
 
-  const settingsDocuments: Record<Exclude<SettingsPanel, "menu" | "profile">, { eyebrow: string; title: string; sections: Array<{ heading: string; body: string }> }> = {
+  const ownerProfileEditorView = (
+    <form className="screen-form settings-profile-editor" onSubmit={saveOwnerProfile}>
+      <button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
+      <SectionTitle eyebrow="OWNER PROFILE" title="飼い主情報" />
+      <p className="lead">ご連絡先や住所に変更がある場合のみ更新してください。</p>
+      <section className="profile-form-section"><div className="profile-section-heading"><span>01</span><div><h2>飼い主さまについて</h2><p>連絡とサポートに必要な情報</p></div></div>
+        <label className="field-label">お名前（氏名）<input autoComplete="name" value={ownerProfile.fullName} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullName: event.target.value })} placeholder="例：三宅 太郎" required /></label>
+        <label className="field-label">フリガナ<input value={ownerProfile.fullNameKana} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullNameKana: event.target.value })} placeholder="例：ミヤケ　タロウ" maxLength={150} required /></label>
+        <label className="field-label">電話番号<input type="tel" inputMode="tel" autoComplete="tel" value={ownerProfile.phoneNumber} onChange={(event) => setOwnerProfile({ ...ownerProfile, phoneNumber: event.target.value })} placeholder="例：09012345678" required /></label>
+        <label className="field-label">生年月日<input type="date" autoComplete="bday" max={today()} value={ownerProfile.birthDate} onChange={(event) => setOwnerProfile({ ...ownerProfile, birthDate: event.target.value })} required /></label>
+        <label className="field-label">都道府県<select value={ownerProfile.prefecture} onChange={(event) => setOwnerProfile({ ...ownerProfile, prefecture: event.target.value })} required><option value="">選択してください</option>{PREFECTURES.map((prefecture) => <option key={prefecture} value={prefecture}>{prefecture}</option>)}</select></label>
+        <label className="field-label">市区町村・番地・建物名<textarea rows={3} autoComplete="street-address" value={ownerProfile.address} onChange={(event) => setOwnerProfile({ ...ownerProfile, address: event.target.value })} placeholder="例：目黒区〇〇1-2-3 Wan Toneマンション101" required /></label>
+      </section>
+      <div className="privacy-card"><strong>飼い主情報について</strong><p>登録した情報は、ご本人への連絡と担当コーチによるサポートのために使用します。</p></div>
+      <button className="primary-button" disabled={saving}>{saving ? "保存中…" : "飼い主情報を保存"}<span>→</span></button>
+    </form>
+  );
+
+  const settingsDocuments: Record<Exclude<SettingsPanel, "menu" | "profile" | "owner">, { eyebrow: string; title: string; sections: Array<{ heading: string; body: string }> }> = {
     disclaimer: {
       eyebrow: "DISCLAIMER",
       title: "免責事項",
@@ -4228,7 +4340,7 @@ export default function Home() {
     },
   };
 
-  const settingsDocumentView = settingsPanel !== "menu" && settingsPanel !== "profile" ? (
+  const settingsDocumentView = settingsPanel !== "menu" && settingsPanel !== "profile" && settingsPanel !== "owner" ? (
     <section className="settings-document">
       <button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
       <p className="card-label">{settingsDocuments[settingsPanel].eyebrow}</p>
@@ -4249,7 +4361,8 @@ export default function Home() {
 
       <div className="settings-list" aria-label="設定メニュー">
         <a href="https://barknow-official.vercel.app/#contact" target="_blank" rel="noopener noreferrer"><span className="settings-row-icon"><SettingsGlyph name="mail" /></span><strong>お問い合わせ・ご要望</strong><i aria-hidden="true">›</i></a>
-        <button type="button" onClick={() => navigateSettingsPanel("profile")}><span className="settings-row-icon"><SettingsGlyph name="dog" /></span><span><strong>愛犬プロフィール管理</strong><small>飼い主情報・愛犬情報を編集</small></span><i aria-hidden="true">›</i></button>
+        <button type="button" onClick={() => navigateSettingsPanel("profile")}><span className="settings-row-icon"><SettingsGlyph name="dog" /></span><span><strong>愛犬プロフィール管理</strong><small>画像・基本情報・生活リズムを編集</small></span><i aria-hidden="true">›</i></button>
+        <button type="button" onClick={() => navigateSettingsPanel("owner")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>飼い主情報</strong><small>氏名・連絡先・住所を確認、変更</small></span><i aria-hidden="true">›</i></button>
         <div className="settings-notification-row"><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>通知</strong><small>{isSubscribed ? "新着メッセージを通知します" : permissionStatus === "denied" ? "端末の設定で通知が拒否されています" : "新着メッセージ通知はオフです"}</small></span><button type="button" className={`settings-toggle ${isSubscribed ? "is-on" : ""}`} role="switch" aria-checked={isSubscribed} aria-label={`通知を${isSubscribed ? "オフ" : "オン"}にする`} disabled={pushBusy || subscriptionStatus === "checking" || subscriptionStatus === "unsupported"} onClick={() => void (isSubscribed ? disablePushNotifications() : enablePushNotifications())}><i></i></button></div>
         <button type="button" onClick={() => navigateSettingsPanel("disclaimer")}><span className="settings-row-icon"><SettingsGlyph name="info" /></span><strong>免責事項</strong><i aria-hidden="true">›</i></button>
         <button type="button" onClick={() => navigateSettingsPanel("terms")}><span className="settings-row-icon"><SettingsGlyph name="document" /></span><strong>利用規約</strong><i aria-hidden="true">›</i></button>
@@ -4264,7 +4377,7 @@ export default function Home() {
     </section>
   );
 
-  const profileView = settingsPanel === "menu" ? settingsMenuView : settingsPanel === "profile" ? profileEditorView : settingsDocumentView;
+  const profileView = settingsPanel === "menu" ? settingsMenuView : settingsPanel === "profile" ? profileEditorView : settingsPanel === "owner" ? ownerProfileEditorView : settingsDocumentView;
 
   const onboardingView = (
     <div className="onboarding-stage">
@@ -4412,8 +4525,21 @@ export default function Home() {
     accounts: { title: "ユーザー管理", description: "権限と担当コーチを、この画面で設定できます。", count: adminAccounts.length },
   };
 
+  const pullRefreshIndicator = (
+    <div
+      className={`pull-refresh-indicator ${pullDistance > 0 || pullRefreshing ? "is-visible" : ""} ${pullDistance >= 72 ? "is-ready" : ""} ${pullRefreshing ? "is-refreshing" : ""}`}
+      style={{ transform: `translate(-50%, ${pullDistance - 68}px)`, opacity: pullDistance > 0 || pullRefreshing ? Math.min(1, pullDistance / 34) : 0 }}
+      role="status"
+      aria-live="polite"
+    >
+      <span aria-hidden="true">{pullRefreshing ? "" : "↓"}</span>
+      <strong>{pullRefreshing ? "更新中…" : pullDistance >= 72 ? "指を離して更新" : "下に引いて更新"}</strong>
+    </div>
+  );
+
   const adminView = (
     <div className="admin-stage">
+      {pullRefreshIndicator}
       <header className="admin-header">
         <div><p>WAN TONE</p><strong>{userRole === "admin" ? "Admin Console" : "Coach Console"}</strong></div>
         <div className="admin-header-actions">
@@ -4642,6 +4768,7 @@ export default function Home() {
 
   return (
     <div className="app-stage">
+      {pullRefreshIndicator}
       <div className="app-shell">
         <header className="app-header">
           <button className="wordmark" onClick={returnToOwnerHome} aria-label="Wan Tone ホームへ">

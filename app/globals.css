@@ -27,6 +27,30 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
+.app-stage,.admin-stage { overscroll-behavior-y:none; }
+.pull-refresh-indicator {
+  position:fixed;
+  z-index:90;
+  top:max(10px,env(safe-area-inset-top));
+  left:50%;
+  display:flex;
+  min-height:42px;
+  align-items:center;
+  gap:8px;
+  padding:0 14px;
+  border:1px solid rgba(0,134,97,.12);
+  border-radius:999px;
+  background:rgba(255,255,255,.96);
+  color:var(--green-dark);
+  pointer-events:none;
+  box-shadow:0 8px 24px rgba(31,65,52,.14);
+  transition:transform .16s ease,opacity .16s ease;
+}
+.pull-refresh-indicator span { display:grid; width:20px; height:20px; place-items:center; border-radius:50%; background:var(--mint); font-size:14px; font-weight:800; transition:transform .18s ease; }
+.pull-refresh-indicator strong { font-size:10px; white-space:nowrap; }
+.pull-refresh-indicator.is-ready span { transform:rotate(180deg); }
+.pull-refresh-indicator.is-refreshing span { border:2px solid rgba(0,134,97,.18); border-top-color:var(--green); background:transparent; animation:pull-refresh-spin .7s linear infinite; }
+@keyframes pull-refresh-spin { to { transform:rotate(360deg); } }
 button, input, textarea, select { max-width:100%; font: inherit; }
 button { color: inherit; }
 button:focus-visible, input:focus-visible, textarea:focus-visible {
