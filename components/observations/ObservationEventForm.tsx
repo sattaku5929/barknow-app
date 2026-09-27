@@ -29,7 +29,7 @@ export default function ObservationEventForm({ dogId, theme, editing, online, on
   useEffect(() => {
     if (!online) return;
     let active = true;
-    void loadHouseholdMembers().then((rows) => { if (active) { setMembers(rows); setMemberLoading(false); } })
+    void loadHouseholdMembers(true).then((rows) => { if (active) { setMembers(rows); setMemberLoading(false); } })
       .catch(() => { if (active) { setMemberError(true); setMemberLoading(false); } });
     return () => { active = false; };
   }, [online]);
@@ -49,14 +49,16 @@ export default function ObservationEventForm({ dogId, theme, editing, online, on
     finally { setSaving(false); }
   }
   const label = eventThemes.find((item) => item.key === theme)?.label ?? "できごと";
+  const activeMembers = members.filter((member) => !member.deleted_at);
+  const archivedHandler = members.find((member) => member.id === value.handlerId && member.deleted_at);
   return <form className="screen-form observation-event-form" onSubmit={(e) => void submit(e)}>
     <button type="button" className="topic-back" onClick={onBack}>← テーマを選び直す</button>
     <div className="selected-topic category-daily"><div><p>EVENT LOG</p><h2>{label}のできごと</h2></div></div>
     <p className="lead">今日あったことを、わかる範囲で残しましょう。</p>
     <EventResultSelector value={result} onChange={(next) => { setResult(next); setError(""); }} />
     {memberLoading && online ? <p role="status">お世話する人を読み込んでいます…</p> : memberError ? <p className="observation-error" role="alert">家族の情報を読み込めませんでした。画面を開き直してください。</p>
-      : <><EventHandlerSelector members={members} value={value.handlerId} onChange={(handlerId) => update({ handlerId })} />
-        {value.handlerId && !members.some((member) => member.id === value.handlerId) && <p className="event-former-handler">以前登録した担当者が選ばれています。<button type="button" onClick={() => update({ handlerId: null })}>担当者を外す</button></p>}</>}
+      : <><EventHandlerSelector members={activeMembers} value={value.handlerId} onChange={(handlerId) => update({ handlerId })} />
+        {value.handlerId && !activeMembers.some((member) => member.id === value.handlerId) && <p className="event-former-handler">{archivedHandler ? `${archivedHandler.display_name}（削除済み）` : "以前登録した担当者"}が担当しました。<button type="button" onClick={() => update({ handlerId: null })}>担当者を外す</button></p>}</>}
     <EventSituationFields value={value} update={update} />
     <label className="field-label">メモ（任意）<textarea rows={2} maxLength={5000} value={value.note} onChange={(e) => update({ note: e.target.value })} placeholder="何が起きたか、ひとことだけでも" /></label>
     <details className="event-more"><summary>詳しく記録する</summary>

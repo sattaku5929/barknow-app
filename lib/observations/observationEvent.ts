@@ -9,7 +9,7 @@ export const eventThemes = [
 ] as const;
 export type EventTheme = (typeof eventThemes)[number]["key"];
 export type EventResult = "success" | "neutral" | "concern";
-export type HouseholdMember = { id: string; display_name: string; relation_key: string; sort_order: number };
+export type HouseholdMember = { id: string; display_name: string; relation_key: string; sort_order: number; deleted_at: string | null };
 export type ObservationEvent = {
   id: string; themeKey: EventTheme; result: EventResult; occurredAt: string; note: string;
   handlerId: string | null; stateBefore: string | null; environment: string | null;
@@ -25,12 +25,13 @@ export async function loadEventThemes(dogId: string): Promise<EventTheme[]> {
   return (data ?? []).map((row) => row.theme_key as EventTheme).filter((key) => eventThemes.some((theme) => theme.key === key));
 }
 
-export async function loadHouseholdMembers(): Promise<HouseholdMember[]> {
+export async function loadHouseholdMembers(includeArchived = false): Promise<HouseholdMember[]> {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error("Sign-in required");
-  const { data, error } = await supabase.from("wt_household_members")
-    .select("id,display_name,relation_key,sort_order").eq("owner_id", user.id).is("deleted_at", null)
-    .order("sort_order").order("created_at");
+  let query = supabase.from("wt_household_members")
+    .select("id,display_name,relation_key,sort_order,deleted_at").eq("owner_id", user.id);
+  if (!includeArchived) query = query.is("deleted_at", null);
+  const { data, error } = await query.order("sort_order").order("created_at");
   if (error) throw error;
   return data ?? [];
 }

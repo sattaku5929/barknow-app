@@ -32,13 +32,13 @@ export default function HouseholdMemberManager({ online }: { online: boolean }) 
       if (editing) {
         const { data, error: dbError } = await supabase.from("wt_household_members")
           .update({ display_name: name.trim(), relation_key: relation }).eq("id", editing).is("deleted_at", null)
-          .select("id,display_name,relation_key,sort_order").single();
+          .select("id,display_name,relation_key,sort_order,deleted_at").single();
         if (dbError || !data) throw dbError;
         setMembers((rows) => rows.map((row) => row.id === editing ? data : row));
       } else {
         const { data, error: dbError } = await supabase.from("wt_household_members")
           .insert({ display_name: name.trim(), relation_key: relation, sort_order: members.length })
-          .select("id,display_name,relation_key,sort_order").single();
+          .select("id,display_name,relation_key,sort_order,deleted_at").single();
         if (dbError || !data) throw dbError;
         setMembers((rows) => [...rows, data]);
       }
