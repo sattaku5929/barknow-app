@@ -1,8 +1,23 @@
 -- Owner-managed dog profile image.
 -- Run after 028_enable_rls_on_public_tables.sql.
 
+-- Some existing projects were created before the later onboarding columns were
+-- introduced. Keep this migration re-runnable and compatible with those
+-- projects before replacing the onboarding snapshot function below.
+alter table public.wt_owner_profiles
+  add column if not exists full_name_kana text not null default '',
+  add column if not exists prefecture text not null default '';
+
 alter table public.wt_dogs
-  add column if not exists avatar_url text;
+  add column if not exists avatar_url text,
+  add column if not exists is_first_time_owner boolean,
+  add column if not exists birth_date date,
+  add column if not exists gender text,
+  add column if not exists training_experience text not null default '',
+  add column if not exists daycare_frequency text not null default '',
+  add column if not exists walk_frequency text not null default '',
+  add column if not exists concerns text not null default '',
+  add column if not exists profile_completed_at timestamptz;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
