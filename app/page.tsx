@@ -7,7 +7,12 @@ import { usePushNotification } from "@/hooks/usePushNotification";
 import { clearAppBadge } from "@/lib/appBadge";
 import DailyCheckForm from "@/components/observations/DailyCheckForm";
 import ObservationThemeSelector from "@/components/observations/ObservationThemeSelector";
+import HouseholdMemberManager from "@/components/observations/HouseholdMemberManager";
+import ObservationEventForm from "@/components/observations/ObservationEventForm";
+import ObservationEventHub from "@/components/observations/ObservationEventHub";
 import { deviceLocalDate, deviceLocalTime, loadDailyCheck } from "@/lib/observations/dailyCheck";
+import { loadEventThemes, loadEvents } from "@/lib/observations/observationEvent";
+import type { EventTheme, ObservationEvent } from "@/lib/observations/observationEvent";
 import { supabase } from "./supabase";
 
 type View = "home" | "goals" | "record" | "report" | "coach" | "profile";
@@ -21,7 +26,7 @@ type UserRole = "owner" | "coach" | "admin";
 type AuthMode = "login" | "signup";
 type CoachingStatus = "submitted" | "offered" | "assigned" | "consulting" | "payment_pending" | "active" | "closed";
 type AdminTab = "applications" | "customers" | "accounts" | "schedule" | "coachProfile";
-type SettingsPanel = "menu" | "profile" | "owner" | "disclaimer" | "terms" | "privacy";
+type SettingsPanel = "menu" | "profile" | "owner" | "household" | "disclaimer" | "terms" | "privacy";
 
 type DogProfile = {
   id?: string;
@@ -1060,6 +1065,12 @@ export default function Home() {
   const [recordCategory, setRecordCategory] = useState<RecordCategory | null>(null);
   const [todayCheckStatus, setTodayCheckStatus] = useState<"loading" | "recorded" | "missing" | "unavailable">("loading");
   const [checkRefresh, setCheckRefresh] = useState(0);
+  const [eventTheme, setEventTheme] = useState<EventTheme | null>(null);
+  const [editingEvent, setEditingEvent] = useState<ObservationEvent | null>(null);
+  const [eventThemesSelected, setEventThemesSelected] = useState<EventTheme[]>([]);
+  const [todayEvents, setTodayEvents] = useState<ObservationEvent[]>([]);
+  const [eventStatus, setEventStatus] = useState<"loading" | "ready" | "unavailable">("loading");
+  const [eventRefresh, setEventRefresh] = useState(0);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [durationMinutes, setDurationMinutes] = useState(20);
   const [behaviorTypes, setBehaviorTypes] = useState<BehaviorType[]>(["barking"]);
@@ -2905,6 +2916,8 @@ export default function Home() {
   }
 
   function openNewRecord(category: RecordCategory | null = null) {
+    setEventTheme(null);
+    setEditingEvent(null);
     setEditingRecordId(null);
     setRecordCategory(category);
     setRecordDate(today());
@@ -3286,6 +3299,26 @@ export default function Home() {
     void refresh();
     return () => { active = false; };
   }, [profile.id, connection, checkRefresh]);
+
+  useEffect(() => {
+    if (!profile.id || connection !== "online") { return; }
+    let active = true;
+    const load = async () => {
+      try {
+        const [themes, events] = await Promise.all([loadEventThemes(profile.id!), loadEvents(profile.id!, deviceLocalDate())]);
+        if (active) { setEventThemesSelected(themes); setTodayEvents(events); setEventStatus("ready"); }
+      } catch { if (active) setEventStatus("unavailable"); }
+    };
+    void load();
+    return () => { active = false; };
+  }, [profile.id, connection, eventRefresh, view]);
+
+  function startEvent(theme: EventTheme) {
+    setRecordCategory(null); setEditingEvent(null); setEventTheme(theme); navigateOwnerView("record");
+  }
+  function editEvent(entry: ObservationEvent) {
+    setRecordCategory(null); setEditingEvent(entry); setEventTheme(entry.themeKey); navigateOwnerView("record");
+  }
 
   async function saveRecord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -3757,7 +3790,7 @@ export default function Home() {
       <section className="home-summary" aria-label="今日のサマリー">
         <button onClick={() => openNewRecord()}>
           <span className="home-summary-icon is-log"><TopicIcon name="daily" /></span>
-          <span><small>テーマ別の記録</small><strong>{todaysEntries.length}<em>件</em></strong></span>
+          <span><small>今日のできごと</small><strong>{eventStatus === "ready" ? todayEvents.length : "—"}<em>件</em></strong></span>
           <i aria-hidden="true">＋</i>
         </button>
         <button onClick={() => navigateOwnerView("goals")}>
@@ -3803,20 +3836,11 @@ export default function Home() {
         </section>
 
         <section className="quick-log" aria-labelledby="quick-log-title">
-          <div className="compact-section-head"><div><p className="card-label">QUICK LOG</p><h2 id="quick-log-title">何を記録する？</h2></div><span>今日 {todaysEntries.length}件</span></div>
-          <p className="home-section-copy">いま残したいテーマを選んでください。</p>
-          <div className="quick-log-grid">
-            {RECORD_CATEGORIES.map((category) => {
-              const count = todaysEntries.filter((record) => record.category === category.id).length;
-              return (
-                <button key={category.id} className={`category-${category.id}`} onClick={() => openNewRecord(category.id)}>
-                  <span className="topic-mark"><TopicIcon name={category.icon} /></span>
-                  {count > 0 && <b>{count}</b>}
-                  <strong>{category.label}</strong>
-                </button>
-              );
-            })}
-          </div>
+          <div className="compact-section-head"><div><p className="card-label">QUICK LOG</p><h2 id="quick-log-title">できごとを記録</h2></div><span>今日のできごと {eventStatus === "ready" ? `${todayEvents.length}件` : "—"}</span></div>
+          <p className="home-section-copy">今日あったことを残しておくと、あとから変化が見つけやすくなります。</p>
+          {eventStatus === "unavailable" && <p className="observation-error" role="alert">できごとを読み込めませんでした。画面を開き直してください。</p>}
+          <ObservationEventHub selectedThemes={eventThemesSelected} events={todayEvents} onSelect={startEvent} onEdit={editEvent}
+            compact disabled={connection !== "online" || !profile.id || eventStatus !== "ready"} />
         </section>
       </div>
 
@@ -3830,20 +3854,17 @@ export default function Home() {
 
   const selectedCategory = recordCategory ? categoryInfo(recordCategory) : null;
 
-  const recordView = !selectedCategory ? (
+  const recordView = eventTheme ? (
+    <ObservationEventForm key={editingEvent?.id ?? eventTheme} dogId={profile.id} theme={eventTheme} editing={editingEvent}
+      online={connection === "online"} onBack={() => { setEventTheme(null); setEditingEvent(null); }}
+      onSaved={() => { setEventRefresh((current) => current + 1); setEventTheme(null); setEditingEvent(null); showNotice("記録しました"); returnToOwnerHome(); }} />
+  ) : !selectedCategory ? (
     <section className="topic-screen">
-      <SectionTitle eyebrow="STEP 1 / 2" title="何を記録しますか？" />
-      <p className="lead">テーマを選ぶと、必要な項目だけを表示します。</p>
-      <div className="topic-grid">
-        {RECORD_CATEGORIES.map((category) => (
-          <button key={category.id} className={`category-${category.id}`} onClick={() => openNewRecord(category.id)}>
-            <span className="topic-mark"><TopicIcon name={category.icon} /></span>
-            <span><strong>{category.label}</strong><small>{category.description}</small></span>
-            <span aria-hidden="true">→</span>
-          </button>
-        ))}
-      </div>
-      <p className="topic-hint">同じ日に、違うテーマを何度でも記録できます。</p>
+      <SectionTitle eyebrow="EVENT LOG" title="できごとを記録" />
+      <p className="lead">観察テーマから選んで、今日あったことを残しましょう。</p>
+      {eventStatus === "unavailable" && <p className="observation-error" role="alert">できごとを読み込めませんでした。画面を開き直してください。</p>}
+      <ObservationEventHub selectedThemes={eventThemesSelected} events={todayEvents} onSelect={startEvent} onEdit={editEvent}
+        disabled={connection !== "online" || !profile.id || eventStatus !== "ready"} />
     </section>
   ) : recordCategory === "daily" ? (
     <DailyCheckForm key={`${profile.id ?? ""}:${recordDate}`} dogId={profile.id} initialDate={recordDate}
@@ -4348,7 +4369,7 @@ export default function Home() {
     </form>
   );
 
-  const settingsDocuments: Record<Exclude<SettingsPanel, "menu" | "profile" | "owner">, { eyebrow: string; title: string; sections: Array<{ heading: string; body: string }> }> = {
+  const settingsDocuments: Record<Exclude<SettingsPanel, "menu" | "profile" | "owner" | "household">, { eyebrow: string; title: string; sections: Array<{ heading: string; body: string }> }> = {
     disclaimer: {
       eyebrow: "DISCLAIMER",
       title: "免責事項",
@@ -4378,7 +4399,7 @@ export default function Home() {
     },
   };
 
-  const settingsDocumentView = settingsPanel !== "menu" && settingsPanel !== "profile" && settingsPanel !== "owner" ? (
+  const settingsDocumentView = settingsPanel !== "menu" && settingsPanel !== "profile" && settingsPanel !== "owner" && settingsPanel !== "household" ? (
     <section className="settings-document">
       <button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
       <p className="card-label">{settingsDocuments[settingsPanel].eyebrow}</p>
@@ -4401,6 +4422,7 @@ export default function Home() {
         <a href="https://barknow-official.vercel.app/#contact" target="_blank" rel="noopener noreferrer"><span className="settings-row-icon"><SettingsGlyph name="mail" /></span><strong>お問い合わせ・ご要望</strong><i aria-hidden="true">›</i></a>
         <button type="button" onClick={() => navigateSettingsPanel("profile")}><span className="settings-row-icon"><SettingsGlyph name="dog" /></span><span><strong>愛犬プロフィール管理</strong><small>画像・基本情報・生活リズムを編集</small></span><i aria-hidden="true">›</i></button>
         <button type="button" onClick={() => navigateSettingsPanel("owner")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>飼い主情報</strong><small>氏名・連絡先・住所を確認、変更</small></span><i aria-hidden="true">›</i></button>
+        <button type="button" onClick={() => navigateSettingsPanel("household")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>家族・お世話する人</strong><small>できごとの担当者を登録・編集</small></span><i aria-hidden="true">›</i></button>
         <div className="settings-notification-row"><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>通知</strong><small>{isSubscribed ? "新着メッセージを通知します" : permissionStatus === "denied" ? "端末の設定で通知が拒否されています" : "新着メッセージ通知はオフです"}</small></span><button type="button" className={`settings-toggle ${isSubscribed ? "is-on" : ""}`} role="switch" aria-checked={isSubscribed} aria-label={`通知を${isSubscribed ? "オフ" : "オン"}にする`} disabled={pushBusy || subscriptionStatus === "checking" || subscriptionStatus === "unsupported"} onClick={() => void (isSubscribed ? disablePushNotifications() : enablePushNotifications())}><i></i></button></div>
         <button type="button" onClick={() => navigateSettingsPanel("disclaimer")}><span className="settings-row-icon"><SettingsGlyph name="info" /></span><strong>免責事項</strong><i aria-hidden="true">›</i></button>
         <button type="button" onClick={() => navigateSettingsPanel("terms")}><span className="settings-row-icon"><SettingsGlyph name="document" /></span><strong>利用規約</strong><i aria-hidden="true">›</i></button>
@@ -4415,7 +4437,9 @@ export default function Home() {
     </section>
   );
 
-  const profileView = settingsPanel === "menu" ? settingsMenuView : settingsPanel === "profile" ? profileEditorView : settingsPanel === "owner" ? ownerProfileEditorView : settingsDocumentView;
+  const householdView = <section className="screen-form settings-profile-editor"><button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
+    <SectionTitle eyebrow="HOUSEHOLD" title="家族・お世話する人" /><HouseholdMemberManager online={connection === "online"} /></section>;
+  const profileView = settingsPanel === "menu" ? settingsMenuView : settingsPanel === "profile" ? profileEditorView : settingsPanel === "owner" ? ownerProfileEditorView : settingsPanel === "household" ? householdView : settingsDocumentView;
 
   const onboardingView = (
     <div className="onboarding-stage">
