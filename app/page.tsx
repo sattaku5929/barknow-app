@@ -5,6 +5,9 @@ import { usePathname, useRouter } from "next/navigation";
 import ChatInput, { SentChatMessage } from "@/components/ChatInput";
 import { usePushNotification } from "@/hooks/usePushNotification";
 import { clearAppBadge } from "@/lib/appBadge";
+import DailyCheckForm from "@/components/observations/DailyCheckForm";
+import ObservationThemeSelector from "@/components/observations/ObservationThemeSelector";
+import { deviceLocalDate, deviceLocalTime, loadDailyCheck } from "@/lib/observations/dailyCheck";
 import { supabase } from "./supabase";
 
 type View = "home" | "goals" | "record" | "report" | "coach" | "profile";
@@ -1055,6 +1058,8 @@ export default function Home() {
   const [recordDate, setRecordDate] = useState(today());
   const [recordTime, setRecordTime] = useState(currentTime());
   const [recordCategory, setRecordCategory] = useState<RecordCategory | null>(null);
+  const [todayCheckStatus, setTodayCheckStatus] = useState<"loading" | "recorded" | "missing" | "unavailable">("loading");
+  const [checkRefresh, setCheckRefresh] = useState(0);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [durationMinutes, setDurationMinutes] = useState(20);
   const [behaviorTypes, setBehaviorTypes] = useState<BehaviorType[]>(["barking"]);
@@ -2904,6 +2909,10 @@ export default function Home() {
     setRecordCategory(category);
     setRecordDate(today());
     setRecordTime(currentTime());
+    if (category === "daily") {
+      setRecordDate(deviceLocalDate());
+      setRecordTime(deviceLocalTime());
+    }
     setDurationMinutes(20);
     setBehaviorTypes(["barking"]);
     setBehaviorCustomText("");
@@ -3259,6 +3268,24 @@ export default function Home() {
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [selectedAdminCustomer?.dogId, userRole]);
+
+  useEffect(() => {
+    if (!profile.id || connection !== "online") {
+      return;
+    }
+    let active = true;
+    const refresh = async () => {
+      setTodayCheckStatus("loading");
+      try {
+        const check = await loadDailyCheck(profile.id!, deviceLocalDate());
+        if (active) setTodayCheckStatus(check ? "recorded" : "missing");
+      } catch {
+        if (active) setTodayCheckStatus("unavailable");
+      }
+    };
+    void refresh();
+    return () => { active = false; };
+  }, [profile.id, connection, checkRefresh]);
 
   async function saveRecord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -3721,10 +3748,16 @@ export default function Home() {
         </button>
       )}
 
+      <section className="home-daily-check" aria-labelledby="home-daily-check-title">
+        <div><p className="card-label">DAILY CHECK</p><h2 id="home-daily-check-title">今日のチェック</h2>
+          <p>{!profile.id ? "愛犬登録後に記録できます。" : connection !== "online" ? "接続後に記録を確認できます。" : todayCheckStatus === "recorded" ? "✓ 記録済み" : todayCheckStatus === "missing" ? `今日の${dogName}ちゃんの様子を残してみましょう。` : todayCheckStatus === "unavailable" ? "記録を確認できませんでした。" : "記録を確認しています…"}</p></div>
+        <button type="button" onClick={() => openNewRecord("daily")} disabled={connection !== "online" || !profile.id || todayCheckStatus === "loading"}>{todayCheckStatus === "recorded" ? "内容を見る・編集" : "記録する"}<span aria-hidden="true"> →</span></button>
+      </section>
+
       <section className="home-summary" aria-label="今日のサマリー">
         <button onClick={() => openNewRecord()}>
           <span className="home-summary-icon is-log"><TopicIcon name="daily" /></span>
-          <span><small>今日の記録</small><strong>{todaysEntries.length}<em>件</em></strong></span>
+          <span><small>テーマ別の記録</small><strong>{todaysEntries.length}<em>件</em></strong></span>
           <i aria-hidden="true">＋</i>
         </button>
         <button onClick={() => navigateOwnerView("goals")}>
@@ -3803,7 +3836,7 @@ export default function Home() {
       <p className="lead">テーマを選ぶと、必要な項目だけを表示します。</p>
       <div className="topic-grid">
         {RECORD_CATEGORIES.map((category) => (
-          <button key={category.id} className={`category-${category.id}`} onClick={() => { setRecordTime(currentTime()); setRecordCategory(category.id); }}>
+          <button key={category.id} className={`category-${category.id}`} onClick={() => openNewRecord(category.id)}>
             <span className="topic-mark"><TopicIcon name={category.icon} /></span>
             <span><strong>{category.label}</strong><small>{category.description}</small></span>
             <span aria-hidden="true">→</span>
@@ -3812,6 +3845,10 @@ export default function Home() {
       </div>
       <p className="topic-hint">同じ日に、違うテーマを何度でも記録できます。</p>
     </section>
+  ) : recordCategory === "daily" ? (
+    <DailyCheckForm key={`${profile.id ?? ""}:${recordDate}`} dogId={profile.id} initialDate={recordDate}
+      online={connection === "online"} onBack={() => setRecordCategory(null)}
+      onSaved={(savedDate) => { if (savedDate === deviceLocalDate()) setTodayCheckStatus("recorded"); setCheckRefresh((value) => value + 1); showNotice("チェックを保存しました"); setRecordCategory(null); returnToOwnerHome(); }} />
   ) : (
     <form className="screen-form" onSubmit={saveRecord}>
       <div className="form-progress" aria-label="記録の進行状況"><span className="is-complete">1</span><i></i><span className="is-current">2</span><small>内容を入力</small></div>
@@ -4287,6 +4324,7 @@ export default function Home() {
         <label className="field-label">散歩の頻度<select value={profile.walkFrequency} onChange={(event) => setProfile({ ...profile, walkFrequency: event.target.value })} required><option value="">選択してください</option><option>ほとんど行かない</option><option>週に数回</option><option>毎日1回</option><option>毎日2回</option><option>毎日3回以上</option></select></label>
         <label className="field-label">主な悩み・気になっていること<textarea rows={5} value={profile.concerns} onChange={(event) => setProfile({ ...profile, concerns: event.target.value })} placeholder="例：散歩中に犬を見ると吠える。来客時に落ち着けない。" required /></label>
       </section>
+      <ObservationThemeSelector dogId={profile.id} online={connection === "online"} />
       <div className="privacy-card"><strong>記録について</strong><p>登録した情報は、あなたと担当コーチのサポートのために使用します。共有範囲は今後プロフィールから管理できるようにします。</p></div>
       <button className="primary-button" disabled={saving}>{saving ? "保存中…" : "愛犬プロフィールを保存"}<span>→</span></button>
     </form>
