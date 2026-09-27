@@ -84,6 +84,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   font-weight: 700;
 }
 .avatar { cursor: pointer; }
+.avatar.has-image { overflow:hidden; padding:0; background:#dcefe6; }
+.avatar.has-image img { width:100%; height:100%; object-fit:cover; }
 
 .profile-nudge {
   display: grid;
@@ -1595,6 +1597,8 @@ body { font-size: 16px; }
 .admin-back { margin-bottom:14px; padding:8px 0; border:0; background:transparent; color:var(--green-dark); cursor:pointer; font-size:12px; font-weight:750; }
 .admin-detail-hero { display:grid; grid-template-columns:62px 1fr auto; align-items:center; gap:16px; padding:23px; border-radius:24px; background:linear-gradient(145deg,#174f3e,#087155); color:#fff; }
 .admin-dog-avatar { display:grid; width:62px; height:62px; place-items:center; border:1px solid rgba(255,255,255,.25); border-radius:21px; background:rgba(255,255,255,.13); font-family:var(--font-display); font-size:27px; font-weight:700; }
+.admin-dog-avatar.has-image { overflow:hidden; padding:0; }
+.admin-dog-avatar.has-image img { width:100%; height:100%; object-fit:cover; }
 .admin-detail-hero .card-label { margin:0 0 5px; color:rgba(255,255,255,.58); }
 .admin-detail-hero h1 { margin:0; font-size:28px; }
 .admin-detail-hero span { display:block; margin-top:5px; color:rgba(255,255,255,.72); font-size:12px; }
@@ -2113,6 +2117,8 @@ body { font-size: 16px; }
 .settings-screen > header h1 { margin:0; font-size:27px; font-weight:600; letter-spacing:.04em; }
 .settings-user-summary { display:grid; grid-template-columns:48px minmax(0,1fr); align-items:center; gap:13px; margin:14px 16px; padding:15px; border-radius:18px; background:#eaf4ef; }
 .settings-user-summary > span { display:grid; width:48px; height:48px; overflow:hidden; place-items:center; border-radius:50%; background:var(--green); color:#fff; font-size:18px; font-weight:800; }
+.settings-user-summary > span.has-image { background:#dcefe6; }
+.settings-user-summary > span img { width:100%; height:100%; object-fit:cover; }
 .settings-user-summary svg { width:25px; height:25px; fill:none; stroke:currentColor; stroke-width:1.75; }
 .settings-user-summary div { min-width:0; }
 .settings-user-summary strong,.settings-user-summary small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -2171,6 +2177,17 @@ body { font-size: 16px; }
 .profile-section-heading h2 { font-size:17px; }
 .profile-section-heading p { margin-top:3px; color:var(--muted); font-size:10px; }
 .profile-form-section select { width:100%; min-height:50px; margin-top:7px; padding:0 14px; border:1px solid rgba(37,40,37,.13); border-radius:14px; background:#fff; color:var(--ink); font:inherit; font-size:14px; }
+.dog-avatar-editor { display:grid; grid-template-columns:82px minmax(0,1fr); align-items:center; gap:16px; margin:0 0 22px; padding:17px; border:1px solid rgba(0,134,97,.11); border-radius:20px; background:#f4f8f6; }
+.dog-avatar-editor legend { padding:0 7px; color:#405048; font-size:12px; font-weight:800; }
+.dog-avatar-preview { display:grid; width:82px; height:82px; overflow:hidden; place-items:center; border:5px solid #fff; border-radius:50%; background:#dcefe6; color:var(--green); box-shadow:0 7px 20px rgba(32,75,58,.1); }
+.dog-avatar-preview img { width:100%; height:100%; object-fit:cover; }
+.dog-avatar-preview svg { width:39px; height:39px; }
+.dog-avatar-editor > div:last-child { min-width:0; }
+.dog-avatar-editor strong { display:block; font-size:12px; }
+.dog-avatar-editor p { margin:4px 0 10px; color:#718078; font-size:9px; line-height:1.55; }
+.dog-avatar-editor label { display:inline-flex; min-height:37px; align-items:center; justify-content:center; padding:0 13px; border-radius:999px; background:var(--green); color:#fff; cursor:pointer; font-size:10px; font-weight:800; }
+.dog-avatar-editor input { position:absolute; width:1px; height:1px; overflow:hidden; opacity:0; }
+.dog-avatar-editor.is-onboarding { margin:0 0 19px; background:#f1f7f4; }
 .age-preview { display:inline-flex; margin-top:8px; padding:5px 9px; border-radius:999px; background:#e5f5ed; color:var(--green-dark); font-size:11px; font-weight:750; }
 
 .onboarding-stage { min-height:100svh; padding:24px 16px 60px; background:radial-gradient(circle at 90% 0,rgba(0,134,97,.15),transparent 24rem),#f4f7f4; }
@@ -2267,6 +2284,8 @@ body { font-size: 16px; }
 @media (max-width:600px) {
   .onboarding-stage { padding:15px 10px 36px; }
   .onboarding-card { padding:25px 18px; border-radius:23px; }
+  .dog-avatar-editor { grid-template-columns:68px minmax(0,1fr); gap:12px; padding:14px; }
+  .dog-avatar-preview { width:68px; height:68px; }
   .onboarding-grid { grid-template-columns:1fr; gap:0; }
   .onboarding-actions { grid-template-columns:1fr; }
   .onboarding-actions > button:first-child { order:2; }

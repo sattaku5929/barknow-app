@@ -75,6 +75,9 @@ export async function DELETE(request: NextRequest) {
       admin.storage.from("coach-avatars").remove([`${user.id}/avatar.webp`]).then(({ error }) => {
         if (error) throw error;
       }),
+      admin.storage.from("dog-avatars").remove([`${user.id}/avatar.webp`]).then(({ error }) => {
+        if (error && !error.message.toLowerCase().includes("not found")) throw error;
+      }),
     ]);
     const conversationKeys = (mediaRows ?? [])
       .map((row) => typeof row.media_key === "string" ? row.media_key : "")

@@ -22,6 +22,7 @@ type SettingsPanel = "menu" | "profile" | "disclaimer" | "terms" | "privacy";
 
 type DogProfile = {
   id?: string;
+  avatarUrl: string;
   name: string;
   breed: string;
   birthday: string;
@@ -536,7 +537,7 @@ const GOAL_COMPLETIONS_KEY = "wan-tone-goal-completions-v1";
 const REMINDER_SENT_KEY = "wan-tone-reminder-sent-v1";
 const APP_HISTORY_STATE_KEY = "__wanToneUi";
 
-const initialProfile: DogProfile = { name: "", breed: "", birthday: "", isFirstTimeOwner: "", gender: "", trainingExperience: "", daycareFrequency: "", walkFrequency: "", concerns: "", profileCompletedAt: "" };
+const initialProfile: DogProfile = { avatarUrl: "", name: "", breed: "", birthday: "", isFirstTimeOwner: "", gender: "", trainingExperience: "", daycareFrequency: "", walkFrequency: "", concerns: "", profileCompletedAt: "" };
 const initialOwnerProfile: OwnerProfile = { fullName: "", fullNameKana: "", phoneNumber: "", prefecture: "", address: "", birthDate: "", completedAt: "" };
 
 const PREFECTURES = [
@@ -1857,7 +1858,7 @@ export default function Home() {
         }
 
         const [dogResult, recordResult, messageResult, onboardingResult] = await Promise.all([
-          supabase.from("wt_dogs").select("id,name,breed,birthday").eq("owner_id", userId).maybeSingle(),
+          supabase.from("wt_dogs").select("id,name,breed,birthday,avatar_url").eq("owner_id", userId).maybeSingle(),
           supabase
             .from("wt_daily_records")
             .select("id,category,recorded_on,recorded_time,duration_minutes,behavior_type,behavior_types,behavior_custom_text,behavior_custom_texts,behavior_intensity,mood,appetite,activity,toilet,sleep,behavior_note,good_moment")
@@ -1878,6 +1879,7 @@ export default function Home() {
         if (dogResult.data) {
           const remoteProfile: DogProfile = {
             id: dogResult.data.id,
+            avatarUrl: dogResult.data.avatar_url ?? "",
             name: dogResult.data.name,
             breed: dogResult.data.breed ?? "",
             birthday: dogResult.data.birthday ?? "",
@@ -1911,6 +1913,7 @@ export default function Home() {
               const nextProfile: DogProfile = {
                 ...current,
                 id: String(dog.id ?? current.id ?? "") || undefined,
+                avatarUrl: String(dog.avatar_url ?? current.avatarUrl ?? ""),
                 birthday: String(dog.birth_date ?? current.birthday ?? ""),
                 isFirstTimeOwner: dog.is_first_time_owner === true ? "yes" : dog.is_first_time_owner === false ? "no" : "",
                 gender: normalizeDogGender(dog.gender),
@@ -2384,12 +2387,12 @@ export default function Home() {
         .eq("dog_id", customer.dogId)
         .gte("completed_on", since),
       supabase.from("wt_owner_profiles").select("full_name,full_name_kana,phone_number,prefecture,address,owner_birth_date,onboarding_completed_at").eq("user_id", customer.ownerId).maybeSingle(),
-      supabase.from("wt_dogs").select("id,name,breed,birthday,birth_date,is_first_time_owner,gender,training_experience,daycare_frequency,walk_frequency,concerns,profile_completed_at").eq("id", customer.dogId).maybeSingle(),
+      supabase.from("wt_dogs").select("id,name,breed,birthday,birth_date,avatar_url,is_first_time_owner,gender,training_experience,daycare_frequency,walk_frequency,concerns,profile_completed_at").eq("id", customer.dogId).maybeSingle(),
     ]);
 
     if (!ownerProfileResult.error && ownerProfileResult.data) setAdminDetailOwnerProfile({ fullName: ownerProfileResult.data.full_name ?? "", fullNameKana: ownerProfileResult.data.full_name_kana ?? "", phoneNumber: ownerProfileResult.data.phone_number ?? "", prefecture: ownerProfileResult.data.prefecture ?? "", address: ownerProfileResult.data.address ?? "", birthDate: ownerProfileResult.data.owner_birth_date ?? "", completedAt: ownerProfileResult.data.onboarding_completed_at ?? "" });
     else setAdminDetailOwnerProfile({ fullName: customer.ownerName, fullNameKana: customer.ownerNameKana, phoneNumber: customer.ownerPhoneNumber, prefecture: customer.ownerPrefecture, address: customer.ownerAddress, birthDate: customer.ownerBirthDate, completedAt: "" });
-    if (!dogProfileResult.error && dogProfileResult.data) setAdminDetailDogProfile({ id: dogProfileResult.data.id, name: dogProfileResult.data.name, breed: dogProfileResult.data.breed ?? "", birthday: dogProfileResult.data.birth_date ?? dogProfileResult.data.birthday ?? "", isFirstTimeOwner: dogProfileResult.data.is_first_time_owner === true ? "yes" : dogProfileResult.data.is_first_time_owner === false ? "no" : "", gender: normalizeDogGender(dogProfileResult.data.gender), trainingExperience: (dogProfileResult.data.training_experience ?? "") as DogProfile["trainingExperience"], daycareFrequency: dogProfileResult.data.daycare_frequency ?? "", walkFrequency: dogProfileResult.data.walk_frequency ?? "", concerns: dogProfileResult.data.concerns ?? "", profileCompletedAt: dogProfileResult.data.profile_completed_at ?? "" });
+    if (!dogProfileResult.error && dogProfileResult.data) setAdminDetailDogProfile({ id: dogProfileResult.data.id, avatarUrl: dogProfileResult.data.avatar_url ?? "", name: dogProfileResult.data.name, breed: dogProfileResult.data.breed ?? "", birthday: dogProfileResult.data.birth_date ?? dogProfileResult.data.birthday ?? "", isFirstTimeOwner: dogProfileResult.data.is_first_time_owner === true ? "yes" : dogProfileResult.data.is_first_time_owner === false ? "no" : "", gender: normalizeDogGender(dogProfileResult.data.gender), trainingExperience: (dogProfileResult.data.training_experience ?? "") as DogProfile["trainingExperience"], daycareFrequency: dogProfileResult.data.daycare_frequency ?? "", walkFrequency: dogProfileResult.data.walk_frequency ?? "", concerns: dogProfileResult.data.concerns ?? "", profileCompletedAt: dogProfileResult.data.profile_completed_at ?? "" });
 
     if (recordResult.error || messageResult.error || goalResult.error || completionResult.error) {
       showNotice("顧客データを読み込めませんでした。Supabaseのmigration 008を確認してください");
@@ -2636,6 +2639,36 @@ export default function Home() {
     setSaving(false);
   }
 
+  async function uploadDogAvatar(file: File) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) return showNotice("JPEG・PNG・WebP画像を選んでください");
+    if (file.size > 8 * 1024 * 1024) return showNotice("画像は8MB以下にしてください");
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) return showNotice("ログイン情報を確認できませんでした");
+    setSaving(true);
+    try {
+      const blob = await resizeAvatar(file);
+      const path = `${userData.user.id}/avatar.webp`;
+      const { error } = await supabase.storage.from("dog-avatars").upload(path, blob, { contentType: "image/webp", upsert: true, cacheControl: "3600" });
+      if (error) throw error;
+      const { data } = supabase.storage.from("dog-avatars").getPublicUrl(path);
+      const publicUrl = `${data.publicUrl}?v=${Date.now()}`;
+      if (profile.id) {
+        const { error: profileError } = await supabase.from("wt_dogs").update({ avatar_url: publicUrl, updated_at: new Date().toISOString() }).eq("id", profile.id).eq("owner_id", userData.user.id);
+        if (profileError) throw profileError;
+      }
+      const nextProfile = { ...profile, avatarUrl: publicUrl };
+      setProfile(nextProfile);
+      writeLocal(PROFILE_KEY, nextProfile);
+      showNotice("愛犬の画像を設定しました");
+    } catch (error) {
+      const detail = getSubmissionErrorDetail(error);
+      console.error("[Dog avatar] upload failed", { detail, error });
+      showNotice(`画像を保存できませんでした（${detail}）`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function connectGoogleCalendar() {
     setSaving(true);
     try {
@@ -2863,6 +2896,7 @@ export default function Home() {
           name: nextProfile.name || "愛犬",
           breed: nextProfile.breed || null,
           birthday: nextProfile.birthday || null,
+          avatar_url: nextProfile.avatarUrl || null,
         },
         { onConflict: "owner_id" },
       )
@@ -2882,7 +2916,7 @@ export default function Home() {
         const userId = await getUserId();
         if (!userId) throw new Error("No session");
         const [{ data, error }, { error: ownerError }] = await Promise.all([
-          supabase.from("wt_dogs").upsert({ owner_id: userId, name: profile.name, breed: profile.breed || null, birthday: profile.birthday || null, birth_date: profile.birthday || null, is_first_time_owner: profile.isFirstTimeOwner === "yes" ? true : profile.isFirstTimeOwner === "no" ? false : null, gender: profile.gender || null, training_experience: profile.trainingExperience, daycare_frequency: profile.daycareFrequency, walk_frequency: profile.walkFrequency, concerns: profile.concerns, profile_completed_at: profile.profileCompletedAt || new Date().toISOString() }, { onConflict: "owner_id" }).select("id").single(),
+          supabase.from("wt_dogs").upsert({ owner_id: userId, avatar_url: profile.avatarUrl || null, name: profile.name, breed: profile.breed || null, birthday: profile.birthday || null, birth_date: profile.birthday || null, is_first_time_owner: profile.isFirstTimeOwner === "yes" ? true : profile.isFirstTimeOwner === "no" ? false : null, gender: profile.gender || null, training_experience: profile.trainingExperience, daycare_frequency: profile.daycareFrequency, walk_frequency: profile.walkFrequency, concerns: profile.concerns, profile_completed_at: profile.profileCompletedAt || new Date().toISOString() }, { onConflict: "owner_id" }).select("id").single(),
           supabase.from("wt_owner_profiles").upsert({ user_id: userId, full_name: ownerProfile.fullName.trim(), full_name_kana: ownerProfile.fullNameKana.trim(), phone_number: ownerProfile.phoneNumber.trim(), prefecture: ownerProfile.prefecture, address: ownerProfile.address.trim(), owner_birth_date: ownerProfile.birthDate || null, onboarding_completed_at: ownerProfile.completedAt || new Date().toISOString(), updated_at: new Date().toISOString() }),
         ]);
         if (error || ownerError) throw error ?? ownerError;
@@ -3020,7 +3054,7 @@ export default function Home() {
       userId = await getUserId();
       if (!userId) throw new Error("ログイン情報を確認できませんでした。再度ログインしてください。");
       const completedAt = new Date().toISOString();
-      const dogPayload: Record<string, string | boolean | null> = { owner_id: userId, name: profile.name.trim(), breed: profile.breed.trim() || null, birthday: profile.birthday || null, birth_date: profile.birthday || null, is_first_time_owner: profile.isFirstTimeOwner === "yes", gender: profile.gender, training_experience: profile.trainingExperience, daycare_frequency: profile.daycareFrequency, walk_frequency: profile.walkFrequency, concerns: profile.concerns.trim(), profile_completed_at: completedAt, updated_at: completedAt };
+      const dogPayload: Record<string, string | boolean | null> = { owner_id: userId, avatar_url: profile.avatarUrl || null, name: profile.name.trim(), breed: profile.breed.trim() || null, birthday: profile.birthday || null, birth_date: profile.birthday || null, is_first_time_owner: profile.isFirstTimeOwner === "yes", gender: profile.gender, training_experience: profile.trainingExperience, daycare_frequency: profile.daycareFrequency, walk_frequency: profile.walkFrequency, concerns: profile.concerns.trim(), profile_completed_at: completedAt, updated_at: completedAt };
       let dogSaveError: unknown = null;
       let savedDogId = "";
       for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -3330,8 +3364,8 @@ export default function Home() {
           <h1>{profile.name ? `${profile.name}ちゃん、今日も一緒に。` : "今日から、少しずつ。"}</h1>
           <p className="welcome-copy">やろうと思っていたケアを、今日ひとつ。</p>
         </div>
-        <button className="avatar" onClick={() => navigateOwnerView("profile")} aria-label="愛犬プロフィールを開く">
-          {profile.name ? profile.name.slice(0, 1) : "＋"}
+        <button className={`avatar ${profile.avatarUrl ? "has-image" : ""}`} onClick={() => navigateOwnerView("profile")} aria-label="愛犬プロフィールを開く">
+          {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : profile.name ? profile.name.slice(0, 1) : "＋"}
         </button>
       </section>
 
@@ -3561,7 +3595,7 @@ export default function Home() {
               <p className="eyebrow">{todayLabel}</p>
               <h1 id="home-greeting-title">{profile.name ? `${profile.name}ちゃんと、今日もいい日に。` : "今日から、ひとつずつ。"}</h1>
             </div>
-            <button className="avatar" onClick={() => navigateOwnerView("profile")} aria-label="愛犬プロフィールを開く">{profile.name ? profile.name.slice(0, 1) : "＋"}</button>
+            <button className={`avatar ${profile.avatarUrl ? "has-image" : ""}`} onClick={() => navigateOwnerView("profile")} aria-label="愛犬プロフィールを開く">{profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : profile.name ? profile.name.slice(0, 1) : "＋"}</button>
           </div>
           <p className="welcome-copy">完璧じゃなくて大丈夫。小さな「できた」を残すことから始めよう。</p>
           <div className="home-hero-actions">
@@ -4143,7 +4177,7 @@ export default function Home() {
         <label className="field-label">市区町村・番地・建物名<textarea rows={3} autoComplete="street-address" value={ownerProfile.address} onChange={(event) => setOwnerProfile({ ...ownerProfile, address: event.target.value })} placeholder="例：目黒区〇〇1-2-3 Wan Toneマンション101" required /></label>
       </section>
       <section className="profile-form-section"><div className="profile-section-heading"><span>02</span><div><h2>愛犬について</h2><p>生活リズムと気になること</p></div></div>
-        <div className="profile-symbol">{profile.name ? profile.name.slice(0, 1) : "犬"}</div>
+        <fieldset className="dog-avatar-editor"><legend>愛犬の画像</legend><div className="dog-avatar-preview">{profile.avatarUrl ? <img src={profile.avatarUrl} alt={`${profile.name || "愛犬"}のプロフィール画像`} /> : <CareIcon name="paws" />}</div><div><strong>{profile.avatarUrl ? "画像を設定済みです" : "お気に入りの1枚を設定"}</strong><p>ホーム画面やプロフィールに表示されます。</p><label>{saving ? "画像を処理中…" : profile.avatarUrl ? "画像を変更" : "画像を選択"}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadDogAvatar(file); event.currentTarget.value = ""; }} /></label></div></fieldset>
         <label className="field-label">名前<input value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} placeholder="例：むぎ" required /></label>
         <label className="field-label">犬種<input value={profile.breed} onChange={(event) => setProfile({ ...profile, breed: event.target.value })} placeholder="例：トイプードル" required /></label>
         <label className="field-label">誕生日<input type="date" max={today()} value={profile.birthday} onChange={(event) => setProfile({ ...profile, birthday: event.target.value })} required />{ageLabel(profile.birthday) && <small className="age-preview">{ageLabel(profile.birthday)}</small>}</label>
@@ -4209,7 +4243,7 @@ export default function Home() {
     <section className="settings-screen">
       <header><p className="card-label">ACCOUNT &amp; APP</p><h1>設定</h1></header>
       <div className="settings-user-summary">
-        <span>{profile.name ? profile.name.slice(0, 1) : <SettingsGlyph name="dog" />}</span>
+        <span className={profile.avatarUrl ? "has-image" : ""}>{profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : profile.name ? profile.name.slice(0, 1) : <SettingsGlyph name="dog" />}</span>
         <div><strong>{profile.name ? `${profile.name}ちゃん` : "愛犬を登録してください"}</strong><small>{userEmail}</small></div>
       </div>
 
@@ -4247,6 +4281,7 @@ export default function Home() {
           {onboardingError && <p className="onboarding-error" role="alert">{onboardingError}</p>}
           <button type="submit" className="onboarding-next" disabled={saving}>{saving ? "保存中…" : "愛犬情報へ進む"}<span>→</span></button>
         </form> : <form noValidate onSubmit={saveDogOnboarding} onInput={() => { if (onboardingError) setOnboardingError(""); }}><p className="card-label">ABOUT YOUR DOG</p><h1>次に、愛犬の毎日を<br />教えてください。</h1><p className="onboarding-lead">暮らし方まで分かると、コーチが記録の変化を正しく読み取りやすくなります。</p>
+          <fieldset className="dog-avatar-editor is-onboarding"><legend>愛犬の画像（任意）</legend><div className="dog-avatar-preview">{profile.avatarUrl ? <img src={profile.avatarUrl} alt="登録する愛犬の画像" /> : <CareIcon name="paws" />}</div><div><strong>{profile.avatarUrl ? "この画像を使用します" : "愛犬の顔が見える写真がおすすめ"}</strong><p>あとから設定画面で変更できます。</p><label>{saving ? "画像を処理中…" : profile.avatarUrl ? "画像を変更" : "画像を選択"}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadDogAvatar(file); event.currentTarget.value = ""; }} /></label></div></fieldset>
           <div className="onboarding-grid"><label className="field-label">愛犬の名前<input autoFocus value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} placeholder="例：むぎ" required /></label><label className="field-label">犬種<input value={profile.breed} onChange={(event) => setProfile({ ...profile, breed: event.target.value })} placeholder="例：トイプードル" required /></label></div>
           <label className="field-label">誕生日<input type="date" max={today()} value={profile.birthday} onChange={(event) => setProfile({ ...profile, birthday: event.target.value })} required />{ageLabel(profile.birthday) && <small className="age-preview">{ageLabel(profile.birthday)}</small>}</label>
           <div className="onboarding-grid"><label className="field-label">犬を飼うのは初めて？<select className="onboarding-select" value={profile.isFirstTimeOwner} onChange={(event) => setProfile({ ...profile, isFirstTimeOwner: event.target.value as DogProfile["isFirstTimeOwner"] })} required><option value="">選択してください</option><option value="yes">はい</option><option value="no">いいえ</option></select></label><label className="field-label">性別<select className="onboarding-select" value={profile.gender} onChange={(event) => setProfile({ ...profile, gender: event.target.value as DogProfile["gender"] })} required><option value="">選択してください</option><option value="male">男の子</option><option value="female">女の子</option><option value="unknown">不明・回答しない</option></select></label></div>
@@ -4391,7 +4426,7 @@ export default function Home() {
           <div className="admin-detail">
             <button className="admin-back" onClick={closeAdminCustomer}>← 担当顧客へ戻る</button>
             <section className="admin-detail-hero">
-              <div className="admin-dog-avatar">{selectedAdminCustomer.dogName.slice(0, 1)}</div>
+              <div className={`admin-dog-avatar ${adminDetailDogProfile?.avatarUrl ? "has-image" : ""}`}>{adminDetailDogProfile?.avatarUrl ? <img src={adminDetailDogProfile.avatarUrl} alt="" /> : selectedAdminCustomer.dogName.slice(0, 1)}</div>
               <div><p className="card-label">CUSTOMER DETAIL</p><h1>{selectedAdminCustomer.dogName}</h1><span>{selectedAdminCustomer.breed || "犬種未登録"} · 直近30日</span></div>
               <b className={selectedAdminCustomer.concerns7d > 0 ? "needs-care" : "stable"}>{selectedAdminCustomer.concerns7d > 0 ? "要確認" : "安定"}</b>
             </section>
