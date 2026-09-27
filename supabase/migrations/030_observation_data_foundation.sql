@@ -134,7 +134,7 @@ create table public.wt_observation_events (
     or outcome in ('no_reaction', 'settled_quickly', 'partly_settled', 'unchanged', 'escalated')
   ),
   recovery_seconds integer check (recovery_seconds is null or recovery_seconds between 0 and 604800),
-  success boolean,
+  goal_success boolean,
   theme_data jsonb not null default '{}'::jsonb check (jsonb_typeof(theme_data) = 'object'),
   constraint wt_observation_events_situation_keys_check check (
     situation_keys is null
@@ -166,8 +166,8 @@ comment on table public.wt_observation_events is
   'One-to-one structured event details used for explainable trend analysis.';
 comment on column public.wt_observation_events.event_result is
   'Exposure-level result, including successful and neutral events as well as concerns.';
-comment on column public.wt_observation_events.success is
-  'Optional explicit result for a theme-specific goal; event_result remains the common exposure classification.';
+comment on column public.wt_observation_events.goal_success is
+  'Whether the owner and dog achieved the goal behavior defined for this theme; event_result remains the common event classification.';
 comment on column public.wt_observation_events.theme_data is
   'Theme-specific, versioned attributes only. Common analysis dimensions use typed columns.';
 
@@ -246,9 +246,11 @@ declare
 begin
   if not exists (
     select 1 from public.wt_observation_entries entry
-    where entry.id = new.entry_id and entry.entry_kind = expected_kind
+    where entry.id = new.entry_id
+      and entry.entry_kind = expected_kind
+      and entry.deleted_at is null
   ) then
-    raise exception 'observation subtype requires entry_kind %', expected_kind
+    raise exception 'observation subtype requires an active entry_kind %', expected_kind
       using errcode = '23514';
   end if;
   return new;
@@ -373,7 +375,8 @@ create policy "admins manage dog observation themes"
 create policy "owners select own observation entries"
   on public.wt_observation_entries for select to authenticated
   using (
-    owner_id = auth.uid()
+    deleted_at is null
+    and owner_id = auth.uid()
     and exists (
       select 1 from public.wt_dogs dog
       where dog.id = wt_observation_entries.dog_id
@@ -384,7 +387,8 @@ create policy "owners select own observation entries"
 create policy "owners insert own observation entries"
   on public.wt_observation_entries for insert to authenticated
   with check (
-    owner_id = auth.uid()
+    deleted_at is null
+    and owner_id = auth.uid()
     and source = 'owner'
     and exists (
       select 1 from public.wt_dogs dog
@@ -396,7 +400,8 @@ create policy "owners insert own observation entries"
 create policy "owners update own observation entries"
   on public.wt_observation_entries for update to authenticated
   using (
-    owner_id = auth.uid()
+    deleted_at is null
+    and owner_id = auth.uid()
     and exists (
       select 1 from public.wt_dogs dog
       where dog.id = wt_observation_entries.dog_id
@@ -415,7 +420,8 @@ create policy "owners update own observation entries"
 create policy "owners delete own observation entries"
   on public.wt_observation_entries for delete to authenticated
   using (
-    owner_id = auth.uid()
+    deleted_at is null
+    and owner_id = auth.uid()
     and exists (
       select 1 from public.wt_dogs dog
       where dog.id = wt_observation_entries.dog_id
@@ -426,7 +432,8 @@ create policy "owners delete own observation entries"
 create policy "assigned coaches read observation entries"
   on public.wt_observation_entries for select to authenticated
   using (
-    public.wt_is_coach()
+    deleted_at is null
+    and public.wt_is_coach()
     and exists (
       select 1 from public.wt_coach_assignments assignment
       where assignment.coach_id = auth.uid()
@@ -448,6 +455,7 @@ create policy "owners select own daily checks"
       select 1 from public.wt_observation_entries entry
       where entry.id = wt_daily_checks.entry_id
         and entry.owner_id = auth.uid()
+        and entry.deleted_at is null
     )
   );
 
@@ -458,6 +466,7 @@ create policy "owners insert own daily checks"
       select 1 from public.wt_observation_entries entry
       where entry.id = wt_daily_checks.entry_id
         and entry.owner_id = auth.uid()
+        and entry.deleted_at is null
     )
   );
 
@@ -468,6 +477,7 @@ create policy "owners update own daily checks"
       select 1 from public.wt_observation_entries entry
       where entry.id = wt_daily_checks.entry_id
         and entry.owner_id = auth.uid()
+        and entry.deleted_at is null
     )
   )
   with check (
@@ -475,6 +485,7 @@ create policy "owners update own daily checks"
       select 1 from public.wt_observation_entries entry
       where entry.id = wt_daily_checks.entry_id
         and entry.owner_id = auth.uid()
+        and entry.deleted_at is null
     )
   );
 
@@ -485,6 +496,7 @@ create policy "owners delete own daily checks"
       select 1 from public.wt_observation_entries entry
       where entry.id = wt_daily_checks.entry_id
         and entry.owner_id = auth.uid()
+        and entry.deleted_at is null
     )
   );
 
@@ -498,6 +510,7 @@ create policy "assigned coaches read daily checks"
       join public.wt_coach_assignments assignment on assignment.dog_id = entry.dog_id
       where entry.id = wt_daily_checks.entry_id
         and assignment.coach_id = auth.uid()
+        and entry.deleted_at is null
     )
   );
 
@@ -513,6 +526,7 @@ create policy "owners select own observation events"
       select 1 from public.wt_observation_entries entry
       where entry.id = wt_observation_events.entry_id
         and entry.owner_id = auth.uid()
+        and entry.deleted_at is null
     )
   );
 
@@ -523,6 +537,7 @@ create policy "owners insert own observation events"
       select 1 from public.wt_observation_entries entry
       where entry.id = wt_observation_events.entry_id
         and entry.owner_id = auth.uid()
+        and entry.deleted_at is null
     )
   );
 
@@ -533,6 +548,7 @@ create policy "owners update own observation events"
       select 1 from public.wt_observation_entries entry
       where entry.id = wt_observation_events.entry_id
         and entry.owner_id = auth.uid()
+        and entry.deleted_at is null
     )
   )
   with check (
@@ -540,6 +556,7 @@ create policy "owners update own observation events"
       select 1 from public.wt_observation_entries entry
       where entry.id = wt_observation_events.entry_id
         and entry.owner_id = auth.uid()
+        and entry.deleted_at is null
     )
   );
 
@@ -550,6 +567,7 @@ create policy "owners delete own observation events"
       select 1 from public.wt_observation_entries entry
       where entry.id = wt_observation_events.entry_id
         and entry.owner_id = auth.uid()
+        and entry.deleted_at is null
     )
   );
 
@@ -563,6 +581,7 @@ create policy "assigned coaches read observation events"
       join public.wt_coach_assignments assignment on assignment.dog_id = entry.dog_id
       where entry.id = wt_observation_events.entry_id
         and assignment.coach_id = auth.uid()
+        and entry.deleted_at is null
     )
   );
 
