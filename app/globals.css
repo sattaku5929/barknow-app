@@ -2402,3 +2402,17 @@ body { font-size: 16px; }
 .household-manager form { display:grid; gap:12px; margin-top:20px; }
 .household-manager form button[type=submit] { background:#008661; color:#fff; }
 @media (max-width:390px) { .event-result-options button { font-size:11px; } .event-field-pair { grid-template-columns:1fr; } }
+
+.recent-observation-trends { margin:22px 0 30px; padding:22px; border:1px solid #d9e9df; border-radius:22px; background:#f3faf5; color:#284737; }
+.recent-observation-trends h2 { margin:6px 0 8px; font-size:21px; }
+.recent-observation-trends-intro,.recent-observation-trends-note { color:#60766a; font-size:13px; line-height:1.7; }
+.recent-observation-trends-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; margin-top:18px; }
+.recent-observation-trends-grid > div { min-width:0; padding:16px; border:1px solid #e0ece3; border-radius:16px; background:#fff; }
+.recent-observation-trends h3 { margin:0 0 12px; font-size:14px; }
+.recent-observation-trends-grid p { margin:10px 0; font-size:13px; }
+.recent-observation-trends-grid strong,.recent-observation-trends-grid span { display:block; }
+.recent-observation-trends-grid span { margin-top:4px; color:#65796c; font-size:12px; line-height:1.5; }
+.recent-observation-trends-candidates { margin-top:18px; }
+.recent-observation-trends-candidates p { margin:9px 0; line-height:1.6; }
+.recent-observation-trends-candidates small { display:block; margin-top:4px; color:#65796c; }
+@media (max-width:600px) { .recent-observation-trends { padding:18px; } .recent-observation-trends-grid { grid-template-columns:1fr; } }

@@ -10,6 +10,7 @@ import ObservationThemeSelector from "@/components/observations/ObservationTheme
 import HouseholdMemberManager from "@/components/observations/HouseholdMemberManager";
 import ObservationEventForm from "@/components/observations/ObservationEventForm";
 import ObservationEventHub from "@/components/observations/ObservationEventHub";
+import RecentObservationTrends from "@/components/insights/RecentObservationTrends";
 import { deviceLocalDate, deviceLocalTime, loadDailyCheck } from "@/lib/observations/dailyCheck";
 import { loadEventThemes, loadEvents } from "@/lib/observations/observationEvent";
 import type { EventTheme, ObservationEvent } from "@/lib/observations/observationEvent";
@@ -4036,6 +4037,8 @@ export default function Home() {
     <section className="report-screen">
       <SectionTitle eyebrow="PROGRESS" title={`${dogName}の変化`} />
       <p className="lead">記録がつながると、調子・暮らし・困りごとの変化が見えてきます。</p>
+
+      <RecentObservationTrends key={profile.id} dogId={profile.id} online={connection === "online"} />
 
       <section className={`report-condition condition-${recordedConditionDays.length < 3 ? "collecting" : conditionScore >= 78 ? "good" : conditionScore >= 58 ? "middle" : "watch"}`}>
         <div className="condition-ring" style={{ background: `conic-gradient(var(--green) ${conditionScore * 3.6}deg, #e4ebe7 0deg)` }}>
