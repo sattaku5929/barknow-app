@@ -43,6 +43,7 @@ test("担当者は各3件以上、偏りが3倍以内、全体10件以上だけ�
     handler("パパ", 6, 5, true), handler("ママ", 4, 1),
   ]), labels);
   assert.equal(accepted.filter((row) => row.kind === "handler").length, 1);
+  assert.match(accepted.find((row) => row.kind === "handler").text, /パパ（削除済み）/);
   const insufficient = insightCandidates(snapshot([theme("current", 10, 3)], [
     handler("パパ", 8, 6), handler("ママ", 2, 0),
   ]), labels);
@@ -51,6 +52,10 @@ test("担当者は各3件以上、偏りが3倍以内、全体10件以上だけ�
     handler("パパ", 11, 9), handler("ママ", 3, 0),
   ]), labels);
   assert.ok(!imbalanced.some((row) => row.kind === "handler"));
+  const validInnerPair = insightCandidates(snapshot([theme("current", 24, 6)], [
+    handler("多数", 16, 15), handler("中間", 5, 3), handler("少数", 3, 1),
+  ]), labels);
+  assert.ok(validInnerPair.some((row) => row.kind === "handler" && row.handlerIds.includes("中間") && !row.handlerIds.includes("多数")));
 });
 
 test("Daily CheckはNULLに対応する集計結果から、両期間の入力日数で判定する", () => {
