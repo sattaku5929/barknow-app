@@ -2,6 +2,11 @@ import { eventThemes } from "@/lib/observations/observationEvent";
 import type { EventTheme } from "@/lib/observations/observationEvent";
 import { comparableHandlers, insightCandidates } from "./rules";
 import type { DailyMetricKey, DailyTrend, ObservationTrends, ThemeTrend } from "./trendTypes";
+import type { EventResult } from "@/lib/observations/observationEvent";
+
+export const eventResultLabels: Record<EventResult, string> = {
+  success: "うまくできた", neutral: "いつも通り", concern: "気になった",
+};
 
 export const dailyLabels: Record<DailyMetricKey, string> = {
   appetite_score: "食欲", sleep_rest_score: "睡眠・休息", activity_score: "活動・運動",

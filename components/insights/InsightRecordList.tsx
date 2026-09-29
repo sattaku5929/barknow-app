@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { themeLabel } from "@/lib/insights/presentation";
+import { eventResultLabels, themeLabel } from "@/lib/insights/presentation";
 import { loadInsightEvents } from "@/lib/insights/recordSources";
 import type { InsightEvent, InsightFilter } from "@/lib/insights/recordSources";
 import type { ObservationTrends } from "@/lib/insights/trendTypes";
-
-const resultLabels = { success: "うまくできた", neutral: "いつも通り", concern: "気になった" };
 
 export default function InsightRecordList({ dogId, trends, filter, title, daily = false, onClose }: {
   dogId: string; trends: ObservationTrends; filter: InsightFilter; title: string; daily?: boolean; onClose: () => void;
@@ -31,7 +29,7 @@ export default function InsightRecordList({ dogId, trends, filter, title, daily 
       : status === "loading" ? <p role="status">記録を読み込んでいます…</p>
       : status === "error" ? <p role="alert">記録を読み込めませんでした。時間をおいて再度お試しください。</p>
       : events.length ? <><p className="insight-record-count">{events.length}件の記録</p><ul>{events.map((entry) => <li key={entry.id}>
-        <strong>{themeLabel(entry.themeKey)} <span>{resultLabels[entry.result]}</span></strong>
+        <strong>{themeLabel(entry.themeKey)} <span>{eventResultLabels[entry.result]}</span></strong>
         <small>{entry.localDate} · {new Date(entry.occurredAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}</small>
         {entry.note && <p>{entry.note}</p>}
       </li>)}</ul>{events.length === 60 && <small>直近60件を表示しています。</small>}</>

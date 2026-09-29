@@ -6,6 +6,8 @@ import { PGlite } from "@electric-sql/pglite";
 const db = new PGlite();
 const owner = "11111111-1111-4111-8111-111111111111";
 const outsider = "22222222-2222-4222-8222-222222222222";
+const coach = "77777777-7777-4777-8777-777777777777";
+const otherCoach = "88888888-8888-4888-8888-888888888888";
 const dog = "33333333-3333-4333-8333-333333333333";
 const otherDog = "44444444-4444-4444-8444-444444444444";
 const father = "55555555-5555-4555-8555-555555555555";
@@ -16,7 +18,8 @@ await db.exec(`
   create schema auth;
   create function auth.uid() returns uuid language sql stable as
     $$ select nullif(current_setting('app.owner_id', true), '')::uuid $$;
-  create function public.wt_is_coach() returns boolean language sql stable as $$ select false $$;
+  create function public.wt_is_coach() returns boolean language sql stable as
+    $$ select current_setting('app.role',true) = 'coach' $$;
   create table public.wt_dogs (id uuid primary key, owner_id uuid not null);
   create table public.wt_coach_assignments (dog_id uuid, coach_id uuid);
   create table public.wt_observation_entries (
@@ -36,6 +39,7 @@ await db.exec(`
     id uuid primary key, owner_id uuid, display_name text, deleted_at timestamptz
   );
   insert into public.wt_dogs values ('${dog}', '${owner}'), ('${otherDog}', '${outsider}');
+  insert into public.wt_coach_assignments values ('${dog}', '${coach}'), ('${otherDog}', '${otherCoach}');
   insert into public.wt_household_members values
     ('${father}', '${owner}', 'パパ', now()), ('${mother}', '${owner}', 'ママ', null);
 `);
@@ -74,17 +78,32 @@ await daily("2026-09-17", 3, 5);
 await db.exec(`
   alter table wt_dogs enable row level security;
   create policy owner_dog on wt_dogs for select to authenticated using (owner_id = auth.uid());
+  alter table wt_coach_assignments enable row level security;
+  create policy coach_assignment on wt_coach_assignments for select to authenticated
+    using (wt_is_coach() and coach_id = auth.uid());
+  create policy coach_dog on wt_dogs for select to authenticated using
+    (wt_is_coach() and exists (select 1 from wt_coach_assignments a where a.dog_id=id and a.coach_id=auth.uid()));
   alter table wt_observation_entries enable row level security;
   create policy owner_entry on wt_observation_entries for select to authenticated
     using (owner_id = auth.uid() and deleted_at is null);
+  create policy coach_entry on wt_observation_entries for select to authenticated using
+    (wt_is_coach() and deleted_at is null and exists
+      (select 1 from wt_coach_assignments a where a.dog_id=dog_id and a.coach_id=auth.uid()));
   alter table wt_observation_events enable row level security;
   create policy owner_event on wt_observation_events for select to authenticated
     using (exists (select 1 from wt_observation_entries e where e.id=entry_id));
+  create policy coach_event on wt_observation_events for select to authenticated
+    using (wt_is_coach() and exists (select 1 from wt_observation_entries e where e.id=entry_id));
   alter table wt_daily_checks enable row level security;
   create policy owner_daily on wt_daily_checks for select to authenticated
     using (exists (select 1 from wt_observation_entries e where e.id=entry_id));
+  create policy coach_daily on wt_daily_checks for select to authenticated
+    using (wt_is_coach() and exists (select 1 from wt_observation_entries e where e.id=entry_id));
   alter table wt_household_members enable row level security;
   create policy owner_member on wt_household_members for select to authenticated using (owner_id = auth.uid());
+  create policy coach_member on wt_household_members for select to authenticated using
+    (wt_is_coach() and exists (select 1 from wt_dogs d join wt_coach_assignments a on a.dog_id=d.id
+      where d.owner_id=wt_household_members.owner_id and a.coach_id=auth.uid()));
   grant select on wt_dogs, wt_coach_assignments, wt_observation_entries,
     wt_observation_events, wt_daily_checks, wt_household_members to authenticated;
   grant usage on schema auth to authenticated;
@@ -122,5 +141,23 @@ let denied = false;
 try { await db.query("select wt_observation_trends($1,'Asia/Tokyo',$2::date)", [otherDog, "2026-09-28"]); }
 catch (error) { denied = error.code === "42501"; }
 assert.equal(denied, true);
-console.log(JSON.stringify({ current, previous, calmness, metrics, archived_handler: archivedHandler, linked_day: day, owner_boundary: "42501" }));
+await db.exec(`reset role; select set_config('app.owner_id','${coach}',false); select set_config('app.role','coach',false); set role authenticated;`);
+const { rows: [coachTrend] } = await db.query("select wt_observation_trends($1,'Asia/Tokyo',$2::date) as result", [dog, "2026-09-28"]);
+assert.equal(coachTrend.result.event_overall.find((row) => row.period === "current").total_count, 7);
+assert.equal(coachTrend.result.handlers.find((row) => row.handled_by_member_id === father).display_name, "パパ");
+const { rows: [visible] } = await db.query("select count(*)::integer as total from wt_observation_entries where dog_id=$1", [dog]);
+assert.equal(visible.total, 18); // Twelve events and six Daily Checks; the soft-deleted event is excluded.
+let otherDenied = false;
+try { await db.query("select wt_observation_trends($1,'Asia/Tokyo',$2::date)", [otherDog, "2026-09-28"]); }
+catch (error) { otherDenied = error.code === "42501"; }
+assert.equal(otherDenied, true);
+await db.exec(`reset role; delete from wt_coach_assignments where dog_id='${dog}'; set role authenticated;`);
+const { rows: [afterRemoval] } = await db.query("select count(*)::integer as total from wt_observation_entries where dog_id=$1", [dog]);
+assert.equal(afterRemoval.total, 0);
+let revoked = false;
+try { await db.query("select wt_observation_trends($1,'Asia/Tokyo',$2::date)", [dog, "2026-09-28"]); }
+catch (error) { revoked = error.code === "42501"; }
+assert.equal(revoked, true);
+console.log(JSON.stringify({ current, previous, calmness, metrics, archived_handler: archivedHandler, linked_day: day,
+  owner_boundary: "42501", coach_assigned_events: 7, other_coach_boundary: otherDenied, coach_revoked: revoked }));
 await db.close();

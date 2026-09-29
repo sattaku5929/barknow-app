@@ -11,6 +11,8 @@ import HouseholdMemberManager from "@/components/observations/HouseholdMemberMan
 import ObservationEventForm from "@/components/observations/ObservationEventForm";
 import ObservationEventHub from "@/components/observations/ObservationEventHub";
 import RecentObservationTrends from "@/components/insights/RecentObservationTrends";
+import CoachAssignedDogStats from "@/components/insights/CoachAssignedDogStats";
+import CoachObservationSummary from "@/components/insights/CoachObservationSummary";
 import { deviceLocalDate, deviceLocalTime, loadDailyCheck } from "@/lib/observations/dailyCheck";
 import { loadEventThemes, loadEvents } from "@/lib/observations/observationEvent";
 import type { EventTheme, ObservationEvent } from "@/lib/observations/observationEvent";
@@ -1035,6 +1037,7 @@ export default function Home() {
   const [adminTab, setAdminTab] = useState<AdminTab>("applications");
   const [lastAdminRefresh, setLastAdminRefresh] = useState<Date | null>(null);
   const [selectedAdminCustomer, setSelectedAdminCustomer] = useState<AdminCustomer | null>(null);
+  const [coachChatContext, setCoachChatContext] = useState<{ id: string; theme: string } | null>(null);
   const [adminDetailRecords, setAdminDetailRecords] = useState<DailyRecord[]>([]);
   const [adminDetailMessages, setAdminDetailMessages] = useState<CoachMessage[]>([]);
   const [adminReplyTo, setAdminReplyTo] = useState<CoachMessage | null>(null);
@@ -1237,6 +1240,7 @@ export default function Home() {
     closeAppHistoryLayer("admin-customer", () => {
       setSelectedAdminCustomer(null);
       setAdminReplyTo(null);
+      setCoachChatContext(null);
     });
   }, [closeAppHistoryLayer]);
 
@@ -1728,7 +1732,7 @@ export default function Home() {
       supabase.rpc("wt_admin_coaching_applications"),
     ]);
     if (!customerResult.error && customerResult.data) {
-      setAdminCustomers(customerResult.data.map((item: Record<string, unknown>) => ({
+      const customers = customerResult.data.map((item: Record<string, unknown>) => ({
         assignmentId: String(item.assignment_id),
         ownerId: String(item.owner_id),
         ownerName: String(item.owner_name ?? ""),
@@ -1744,7 +1748,10 @@ export default function Home() {
         concerns7d: Number(item.concerns_7d ?? 0),
         latestMessage: String(item.latest_message ?? ""),
         latestMessageAt: item.latest_message_at ? String(item.latest_message_at) : null,
-      })));
+      })) as AdminCustomer[];
+      setAdminCustomers(customers);
+      if (userRole === "coach") setSelectedAdminCustomer((current) =>
+        current && !customers.some((customer) => customer.assignmentId === current.assignmentId) ? null : current);
     }
     if (accountResult.error) {
       setAdminAccountsError(accountResult.error.message);
@@ -2449,6 +2456,7 @@ export default function Home() {
     pushAppHistory({ kind: "admin-customer", customer });
     setSelectedAdminCustomer(customer);
     setAdminReplyTo(null);
+    setCoachChatContext(null);
     setAdminDetailLoading(true);
     setAdminDetailOwnerProfile(null);
     setAdminDetailDogProfile(null);
@@ -4584,7 +4592,7 @@ export default function Home() {
   });
   const adminPageMeta: Record<AdminTab, { title: string; description: string; count: number }> = {
     applications: { title: "コーチング申込み", description: "相談内容を確認し、合いそうなコーチへつなぐ。", count: adminApplications.length },
-    customers: { title: userRole === "admin" ? "すべての担当顧客" : "担当のお客様", description: "記録の変化を見て、必要なタイミングで声をかける。", count: adminCustomers.length },
+    customers: { title: userRole === "admin" ? "すべての担当顧客" : "担当している愛犬", description: "最近の記録を見て、飼い主と一緒に振り返る。", count: adminCustomers.length },
     schedule: { title: "オンライン対応日時", description: "空き枠と予約状況を、ひとつの場所で確認する。", count: onlineSessions.filter((session) => session.status === "booked").length },
     coachProfile: { title: "コーチプロフィール", description: "オーナーへ表示する経歴とオンライン面談情報を整える。", count: availableSlots.length },
     accounts: { title: "ユーザー管理", description: "権限と担当コーチを、この画面で設定できます。", count: adminAccounts.length },
@@ -4619,8 +4627,11 @@ export default function Home() {
             <section className="admin-detail-hero">
               <div className={`admin-dog-avatar ${adminDetailDogProfile?.avatarUrl ? "has-image" : ""}`}>{adminDetailDogProfile?.avatarUrl ? <img src={adminDetailDogProfile.avatarUrl} alt="" /> : selectedAdminCustomer.dogName.slice(0, 1)}</div>
               <div><p className="card-label">CUSTOMER DETAIL</p><h1>{selectedAdminCustomer.dogName}</h1><span>{selectedAdminCustomer.breed || "犬種未登録"} · 直近30日</span></div>
-              <b className={selectedAdminCustomer.concerns7d > 0 ? "needs-care" : "stable"}>{selectedAdminCustomer.concerns7d > 0 ? "要確認" : "安定"}</b>
+              {userRole === "admin" && <b className={selectedAdminCustomer.concerns7d > 0 ? "needs-care" : "stable"}>{selectedAdminCustomer.concerns7d > 0 ? "要確認" : "安定"}</b>}
             </section>
+            {userRole === "coach" && <CoachObservationSummary key={selectedAdminCustomer.assignmentId}
+              dogId={selectedAdminCustomer.dogId} ownerId={selectedAdminCustomer.ownerId} dogName={selectedAdminCustomer.dogName}
+              onChat={(event) => { setCoachChatContext(event ?? null); document.getElementById("coach-customer-chat")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />}
             {(adminDetailOwnerProfile || adminDetailDogProfile) && <section className="customer-context-card">
               <div><p className="card-label">FAMILY PROFILE</p><h2>ご家族と愛犬の基本情報</h2></div>
               <div className="customer-context-grid">
@@ -4666,8 +4677,9 @@ export default function Home() {
                     {adminGoodMoments.length > 0 && <div className="admin-wins"><small>最近の「できた」</small>{adminGoodMoments.map((record) => <p key={record.id}>“{record.goodMoment}”</p>)}</div>}
                   </section>
                 </div>
-                <section className="admin-panel admin-chat-panel">
+                <section id="coach-customer-chat" className="admin-panel admin-chat-panel">
                   <div className="admin-panel-heading"><div><p className="card-label">CHAT</p><h2>飼い主との会話</h2></div><span>{adminDetailMessages.length}件</span></div>
+                  {coachChatContext && <p className="coach-chat-context">{coachChatContext.theme}の記録について確認する <small>記録ID: {coachChatContext.id}</small><button type="button" onClick={() => setCoachChatContext(null)}>解除</button></p>}
                   <div className="admin-chat-history" ref={adminMessageListRef}>{adminDetailMessages.length ? <ChatMessageTimeline messages={adminDetailMessages} selfSender="coach" onReply={setAdminReplyTo} showReadReceipt /> : <p className="admin-muted">まだ相談はありません。コーチから声をかけることもできます。</p>}</div>
                   <ChatInput ownerId={selectedAdminCustomer.ownerId} dogId={selectedAdminCustomer.dogId} sender="coach" placeholder={`${selectedAdminCustomer.dogName}の飼い主へメッセージ`} onSent={addAdminMessage} replyTo={adminReplyTo} onCancelReply={() => setAdminReplyTo(null)} />
                 </section>
@@ -4717,14 +4729,14 @@ export default function Home() {
           </div>
         ) : <section className="admin-empty"><span><NavGlyph name="coach" /></span><h2>新しい申込みはありません</h2><p>ownerがコーチング相談を送信すると、ここに表示されます。</p></section>)}
         {adminTab === "customers" && (adminCustomers.length ? (
-          <div className="customer-list">
+          <div className="customer-list" aria-label={userRole === "coach" ? "担当している愛犬" : "担当顧客"}>
             {adminCustomers.map((customer) => (
               <article className="customer-card" key={customer.assignmentId}>
-                <div className="customer-profile"><span>{customer.dogName.slice(0, 1)}</span><div><h2>{customer.dogName}</h2><p>{customer.breed}</p></div><b>{customer.concerns7d > 0 ? "要確認" : "安定"}</b></div>
+                <div className="customer-profile"><span>{customer.dogName.slice(0, 1)}</span><div><h2>{customer.dogName}</h2><p>{customer.breed}</p></div>{userRole === "admin" && <b>{customer.concerns7d > 0 ? "要確認" : "安定"}</b>}</div>
                 <div className="customer-owner-summary"><small>飼い主さま</small><strong>{customer.ownerName || "お名前未登録"}</strong><span>{customer.ownerPrefecture || "都道府県未登録"}</span></div>
-                <div className="customer-stats"><span><b>{customer.records7d}</b>7日間の記録</span><span><b>{customer.concerns7d}</b>気になる記録</span></div>
+                {userRole === "coach" ? <CoachAssignedDogStats dogId={customer.dogId} /> : <div className="customer-stats"><span><b>{customer.records7d}</b>7日間の記録</span><span><b>{customer.concerns7d}</b>気になる記録</span></div>}
                 <div className="customer-message"><small>最新の相談</small><p>{customer.latestMessage || "相談はまだありません"}</p></div>
-                <button onClick={() => void openAdminCustomer(customer)}>詳細とチャットを見る →</button>
+                <button onClick={() => void openAdminCustomer(customer)}>{userRole === "coach" ? "観察サマリーを見る →" : "詳細とチャットを見る →"}</button>
               </article>
             ))}
           </div>

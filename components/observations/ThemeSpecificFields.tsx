@@ -12,6 +12,9 @@ const fields: Record<EventTheme, { key: string; label: string; options?: string[
   sleep_rest: [{ key: "settled", label: "落ち着いて休めたか", options: ["はい", "少し", "いいえ"] }, { key: "period", label: "睡眠時間帯" }, { key: "interrupted", label: "中断の有無", options: ["あり", "なし"] }],
   grooming: [{ key: "care", label: "ケア内容" }, { key: "reaction", label: "嫌がり方" }, { key: "progress", label: "どこまでできたか" }],
 };
+export function themeFieldLabel(theme: EventTheme, key: string): string {
+  return fields[theme].find((field) => field.key === key)?.label ?? "このテーマについて";
+}
 export default function ThemeSpecificFields({ theme, data, onChange }: { theme: EventTheme; data: Record<string, string>; onChange: (data: Record<string, string>) => void }) {
   return <div className="event-theme-fields"><h3>このテーマについて（任意）</h3>{fields[theme].map(({ key, label, options }) => <label className="field-label" key={key}>{label}
     {options ? <select value={data[key] ?? ""} onChange={(e) => onChange({ ...data, [key]: e.target.value })}><option value="">選択しない</option>{options.map((option) => <option key={option}>{option}</option>)}</select>

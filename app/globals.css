@@ -2458,3 +2458,34 @@ body { font-size: 16px; }
 .insight-coach-note { margin:24px 0 0; padding:16px; border-radius:16px; background:#e8f4ed; color:#42654e; font-size:13px; line-height:1.7; }
 @media (max-width:650px) { .recent-observation-trends { padding:17px; } .insight-daily-list { grid-template-columns:1fr; } .insight-daily-card > p { max-width:310px; } }
 @media (max-width:390px) { .recent-observation-trends { padding:14px; border-radius:18px; } .insight-card,.insight-theme-card,.insight-daily-card,.insight-handler-card,.insight-empty-state { padding:16px; } .insight-handler-card > div { grid-template-columns:1fr; } }
+
+.coach-dog-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin:14px 0; color:#5f7566; font-size:11px; }
+.coach-dog-stats > span { min-width:0; padding:10px; border-radius:12px; background:#f2f8f3; }
+.coach-dog-stats strong { display:block; margin-top:3px; color:#14573f; font-size:13px; overflow-wrap:anywhere; }
+.coach-observation-summary { box-sizing:border-box; min-width:0; margin:18px 0 26px; padding:24px; border:1px solid #d9e9df; border-radius:24px; background:#f5faf6; color:#284737; }
+.coach-observation-summary * { box-sizing:border-box; }
+.coach-observation-summary header h2 { margin:6px 0; font-size:clamp(22px,5vw,29px); }
+.coach-observation-summary header p { margin:0; color:#61796a; font-size:13px; line-height:1.7; }
+.coach-observation-summary h3 { margin:0 0 13px; font-size:18px; }
+.coach-observation-numbers { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.coach-observation-numbers p { margin:0; padding:15px; border-radius:16px; background:#fff; }
+.coach-observation-numbers strong,.coach-observation-numbers span { display:block; }
+.coach-observation-numbers strong { color:#008661; font-size:23px; }.coach-observation-numbers span { color:#65786a; font-size:11px; }
+.coach-text-button { min-height:44px; padding:8px 0; border:0; background:transparent; color:#008661; font:inherit; font-size:13px; font-weight:750; cursor:pointer; }
+.coach-daily-more { display:grid; gap:7px; }.coach-daily-more p { display:flex; flex-wrap:wrap; gap:8px; align-items:baseline; margin:0; padding:12px; border-radius:12px; background:#fff; font-size:12px; }
+.coach-daily-more p span { flex:1; }.coach-daily-more p strong { color:#008661; }.coach-daily-more p small { color:#6a7a6d; }
+.coach-events-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.coach-event-list { margin:0; padding:0; list-style:none; }.coach-event-list li { min-width:0; margin:0 0 9px; padding:13px; border:1px solid #e0ece3; border-radius:16px; background:#fff; }
+.coach-event-list li > p,.coach-event-empty { color:#61796a; font-size:13px; }
+.coach-event-toggle { display:flex; width:100%; min-height:54px; align-items:center; justify-content:space-between; gap:10px; padding:0; border:0; background:transparent; color:#284737; text-align:left; font:inherit; cursor:pointer; }
+.coach-event-toggle span { min-width:0; }.coach-event-toggle strong,.coach-event-toggle small,.coach-event-toggle em { display:block; overflow-wrap:anywhere; }
+.coach-event-toggle strong { font-size:14px; }.coach-event-toggle small { margin:5px 0; color:#667d70; font-size:12px; }.coach-event-toggle em { font-size:13px; font-style:normal; line-height:1.6; }
+.coach-event-toggle b { color:#008661; font-size:19px; }
+.coach-event-detail { padding:12px 0 2px; border-top:1px solid #e0ece3; font-size:13px; }.coach-event-detail p { margin:0 0 10px; }
+.coach-event-detail dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }.coach-event-detail dl div { min-width:0; padding:9px; border-radius:10px; background:#f5faf6; overflow-wrap:anywhere; }
+.coach-event-detail dt { color:#627b69; font-size:11px; }.coach-event-detail dd { margin:3px 0 0; }
+.coach-event-detail button,.coach-chat-link { min-height:44px; border:0; background:transparent; color:#008661; font:inherit; font-size:13px; font-weight:750; cursor:pointer; }
+.coach-chat-link { margin-top:20px; }.coach-chat-context { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:10px; border-radius:10px; background:#e8f4ed; font-size:12px; }
+.coach-chat-context small { color:#607868; overflow-wrap:anywhere; }.coach-chat-context button { min-height:36px; margin-left:auto; border:0; background:transparent; color:#008661; font:inherit; cursor:pointer; }
+@media (max-width:650px) { .coach-observation-summary { padding:16px; }.coach-observation-numbers { grid-template-columns:repeat(2,minmax(0,1fr)); }.coach-event-detail dl { grid-template-columns:1fr; } }
+@media (max-width:390px) { .coach-observation-summary { padding:14px; border-radius:18px; }.coach-dog-stats { grid-template-columns:1fr 1fr; } }
