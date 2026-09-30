@@ -1,4 +1,6 @@
 import type { ObservationEvent } from "@/lib/observations/observationEvent";
+import EventIntensitySelector from "./EventIntensitySelector";
+import EventSecondsField from "./EventSecondsField";
 
 type Update = (patch: Partial<ObservationEvent>) => void;
 const choices = {
@@ -9,7 +11,7 @@ const choices = {
   outcome: [["", "選択しない"], ["no_reaction", "反応しなかった"], ["settled_quickly", "すぐ落ち着いた"], ["partly_settled", "少し落ち着いた"], ["unchanged", "変わらなかった"], ["escalated", "反応が強くなった"]],
 };
 function Select({ label, value, options, onChange }: { label: string; value: string | null; options: string[][]; onChange: (value: string | null) => void }) {
-  return <label className="field-label">{label}<select value={value ?? ""} onChange={(e) => onChange(e.target.value || null)}>{options.map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label>;
+  return <label className="field-label">{label}<select className="event-select" value={value ?? ""} onChange={(e) => onChange(e.target.value || null)}>{options.map(([key, text]) => <option key={key} value={key}>{text}</option>)}</select></label>;
 }
 export function EventSituationFields({ value, update }: { value: ObservationEvent; update: Update }) {
   return <div className="event-field-pair">
@@ -18,17 +20,15 @@ export function EventSituationFields({ value, update }: { value: ObservationEven
   </div>;
 }
 export default function EventDetailFields({ value, update }: { value: ObservationEvent; update: Update }) {
-  const seconds = (n: number | null) => n === null ? "" : String(Math.round(n / 60));
-  const minutes = (text: string) => text === "" ? null : Number(text) * 60;
   return <div className="event-detail-fields">
     <Select label="相手・対象" value={value.targetType} options={choices.targetType} onChange={(targetType) => update({ targetType })} />
     <Select label="距離感" value={value.distanceBand} options={choices.distanceBand} onChange={(distanceBand) => update({ distanceBand })} />
-    <label className="field-label">強さ（1〜10、任意）<input type="number" min={1} max={10} value={value.intensity ?? ""} onChange={(e) => update({ intensity: e.target.value ? Number(e.target.value) : null })} /></label>
-    <label className="field-label">続いた時間（分）<input type="number" min={0} max={10080} value={seconds(value.durationSeconds)} onChange={(e) => update({ durationSeconds: minutes(e.target.value) })} /></label>
-    <label className="field-label">飼い主がしたこと<select value={value.ownerResponseKeys?.[0] ?? ""} onChange={(e) => update({ ownerResponseKeys: e.target.value ? [e.target.value] : null })}>
+    <EventIntensitySelector value={value.intensity} onChange={(intensity) => update({ intensity })} />
+    <EventSecondsField label="続いた時間" value={value.durationSeconds} onChange={(durationSeconds) => update({ durationSeconds })} />
+    <label className="field-label">飼い主がしたこと<select className="event-select" value={value.ownerResponseKeys?.[0] ?? ""} onChange={(e) => update({ ownerResponseKeys: e.target.value ? [e.target.value] : null })}>
       <option value="">選択しない</option><option value="soothed">声をかけた</option><option value="waited">見守った</option><option value="moved_away">距離を取った</option><option value="redirected">気をそらした</option><option value="other">その他</option>
     </select></label>
     <Select label="その後どうなったか" value={value.outcome} options={choices.outcome} onChange={(outcome) => update({ outcome })} />
-    <label className="field-label">落ち着くまでの時間（分）<input type="number" min={0} max={10080} value={seconds(value.recoverySeconds)} onChange={(e) => update({ recoverySeconds: minutes(e.target.value) })} /></label>
+    <EventSecondsField label="落ち着くまでの時間" value={value.recoverySeconds} onChange={(recoverySeconds) => update({ recoverySeconds })} />
   </div>;
 }

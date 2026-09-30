@@ -17,7 +17,7 @@ export function themeFieldLabel(theme: EventTheme, key: string): string {
 }
 export default function ThemeSpecificFields({ theme, data, onChange }: { theme: EventTheme; data: Record<string, string>; onChange: (data: Record<string, string>) => void }) {
   return <div className="event-theme-fields"><h3>このテーマについて（任意）</h3>{fields[theme].map(({ key, label, options }) => <label className="field-label" key={key}>{label}
-    {options ? <select value={data[key] ?? ""} onChange={(e) => onChange({ ...data, [key]: e.target.value })}><option value="">選択しない</option>{options.map((option) => <option key={option}>{option}</option>)}</select>
+    {options ? <select className="event-select" value={data[key] ?? ""} onChange={(e) => onChange({ ...data, [key]: e.target.value })}><option value="">選択しない</option>{options.map((option) => <option key={option}>{option}</option>)}</select>
       : <input value={data[key] ?? ""} maxLength={200} onChange={(e) => onChange({ ...data, [key]: e.target.value })} placeholder="任意" />}
   </label>)}</div>;
 }

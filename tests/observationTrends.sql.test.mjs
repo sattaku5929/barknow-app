@@ -60,7 +60,7 @@ const results = ["success", "success", "success", "concern", "success", "neutral
 for (let i = 0; i < 7; i++) {
   await event(`2026-09-${22+i}`, results[i], i < 4 ? father : mother, {
     distance: i < 3 ? "1_3m" : "5_10m",
-    intensity: i < 3 ? [2, 4, 6][i] : null,
+    intensity: i < 3 ? [2, 4, 5][i] : null,
     recovery: i < 3 ? [60, 120, 180][i] : null,
   });
 }
@@ -127,7 +127,7 @@ assert.deepEqual([archivedHandler.archived, archivedHandler.display_name, archiv
   archivedHandler.success_rate, archivedHandler.concern_rate], [true, "パパ", 4, 75, 25]);
 const metrics = data.numeric_metrics.find((row) => row.period === "current");
 assert.deepEqual([metrics.intensity_count, metrics.intensity_avg, metrics.intensity_median,
-  metrics.recovery_count, metrics.recovery_avg_seconds, metrics.recovery_median_seconds], [3,4,4,3,120,120]);
+  metrics.recovery_count, metrics.recovery_avg_seconds, metrics.recovery_median_seconds], [3,3.67,4,3,120,120]);
 const distance = data.distances.find((row) => row.period === "current" && row.distance_band === "5_10m");
 assert.deepEqual([distance.total_count, distance.concern_count, distance.concern_rate], [4,2,50]);
 const calmness = data.daily_metrics.find((row) => row.period === "current" && row.metric_key === "calmness_score");

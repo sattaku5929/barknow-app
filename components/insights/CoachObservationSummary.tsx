@@ -29,7 +29,7 @@ function EventDetail({ event, handler, onChat }: { event: CoachEvent; handler: s
   if (event.environment) fields.push(["場所・環境", environmentLabels[event.environment] ?? event.environment]);
   if (event.targetType) fields.push(["相手・対象", targetLabels[event.targetType] ?? event.targetType]);
   if (event.distanceBand) fields.push(["距離感", distanceLabels[event.distanceBand] ?? event.distanceBand]);
-  if (event.intensity !== null) fields.push(["強さ", `${event.intensity} / 10`]);
+  if (event.intensity !== null) fields.push(["反応の強さ", `${event.intensity} / 5`]);
   if (event.durationSeconds !== null) fields.push(["続いた時間", `${event.durationSeconds}秒`]);
   if (event.ownerResponseKeys?.length) fields.push(["飼い主の対応", event.ownerResponseKeys.map((key) => responseLabels[key] ?? key).join("・")]);
   if (event.outcome) fields.push(["その後", outcomeLabels[event.outcome] ?? event.outcome]);
