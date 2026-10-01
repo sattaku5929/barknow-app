@@ -548,6 +548,7 @@ const CARE_GOALS_KEY = "wan-tone-care-goals-v1";
 const GOAL_COMPLETIONS_KEY = "wan-tone-goal-completions-v1";
 const REMINDER_SENT_KEY = "wan-tone-reminder-sent-v1";
 const APP_HISTORY_STATE_KEY = "__wanToneUi";
+const ACTIVE_VIEW_MODE_KEY = "wt_active_view_mode";
 
 const initialProfile: DogProfile = { avatarUrl: "", name: "", breed: "", birthday: "", isFirstTimeOwner: "", gender: "", trainingExperience: "", daycareFrequency: "", walkFrequency: "", concerns: "", profileCompletedAt: "" };
 const initialOwnerProfile: OwnerProfile = { fullName: "", fullNameKana: "", phoneNumber: "", prefecture: "", address: "", birthDate: "", completedAt: "" };
@@ -720,6 +721,22 @@ function readLocal<T>(key: string, fallback: T): T {
 
 function writeLocal<T>(key: string, value: T) {
   window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+function activeViewModeKey(userId: string) {
+  return `${ACTIVE_VIEW_MODE_KEY}:${userId}`;
+}
+
+function readActiveViewMode(userId: string) {
+  return window.localStorage.getItem(activeViewModeKey(userId));
+}
+
+function writeActiveViewMode(userId: string, mode: UserRole) {
+  window.localStorage.setItem(activeViewModeKey(userId), mode);
+}
+
+function clearActiveViewMode(userId: string) {
+  if (userId) window.localStorage.removeItem(activeViewModeKey(userId));
 }
 
 function formatDate(value: string) {
@@ -1950,6 +1967,14 @@ export default function Home() {
         }
         setUserRole(role);
 
+        const savedViewMode = readActiveViewMode(userId);
+        const validViewMode = role === "owner"
+          ? "owner"
+          : savedViewMode === "owner" || savedViewMode === role
+            ? savedViewMode
+            : role;
+        setStaffMode(validViewMode === "owner" ? "owner" : "staff");
+
         if (role === "admin" || role === "coach") {
           if (role === "coach") setAdminTab("customers");
           await loadAdminWorkspace();
@@ -2363,6 +2388,7 @@ export default function Home() {
   }
 
   async function signOut() {
+    clearActiveViewMode(currentUserId);
     await supabase.auth.signOut();
     clearOwnerCache();
     window.location.reload();
@@ -2388,6 +2414,7 @@ export default function Home() {
         const subscription = await registration?.pushManager.getSubscription();
         await subscription?.unsubscribe().catch(() => false);
       }
+      clearActiveViewMode(currentUserId);
       await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
       clearOwnerCache();
       window.sessionStorage.removeItem(PUSH_PROMPT_SESSION_KEY);
@@ -4648,13 +4675,21 @@ export default function Home() {
     </div>
   );
 
+  function switchActiveViewMode(mode: "owner" | "staff") {
+    if (userRole !== "admin" && userRole !== "coach") return;
+    if (!currentUserId) return;
+    writeActiveViewMode(currentUserId, mode === "owner" ? "owner" : userRole);
+    setStaffMode(mode);
+    if (mode === "owner") setView("home");
+  }
+
   const adminView = (
     <div className="admin-stage">
       {pullRefreshIndicator}
       <header className="admin-header">
         <div><p>WAN TONE</p><strong>{userRole === "admin" ? "Admin Console" : "Coach Console"}</strong></div>
         <div className="admin-header-actions">
-          {(userRole === "admin" || userRole === "coach") && <button className="mode-switch" onClick={() => { setStaffMode("owner"); setView("home"); }}>飼い主画面へ</button>}
+          {(userRole === "admin" || userRole === "coach") && <button className="mode-switch" onClick={() => switchActiveViewMode("owner")}>飼い主画面へ</button>}
           <button onClick={() => void signOut()}>ログアウト</button>
         </div>
       </header>
@@ -4890,7 +4925,7 @@ export default function Home() {
             <strong>Wan Tone</strong><span>by BarKnow</span>
           </button>
           <div className="app-header-actions">
-            {(userRole === "admin" || userRole === "coach") && <button className="owner-admin-switch" onClick={() => setStaffMode("staff")}><NavGlyph name="coach" /><span>{userRole === "admin" ? "管理画面" : "コーチ画面"}</span></button>}
+            {(userRole === "admin" || userRole === "coach") && <button className="owner-admin-switch" onClick={() => switchActiveViewMode("staff")}><NavGlyph name="coach" /><span>{userRole === "admin" ? "管理画面" : "コーチ画面"}</span></button>}
           </div>
         </header>
         <main className={`app-main ${view === "home" ? "home-flat" : ""}`}>
