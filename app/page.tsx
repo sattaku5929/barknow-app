@@ -3103,7 +3103,7 @@ export default function Home() {
     const validationErrors = validateDogProfile(profile);
     setDogProfileErrors(validationErrors);
     if (Object.keys(validationErrors).length) {
-      showNotice("入力されていない必須項目があります");
+      showNotice("入力内容を確認してください");
       focusFirstDogProfileError(validationErrors);
       return;
     }
@@ -3342,7 +3342,7 @@ export default function Home() {
     const validationErrors = validateDogProfile(profile);
     setDogProfileErrors(validationErrors);
     if (Object.keys(validationErrors).length) {
-      showNotice("入力されていない必須項目があります");
+      showNotice("入力内容を確認してください");
       focusFirstDogProfileError(validationErrors);
       return;
     }
@@ -3387,7 +3387,7 @@ export default function Home() {
       showNotice("登録が完了しました。今日から一緒に記録を始めましょう");
     } catch (error) {
       const detail = getSubmissionErrorDetail(error);
-      const message = `愛犬情報を保存できませんでした（${detail}）`;
+      const message = "愛犬プロフィールを保存できませんでした。通信状況を確認して、もう一度お試しください。";
       console.error("[Onboarding] dog profile submission failed", {
         userId,
         inputSummary: {
@@ -3398,6 +3398,7 @@ export default function Home() {
           walkFrequencySelected: Boolean(profile.walkFrequency),
           concernsLength: profile.concerns.trim().length,
         },
+        detail,
         error,
       });
       setOnboardingError(message);
@@ -4504,7 +4505,7 @@ export default function Home() {
       <button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
       <SectionTitle eyebrow="DOG PROFILE" title="愛犬プロフィール" />
       <p className="lead">写真や暮らしの変化に合わせて、いつでも更新できます。</p>
-      {Object.keys(dogProfileErrors).length > 0 && <p className="dog-profile-error-summary" role="alert">入力されていない必須項目があります。赤く表示された項目を確認してください。</p>}
+      {Object.keys(dogProfileErrors).length > 0 && <p className="dog-profile-error-summary" role="alert">入力内容を確認してください。赤く表示された必須項目を修正してください。</p>}
       <section className="profile-form-section"><div className="profile-section-heading"><span>01</span><div><h2>愛犬について</h2><p>画像・基本情報・生活リズム</p></div></div>
         <fieldset className="dog-avatar-editor"><legend>愛犬の画像</legend><div className="dog-avatar-preview">{profile.avatarUrl ? <img src={profile.avatarUrl} alt={`${profile.name || "愛犬"}のプロフィール画像`} /> : <CareIcon name="paws" />}</div><div><strong>{profile.avatarUrl ? "画像を設定済みです" : "お気に入りの1枚を設定"}</strong><p>ホーム画面やプロフィールに表示されます。</p><label>{saving ? "画像を処理中…" : profile.avatarUrl ? "画像を変更" : "画像を選択"}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadDogAvatar(file); event.currentTarget.value = ""; }} /></label></div></fieldset>
         <label className={`field-label dog-profile-field ${dogProfileErrors.name ? "has-error" : ""}`} data-dog-field="name">名前 <span className="required-badge">必須</span><input value={profile.name} aria-invalid={Boolean(dogProfileErrors.name)} onChange={(event) => { setProfile({ ...profile, name: event.target.value }); clearDogProfileError("name"); }} placeholder="例：むぎ" />{dogProfileErrors.name && <small className="field-error" role="alert">{dogProfileErrors.name}</small>}</label>
@@ -4627,7 +4628,7 @@ export default function Home() {
         <label className="field-label">市区町村・番地・建物名<textarea rows={3} autoComplete="street-address" value={ownerProfile.address} onChange={(event) => setOwnerProfile({ ...ownerProfile, address: event.target.value })} placeholder="例：目黒区〇〇1-2-3 Wan Toneマンション101" required /></label>
           {onboardingError && <p className="onboarding-error" role="alert">{onboardingError}</p>}
           <button type="submit" className="onboarding-next" disabled={saving}>{saving ? "保存中…" : "愛犬情報へ進む"}<span>→</span></button>
-        </form> : <form noValidate onSubmit={saveDogOnboarding} onInput={() => { if (onboardingError) setOnboardingError(""); }}><p className="card-label">ABOUT YOUR DOG</p><h1>次に、愛犬の毎日を<br />教えてください。</h1><p className="onboarding-lead">暮らし方まで分かると、コーチが記録の変化を正しく読み取りやすくなります。</p>{Object.keys(dogProfileErrors).length > 0 && <p className="dog-profile-error-summary" role="alert">入力されていない必須項目があります。赤く表示された項目を確認してください。</p>}
+        </form> : <form noValidate onSubmit={saveDogOnboarding} onInput={() => { if (onboardingError) setOnboardingError(""); }}><p className="card-label">ABOUT YOUR DOG</p><h1>次に、愛犬の毎日を<br />教えてください。</h1><p className="onboarding-lead">暮らし方まで分かると、コーチが記録の変化を正しく読み取りやすくなります。</p>{Object.keys(dogProfileErrors).length > 0 && <p className="dog-profile-error-summary" role="alert">入力内容を確認してください。赤く表示された必須項目を修正してください。</p>}
           <fieldset className="dog-avatar-editor is-onboarding"><legend>愛犬の画像（任意）</legend><div className="dog-avatar-preview">{profile.avatarUrl ? <img src={profile.avatarUrl} alt="登録する愛犬の画像" /> : <CareIcon name="paws" />}</div><div><strong>{profile.avatarUrl ? "この画像を使用します" : "愛犬の顔が見える写真がおすすめ"}</strong><p>あとから設定画面で変更できます。</p><label>{saving ? "画像を処理中…" : profile.avatarUrl ? "画像を変更" : "画像を選択"}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadDogAvatar(file); event.currentTarget.value = ""; }} /></label></div></fieldset>
           <div className="onboarding-grid"><label className={`field-label dog-profile-field ${dogProfileErrors.name ? "has-error" : ""}`} data-dog-field="name">愛犬の名前 <span className="required-badge">必須</span><input autoFocus value={profile.name} aria-invalid={Boolean(dogProfileErrors.name)} onChange={(event) => { setProfile({ ...profile, name: event.target.value }); clearDogProfileError("name"); }} placeholder="例：むぎ" />{dogProfileErrors.name && <small className="field-error" role="alert">{dogProfileErrors.name}</small>}</label><label className={`field-label dog-profile-field ${dogProfileErrors.breed ? "has-error" : ""}`} data-dog-field="breed">犬種 <span className="required-badge">必須</span><input value={profile.breed} aria-invalid={Boolean(dogProfileErrors.breed)} onChange={(event) => { setProfile({ ...profile, breed: event.target.value }); clearDogProfileError("breed"); }} placeholder="例：トイプードル" />{dogProfileErrors.breed && <small className="field-error" role="alert">{dogProfileErrors.breed}</small>}</label></div>
           <label className={`field-label dog-profile-field ${dogProfileErrors.birthday ? "has-error" : ""}`} data-dog-field="birthday">誕生日 <span className="required-badge">必須</span><input type="date" max={today()} value={profile.birthday} aria-invalid={Boolean(dogProfileErrors.birthday)} onChange={(event) => { setProfile({ ...profile, birthday: event.target.value }); clearDogProfileError("birthday"); }} />{ageLabel(profile.birthday) && <small className="age-preview">{ageLabel(profile.birthday)}</small>}{dogProfileErrors.birthday && <small className="field-error" role="alert">{dogProfileErrors.birthday}</small>}</label>
