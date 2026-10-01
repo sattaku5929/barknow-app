@@ -46,6 +46,19 @@ type DogProfile = {
   profileCompletedAt: string;
 };
 
+type DogProfileField =
+  | "name"
+  | "breed"
+  | "birthday"
+  | "isFirstTimeOwner"
+  | "gender"
+  | "trainingExperience"
+  | "daycareFrequency"
+  | "walkFrequency"
+  | "concerns";
+
+type DogProfileErrors = Partial<Record<DogProfileField, string>>;
+
 type OwnerProfile = {
   fullName: string;
   fullNameKana: string;
@@ -1067,6 +1080,7 @@ export default function Home() {
   const [view, setView] = useState<View>("home");
   const [connection, setConnection] = useState<Connection>("checking");
   const [profile, setProfile] = useState<DogProfile>(initialProfile);
+  const [dogProfileErrors, setDogProfileErrors] = useState<DogProfileErrors>({});
   const [ownerProfile, setOwnerProfile] = useState<OwnerProfile>(initialOwnerProfile);
   const [onboardingRequired, setOnboardingRequired] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState<"owner" | "dog">("owner");
@@ -3048,26 +3062,117 @@ export default function Home() {
     return data.id as string;
   }
 
+  function validateDogProfile(current: DogProfile): DogProfileErrors {
+    const errors: DogProfileErrors = {};
+    if (!current.name.trim()) errors.name = "愛犬の名前を入力してください";
+    else if (current.name.trim().length > 60) errors.name = "愛犬の名前は60文字以内で入力してください";
+    if (!current.breed.trim()) errors.breed = "犬種を入力してください";
+    if (!current.birthday) errors.birthday = "誕生日を選択してください";
+    else if (current.birthday > today()) errors.birthday = "誕生日は今日以前の日付を選択してください";
+    if (!current.isFirstTimeOwner) errors.isFirstTimeOwner = "飼育経験を選択してください";
+    if (!current.gender) errors.gender = "性別を選択してください";
+    if (!current.trainingExperience) errors.trainingExperience = "しつけトレーニング経験を選択してください";
+    if (!current.daycareFrequency) errors.daycareFrequency = "保育園への頻度を選択してください";
+    if (!current.walkFrequency) errors.walkFrequency = "散歩の頻度を選択してください";
+    if (!current.concerns.trim()) errors.concerns = "気になっていることを入力してください";
+    return errors;
+  }
+
+  function clearDogProfileError(field: DogProfileField) {
+    setDogProfileErrors((current) => {
+      if (!current[field]) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
+  function focusFirstDogProfileError(errors: DogProfileErrors) {
+    const firstField = (Object.keys(errors) as DogProfileField[])[0];
+    if (!firstField) return;
+    window.requestAnimationFrame(() => {
+      const container = document.querySelector<HTMLElement>(`[data-dog-field="${firstField}"]`);
+      const input = container?.querySelector<HTMLElement>("input, select, textarea");
+      container?.scrollIntoView({ block: "center" });
+      input?.focus({ preventScroll: true });
+    });
+  }
+
   async function saveDogProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const validationErrors = validateDogProfile(profile);
+    setDogProfileErrors(validationErrors);
+    if (Object.keys(validationErrors).length) {
+      showNotice("入力されていない必須項目があります");
+      focusFirstDogProfileError(validationErrors);
+      return;
+    }
+
+    const normalized = {
+      name: profile.name.trim(),
+      breed: profile.breed.trim(),
+      birthday: profile.birthday,
+      isFirstTimeOwner: profile.isFirstTimeOwner,
+      gender: profile.gender,
+      trainingExperience: profile.trainingExperience,
+      daycareFrequency: profile.daycareFrequency,
+      walkFrequency: profile.walkFrequency,
+      concerns: profile.concerns.trim(),
+    };
+
     setSaving(true);
-    writeLocal(PROFILE_KEY, profile);
     try {
-      if (connection === "online") {
-        const userId = await getUserId();
-        if (!userId) throw new Error("No session");
-        const { data, error } = await supabase.from("wt_dogs").upsert({ owner_id: userId, avatar_url: profile.avatarUrl || null, name: profile.name, breed: profile.breed || null, birthday: profile.birthday || null, birth_date: profile.birthday || null, is_first_time_owner: profile.isFirstTimeOwner === "yes" ? true : profile.isFirstTimeOwner === "no" ? false : null, gender: profile.gender || null, training_experience: profile.trainingExperience, daycare_frequency: profile.daycareFrequency, walk_frequency: profile.walkFrequency, concerns: profile.concerns, profile_completed_at: profile.profileCompletedAt || new Date().toISOString() }, { onConflict: "owner_id" }).select("id").single();
-        if (error) throw error;
-        setProfile((current) => ({ ...current, id: data.id }));
-        showNotice("愛犬プロフィールを保存しました");
-      } else {
-        showNotice("この端末に愛犬プロフィールを保存しました");
-      }
+      const userId = await getUserId();
+      if (!userId) throw new Error("No session");
+      const completedAt = profile.profileCompletedAt || new Date().toISOString();
+      const { data, error } = await supabase
+        .from("wt_dogs")
+        .upsert(
+          {
+            owner_id: userId,
+            avatar_url: profile.avatarUrl || null,
+            name: normalized.name,
+            breed: normalized.breed,
+            birthday: normalized.birthday,
+            birth_date: normalized.birthday,
+            is_first_time_owner: normalized.isFirstTimeOwner === "yes",
+            gender: normalized.gender,
+            training_experience: normalized.trainingExperience,
+            daycare_frequency: normalized.daycareFrequency,
+            walk_frequency: normalized.walkFrequency,
+            concerns: normalized.concerns,
+            profile_completed_at: completedAt,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "owner_id" },
+        )
+        .select("id,avatar_url,name,breed,birthday,birth_date,is_first_time_owner,gender,training_experience,daycare_frequency,walk_frequency,concerns,profile_completed_at")
+        .single();
+      if (error) throw error;
+
+      const nextProfile: DogProfile = {
+        id: data.id,
+        avatarUrl: data.avatar_url ?? "",
+        name: data.name,
+        breed: data.breed ?? "",
+        birthday: data.birth_date ?? data.birthday ?? "",
+        isFirstTimeOwner: data.is_first_time_owner === true ? "yes" : data.is_first_time_owner === false ? "no" : "",
+        gender: normalizeDogGender(data.gender),
+        trainingExperience: (data.training_experience ?? "") as DogProfile["trainingExperience"],
+        daycareFrequency: data.daycare_frequency ?? "",
+        walkFrequency: data.walk_frequency ?? "",
+        concerns: data.concerns ?? "",
+        profileCompletedAt: data.profile_completed_at ?? completedAt,
+      };
+      setProfile(nextProfile);
+      writeLocal(PROFILE_KEY, nextProfile);
+      setDogProfileErrors({});
+      setConnection("online");
+      showNotice("愛犬プロフィールを保存しました");
       closeSettingsPanel();
     } catch (error) {
-      console.error("[Dog profile] save failed", { profile, error });
-      setConnection("local");
-      showNotice("この端末に愛犬プロフィールを保存しました");
+      console.error("[Dog profile] save failed", { error });
+      showNotice("愛犬プロフィールを保存できませんでした。通信状況を確認して、もう一度お試しください。");
     } finally {
       setSaving(false);
     }
@@ -3234,21 +3339,11 @@ export default function Home() {
   async function saveDogOnboarding(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setOnboardingError("");
-    const missingLabel = [
-      [profile.name.trim(), "愛犬の名前"],
-      [profile.breed.trim(), "犬種"],
-      [profile.birthday, "誕生日"],
-      [profile.isFirstTimeOwner, "飼育経験"],
-      [profile.gender, "性別"],
-      [profile.trainingExperience, "トレーニング経験"],
-      [profile.daycareFrequency, "保育園の頻度"],
-      [profile.walkFrequency, "散歩の頻度"],
-      [profile.concerns.trim(), "気になっていること"],
-    ].find(([value]) => !value)?.[1];
-    if (missingLabel) {
-      const message = `${missingLabel}を入力してください。`;
-      setOnboardingError(message);
-      showNotice(message);
+    const validationErrors = validateDogProfile(profile);
+    setDogProfileErrors(validationErrors);
+    if (Object.keys(validationErrors).length) {
+      showNotice("入力されていない必須項目があります");
+      focusFirstDogProfileError(validationErrors);
       return;
     }
     setSaving(true);
@@ -4405,21 +4500,22 @@ export default function Home() {
   );
 
   const profileEditorView = (
-    <form className="screen-form settings-profile-editor" onSubmit={saveDogProfile}>
+    <form className="screen-form settings-profile-editor" noValidate onSubmit={saveDogProfile}>
       <button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
       <SectionTitle eyebrow="DOG PROFILE" title="愛犬プロフィール" />
       <p className="lead">写真や暮らしの変化に合わせて、いつでも更新できます。</p>
+      {Object.keys(dogProfileErrors).length > 0 && <p className="dog-profile-error-summary" role="alert">入力されていない必須項目があります。赤く表示された項目を確認してください。</p>}
       <section className="profile-form-section"><div className="profile-section-heading"><span>01</span><div><h2>愛犬について</h2><p>画像・基本情報・生活リズム</p></div></div>
         <fieldset className="dog-avatar-editor"><legend>愛犬の画像</legend><div className="dog-avatar-preview">{profile.avatarUrl ? <img src={profile.avatarUrl} alt={`${profile.name || "愛犬"}のプロフィール画像`} /> : <CareIcon name="paws" />}</div><div><strong>{profile.avatarUrl ? "画像を設定済みです" : "お気に入りの1枚を設定"}</strong><p>ホーム画面やプロフィールに表示されます。</p><label>{saving ? "画像を処理中…" : profile.avatarUrl ? "画像を変更" : "画像を選択"}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadDogAvatar(file); event.currentTarget.value = ""; }} /></label></div></fieldset>
-        <label className="field-label">名前<input value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} placeholder="例：むぎ" required /></label>
-        <label className="field-label">犬種<input value={profile.breed} onChange={(event) => setProfile({ ...profile, breed: event.target.value })} placeholder="例：トイプードル" required /></label>
-        <label className="field-label">誕生日<input type="date" max={today()} value={profile.birthday} onChange={(event) => setProfile({ ...profile, birthday: event.target.value })} required />{ageLabel(profile.birthday) && <small className="age-preview">{ageLabel(profile.birthday)}</small>}</label>
-        <label className="field-label">犬を飼うのは初めてですか？<select value={profile.isFirstTimeOwner} onChange={(event) => setProfile({ ...profile, isFirstTimeOwner: event.target.value as DogProfile["isFirstTimeOwner"] })} required><option value="">選択してください</option><option value="yes">はい、初めてです</option><option value="no">いいえ、飼った経験があります</option></select></label>
-        <label className="field-label">性別<select value={profile.gender} onChange={(event) => setProfile({ ...profile, gender: event.target.value as DogProfile["gender"] })} required><option value="">選択してください</option><option value="male">男の子</option><option value="female">女の子</option><option value="unknown">不明・回答しない</option></select></label>
-        <label className="field-label">しつけトレーニングの経験回数<select value={profile.trainingExperience} onChange={(event) => setProfile({ ...profile, trainingExperience: event.target.value as DogProfile["trainingExperience"] })} required><option value="">選択してください</option><option value="first_time">初めて</option><option value="once">1回</option><option value="twice">2回</option><option value="three_or_more">3回以上</option></select></label>
-        <label className="field-label">保育園への頻度<select value={profile.daycareFrequency} onChange={(event) => setProfile({ ...profile, daycareFrequency: event.target.value })} required><option value="">選択してください</option><option>通っていない</option><option>不定期</option><option>月に数回</option><option>週1回</option><option>週2〜3回</option><option>週4回以上</option></select></label>
-        <label className="field-label">散歩の頻度<select value={profile.walkFrequency} onChange={(event) => setProfile({ ...profile, walkFrequency: event.target.value })} required><option value="">選択してください</option><option>ほとんど行かない</option><option>週に数回</option><option>毎日1回</option><option>毎日2回</option><option>毎日3回以上</option></select></label>
-        <label className="field-label">主な悩み・気になっていること<textarea rows={5} value={profile.concerns} onChange={(event) => setProfile({ ...profile, concerns: event.target.value })} placeholder="例：散歩中に犬を見ると吠える。来客時に落ち着けない。" required /></label>
+        <label className={`field-label dog-profile-field ${dogProfileErrors.name ? "has-error" : ""}`} data-dog-field="name">名前 <span className="required-badge">必須</span><input value={profile.name} aria-invalid={Boolean(dogProfileErrors.name)} onChange={(event) => { setProfile({ ...profile, name: event.target.value }); clearDogProfileError("name"); }} placeholder="例：むぎ" />{dogProfileErrors.name && <small className="field-error" role="alert">{dogProfileErrors.name}</small>}</label>
+        <label className={`field-label dog-profile-field ${dogProfileErrors.breed ? "has-error" : ""}`} data-dog-field="breed">犬種 <span className="required-badge">必須</span><input value={profile.breed} aria-invalid={Boolean(dogProfileErrors.breed)} onChange={(event) => { setProfile({ ...profile, breed: event.target.value }); clearDogProfileError("breed"); }} placeholder="例：トイプードル" />{dogProfileErrors.breed && <small className="field-error" role="alert">{dogProfileErrors.breed}</small>}</label>
+        <label className={`field-label dog-profile-field ${dogProfileErrors.birthday ? "has-error" : ""}`} data-dog-field="birthday">誕生日 <span className="required-badge">必須</span><input type="date" max={today()} value={profile.birthday} aria-invalid={Boolean(dogProfileErrors.birthday)} onChange={(event) => { setProfile({ ...profile, birthday: event.target.value }); clearDogProfileError("birthday"); }} />{ageLabel(profile.birthday) && <small className="age-preview">{ageLabel(profile.birthday)}</small>}{dogProfileErrors.birthday && <small className="field-error" role="alert">{dogProfileErrors.birthday}</small>}</label>
+        <label className={`field-label dog-profile-field ${dogProfileErrors.isFirstTimeOwner ? "has-error" : ""}`} data-dog-field="isFirstTimeOwner">犬を飼うのは初めてですか？ <span className="required-badge">必須</span><select value={profile.isFirstTimeOwner} aria-invalid={Boolean(dogProfileErrors.isFirstTimeOwner)} onChange={(event) => { setProfile({ ...profile, isFirstTimeOwner: event.target.value as DogProfile["isFirstTimeOwner"] }); clearDogProfileError("isFirstTimeOwner"); }}><option value="">選択してください</option><option value="yes">はい、初めてです</option><option value="no">いいえ、飼った経験があります</option></select>{dogProfileErrors.isFirstTimeOwner && <small className="field-error" role="alert">{dogProfileErrors.isFirstTimeOwner}</small>}</label>
+        <label className={`field-label dog-profile-field ${dogProfileErrors.gender ? "has-error" : ""}`} data-dog-field="gender">性別 <span className="required-badge">必須</span><select value={profile.gender} aria-invalid={Boolean(dogProfileErrors.gender)} onChange={(event) => { setProfile({ ...profile, gender: event.target.value as DogProfile["gender"] }); clearDogProfileError("gender"); }}><option value="">選択してください</option><option value="male">男の子</option><option value="female">女の子</option><option value="unknown">不明・回答しない</option></select>{dogProfileErrors.gender && <small className="field-error" role="alert">{dogProfileErrors.gender}</small>}</label>
+        <label className={`field-label dog-profile-field ${dogProfileErrors.trainingExperience ? "has-error" : ""}`} data-dog-field="trainingExperience">しつけトレーニングの経験回数 <span className="required-badge">必須</span><select value={profile.trainingExperience} aria-invalid={Boolean(dogProfileErrors.trainingExperience)} onChange={(event) => { setProfile({ ...profile, trainingExperience: event.target.value as DogProfile["trainingExperience"] }); clearDogProfileError("trainingExperience"); }}><option value="">選択してください</option><option value="first_time">初めて</option><option value="once">1回</option><option value="twice">2回</option><option value="three_or_more">3回以上</option></select>{dogProfileErrors.trainingExperience && <small className="field-error" role="alert">{dogProfileErrors.trainingExperience}</small>}</label>
+        <label className={`field-label dog-profile-field ${dogProfileErrors.daycareFrequency ? "has-error" : ""}`} data-dog-field="daycareFrequency">保育園への頻度 <span className="required-badge">必須</span><select value={profile.daycareFrequency} aria-invalid={Boolean(dogProfileErrors.daycareFrequency)} onChange={(event) => { setProfile({ ...profile, daycareFrequency: event.target.value }); clearDogProfileError("daycareFrequency"); }}><option value="">選択してください</option><option>通っていない</option><option>不定期</option><option>月に数回</option><option>週1回</option><option>週2〜3回</option><option>週4回以上</option></select>{dogProfileErrors.daycareFrequency && <small className="field-error" role="alert">{dogProfileErrors.daycareFrequency}</small>}</label>
+        <label className={`field-label dog-profile-field ${dogProfileErrors.walkFrequency ? "has-error" : ""}`} data-dog-field="walkFrequency">散歩の頻度 <span className="required-badge">必須</span><select value={profile.walkFrequency} aria-invalid={Boolean(dogProfileErrors.walkFrequency)} onChange={(event) => { setProfile({ ...profile, walkFrequency: event.target.value }); clearDogProfileError("walkFrequency"); }}><option value="">選択してください</option><option>ほとんど行かない</option><option>週に数回</option><option>毎日1回</option><option>毎日2回</option><option>毎日3回以上</option></select>{dogProfileErrors.walkFrequency && <small className="field-error" role="alert">{dogProfileErrors.walkFrequency}</small>}</label>
+        <label className={`field-label dog-profile-field ${dogProfileErrors.concerns ? "has-error" : ""}`} data-dog-field="concerns">主な悩み・気になっていること <span className="required-badge">必須</span><textarea rows={5} value={profile.concerns} aria-invalid={Boolean(dogProfileErrors.concerns)} onChange={(event) => { setProfile({ ...profile, concerns: event.target.value }); clearDogProfileError("concerns"); }} placeholder="例：散歩中に犬を見ると吠える。来客時に落ち着けない。" />{dogProfileErrors.concerns && <small className="field-error" role="alert">{dogProfileErrors.concerns}</small>}</label>
       </section>
       <ObservationThemeSelector dogId={profile.id} online={connection === "online"} />
       <div className="privacy-card"><strong>記録について</strong><p>登録した情報は、あなたと担当コーチのサポートのために使用します。共有範囲は今後プロフィールから管理できるようにします。</p></div>
@@ -4531,10 +4627,10 @@ export default function Home() {
         <label className="field-label">市区町村・番地・建物名<textarea rows={3} autoComplete="street-address" value={ownerProfile.address} onChange={(event) => setOwnerProfile({ ...ownerProfile, address: event.target.value })} placeholder="例：目黒区〇〇1-2-3 Wan Toneマンション101" required /></label>
           {onboardingError && <p className="onboarding-error" role="alert">{onboardingError}</p>}
           <button type="submit" className="onboarding-next" disabled={saving}>{saving ? "保存中…" : "愛犬情報へ進む"}<span>→</span></button>
-        </form> : <form noValidate onSubmit={saveDogOnboarding} onInput={() => { if (onboardingError) setOnboardingError(""); }}><p className="card-label">ABOUT YOUR DOG</p><h1>次に、愛犬の毎日を<br />教えてください。</h1><p className="onboarding-lead">暮らし方まで分かると、コーチが記録の変化を正しく読み取りやすくなります。</p>
+        </form> : <form noValidate onSubmit={saveDogOnboarding} onInput={() => { if (onboardingError) setOnboardingError(""); }}><p className="card-label">ABOUT YOUR DOG</p><h1>次に、愛犬の毎日を<br />教えてください。</h1><p className="onboarding-lead">暮らし方まで分かると、コーチが記録の変化を正しく読み取りやすくなります。</p>{Object.keys(dogProfileErrors).length > 0 && <p className="dog-profile-error-summary" role="alert">入力されていない必須項目があります。赤く表示された項目を確認してください。</p>}
           <fieldset className="dog-avatar-editor is-onboarding"><legend>愛犬の画像（任意）</legend><div className="dog-avatar-preview">{profile.avatarUrl ? <img src={profile.avatarUrl} alt="登録する愛犬の画像" /> : <CareIcon name="paws" />}</div><div><strong>{profile.avatarUrl ? "この画像を使用します" : "愛犬の顔が見える写真がおすすめ"}</strong><p>あとから設定画面で変更できます。</p><label>{saving ? "画像を処理中…" : profile.avatarUrl ? "画像を変更" : "画像を選択"}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadDogAvatar(file); event.currentTarget.value = ""; }} /></label></div></fieldset>
-          <div className="onboarding-grid"><label className="field-label">愛犬の名前<input autoFocus value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} placeholder="例：むぎ" required /></label><label className="field-label">犬種<input value={profile.breed} onChange={(event) => setProfile({ ...profile, breed: event.target.value })} placeholder="例：トイプードル" required /></label></div>
-          <label className="field-label">誕生日<input type="date" max={today()} value={profile.birthday} onChange={(event) => setProfile({ ...profile, birthday: event.target.value })} required />{ageLabel(profile.birthday) && <small className="age-preview">{ageLabel(profile.birthday)}</small>}</label>
+          <div className="onboarding-grid"><label className={`field-label dog-profile-field ${dogProfileErrors.name ? "has-error" : ""}`} data-dog-field="name">愛犬の名前 <span className="required-badge">必須</span><input autoFocus value={profile.name} aria-invalid={Boolean(dogProfileErrors.name)} onChange={(event) => { setProfile({ ...profile, name: event.target.value }); clearDogProfileError("name"); }} placeholder="例：むぎ" />{dogProfileErrors.name && <small className="field-error" role="alert">{dogProfileErrors.name}</small>}</label><label className={`field-label dog-profile-field ${dogProfileErrors.breed ? "has-error" : ""}`} data-dog-field="breed">犬種 <span className="required-badge">必須</span><input value={profile.breed} aria-invalid={Boolean(dogProfileErrors.breed)} onChange={(event) => { setProfile({ ...profile, breed: event.target.value }); clearDogProfileError("breed"); }} placeholder="例：トイプードル" />{dogProfileErrors.breed && <small className="field-error" role="alert">{dogProfileErrors.breed}</small>}</label></div>
+          <label className={`field-label dog-profile-field ${dogProfileErrors.birthday ? "has-error" : ""}`} data-dog-field="birthday">誕生日 <span className="required-badge">必須</span><input type="date" max={today()} value={profile.birthday} aria-invalid={Boolean(dogProfileErrors.birthday)} onChange={(event) => { setProfile({ ...profile, birthday: event.target.value }); clearDogProfileError("birthday"); }} />{ageLabel(profile.birthday) && <small className="age-preview">{ageLabel(profile.birthday)}</small>}{dogProfileErrors.birthday && <small className="field-error" role="alert">{dogProfileErrors.birthday}</small>}</label>
           <div className="onboarding-grid"><label className="field-label">犬を飼うのは初めて？<select className="onboarding-select" value={profile.isFirstTimeOwner} onChange={(event) => setProfile({ ...profile, isFirstTimeOwner: event.target.value as DogProfile["isFirstTimeOwner"] })} required><option value="">選択してください</option><option value="yes">はい</option><option value="no">いいえ</option></select></label><label className="field-label">性別<select className="onboarding-select" value={profile.gender} onChange={(event) => setProfile({ ...profile, gender: event.target.value as DogProfile["gender"] })} required><option value="">選択してください</option><option value="male">男の子</option><option value="female">女の子</option><option value="unknown">不明・回答しない</option></select></label></div>
           <label className="field-label">しつけトレーニングの経験回数<select className="onboarding-select" value={profile.trainingExperience} onChange={(event) => setProfile({ ...profile, trainingExperience: event.target.value as DogProfile["trainingExperience"] })} required><option value="">選択してください</option><option value="first_time">初めて</option><option value="once">1回</option><option value="twice">2回</option><option value="three_or_more">3回以上</option></select></label>
           <div className="onboarding-grid"><label className="field-label">保育園への頻度<select className="onboarding-select" value={profile.daycareFrequency} onChange={(event) => setProfile({ ...profile, daycareFrequency: event.target.value })} required><option value="">選択してください</option><option>通っていない</option><option>不定期</option><option>月に数回</option><option>週1回</option><option>週2〜3回</option><option>週4回以上</option></select></label><label className="field-label">散歩の頻度<select className="onboarding-select" value={profile.walkFrequency} onChange={(event) => setProfile({ ...profile, walkFrequency: event.target.value })} required><option value="">選択してください</option><option>ほとんど行かない</option><option>週に数回</option><option>毎日1回</option><option>毎日2回</option><option>毎日3回以上</option></select></label></div>
