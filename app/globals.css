@@ -2202,6 +2202,15 @@ body { font-size: 16px; }
 .profile-section-heading p { margin-top:3px; color:var(--muted); font-size:10px; }
 .profile-form-section select { width:100%; min-height:50px; margin-top:7px; padding:0 14px; border:1px solid rgba(37,40,37,.13); border-radius:14px; background:#fff; color:var(--ink); font:inherit; font-size:14px; }
 
+.required-badge { display:inline-flex; width:max-content; align-items:center; min-height:20px; margin-left:6px; padding:1px 7px; border-radius:999px; background:#fff0ed; color:#a54838; font-size:10px; font-weight:800; letter-spacing:.02em; vertical-align:middle; }
+.dog-profile-error-summary { margin:16px 0 0; padding:12px 14px; border:1px solid rgba(165,72,56,.18); border-radius:12px; background:#fff7f5; color:#954033; font-size:12px; font-weight:700; line-height:1.65; }
+.dog-profile-field { display:block; }
+.dog-profile-field > :is(input,select,textarea) { display:block; margin-top:9px; }
+.dog-profile-field :is(input,select,textarea) { transition:border-color .16s ease,background-color .16s ease,box-shadow .16s ease; }
+.dog-profile-field.has-error :is(input,select,textarea) { border-color:#c75b4a; background:#fff9f7; box-shadow:0 0 0 1px rgba(199,91,74,.08); }
+.dog-profile-field.has-error :is(input,select,textarea):focus { outline:none; border-color:#ad4638; box-shadow:0 0 0 3px rgba(199,91,74,.12); }
+.field-error { display:block; margin-top:-2px; color:#a54838; font-size:11px; font-weight:700; line-height:1.5; letter-spacing:0; }
+
 /* Observation setup and the separate daily check flow. */
 .observation-themes > p { margin:0 0 12px; color:#56695e; font-size:13px; line-height:1.7; }
 .observation-themes-count { display:block; margin:4px 0 13px; color:var(--green-dark); font-size:14px; }
