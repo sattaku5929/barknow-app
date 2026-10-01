@@ -3048,23 +3048,61 @@ export default function Home() {
 
   async function saveOwnerProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const normalized = {
+      fullName: ownerProfile.fullName.trim(),
+      fullNameKana: ownerProfile.fullNameKana.trim(),
+      phoneNumber: ownerProfile.phoneNumber.trim(),
+      birthDate: ownerProfile.birthDate,
+      prefecture: ownerProfile.prefecture,
+      address: ownerProfile.address.trim(),
+    };
+    if (!normalized.fullName || !normalized.fullNameKana || !normalized.phoneNumber || !normalized.birthDate || !normalized.prefecture || !normalized.address) {
+      showNotice("必須項目をすべて入力してください");
+      return;
+    }
+
     setSaving(true);
-    writeLocal(OWNER_PROFILE_KEY, ownerProfile);
     try {
-      if (connection === "online") {
-        const userId = await getUserId();
-        if (!userId) throw new Error("No session");
-        const { error } = await supabase.from("wt_owner_profiles").upsert({ user_id: userId, full_name: ownerProfile.fullName.trim(), full_name_kana: ownerProfile.fullNameKana.trim(), phone_number: ownerProfile.phoneNumber.trim(), prefecture: ownerProfile.prefecture, address: ownerProfile.address.trim(), owner_birth_date: ownerProfile.birthDate || null, onboarding_completed_at: ownerProfile.completedAt || new Date().toISOString(), updated_at: new Date().toISOString() });
-        if (error) throw error;
-        showNotice("飼い主情報を保存しました");
-      } else {
-        showNotice("この端末に飼い主情報を保存しました");
-      }
+      const userId = await getUserId();
+      if (!userId) throw new Error("No session");
+      const completedAt = ownerProfile.completedAt || new Date().toISOString();
+      const { data, error } = await supabase
+        .from("wt_owner_profiles")
+        .upsert(
+          {
+            user_id: userId,
+            full_name: normalized.fullName,
+            full_name_kana: normalized.fullNameKana,
+            phone_number: normalized.phoneNumber,
+            prefecture: normalized.prefecture,
+            address: normalized.address,
+            owner_birth_date: normalized.birthDate,
+            onboarding_completed_at: completedAt,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" },
+        )
+        .select("full_name,full_name_kana,phone_number,prefecture,address,owner_birth_date,onboarding_completed_at")
+        .single();
+      if (error) throw error;
+
+      const nextOwnerProfile: OwnerProfile = {
+        fullName: data.full_name ?? "",
+        fullNameKana: data.full_name_kana ?? "",
+        phoneNumber: data.phone_number ?? "",
+        prefecture: data.prefecture ?? "",
+        address: data.address ?? "",
+        birthDate: data.owner_birth_date ?? "",
+        completedAt: data.onboarding_completed_at ?? completedAt,
+      };
+      setOwnerProfile(nextOwnerProfile);
+      writeLocal(OWNER_PROFILE_KEY, nextOwnerProfile);
+      setConnection("online");
+      showNotice("飼い主情報を保存しました");
       closeSettingsPanel();
     } catch (error) {
-      console.error("[Owner profile] save failed", { ownerProfile, error });
-      setConnection("local");
-      showNotice("この端末に飼い主情報を保存しました");
+      console.error("[Owner profile] save failed", { error });
+      showNotice("飼い主情報を保存できませんでした。通信状況を確認して、もう一度お試しください");
     } finally {
       setSaving(false);
     }
