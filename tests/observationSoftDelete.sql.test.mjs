@@ -94,7 +94,10 @@ for (const [table, policies] of Object.entries(names)) {
       command === "update" ? "using (true) with check (true)" : "using (true)";
     await db.exec(`create policy "${name}" on public.${table} for ${command} to authenticated ${expression}`);
   }
-  await db.exec(`create policy "admins manage ${table}" on public.${table} for all to authenticated
+  const adminPolicy = table === "wt_observation_entries" ? "admins manage observation entries"
+    : table === "wt_daily_checks" ? "admins manage daily checks"
+    : "admins manage observation events";
+  await db.exec(`create policy "${adminPolicy}" on public.${table} for all to authenticated
     using (public.wt_is_admin()) with check (public.wt_is_admin())`);
 }
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
@@ -109,8 +112,7 @@ assert.equal(installedPolicies.length, 15);
 for (const policy of installedPolicies) {
   if (policy.polcmd !== "a") assert.match(policy.using_expression, /deleted_at is null/);
   if (policy.polcmd === "a" || policy.polcmd === "w") {
-    const ownerEntryUpdate = policy.table_name === "wt_observation_entries" && policy.polcmd === "w";
-    assert.equal(policy.check_expression.includes("deleted_at is null"), !ownerEntryUpdate);
+    assert.equal(policy.check_expression.includes("deleted_at is null"), true);
   }
 }
 await db.exec(`
@@ -167,8 +169,9 @@ assert.equal(await count("select count(*)::integer n from wt_daily_checks where 
 await blocked("insert into wt_daily_checks values ($1,3)", [id(8)], "23514");
 
 await as(otherOwner);
-await blocked("select wt_owner_soft_delete_observation_entry($1)", [id(5)], "P0002");
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(5)]), 0);
+assert.equal((await db.query("update wt_observation_entries set source='owner' where id=$1", [id(5)])).affectedRows, 0);
+await blocked("select wt_owner_soft_delete_observation_entry($1)", [id(5)], "P0002");
 
 await as(coach, "coach");
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(7)]), 1);
@@ -187,12 +190,24 @@ assert.equal(await count("select count(*)::integer n from wt_observation_entries
 assert.equal(await count("select count(*)::integer n from wt_observation_events where entry_id=$1", [id(4)]), 1);
 await db.exec("reset role");
 
-const { rows: [security] } = await db.query(`select p.prosecdef, p.proconfig,
-  (select relforcerowsecurity from pg_class where oid='public.wt_observation_entries'::regclass) as forced
-  from pg_proc p where p.oid='public.wt_owner_soft_delete_observation_entry(uuid)'::regprocedure`);
+const { rows: [security] } = await db.query(`select p.prosecdef, p.proconfig, r.rolname as owner_name,
+  has_function_privilege('public', 'public.wt_owner_soft_delete_observation_entry(uuid)', 'EXECUTE') as public_execute,
+  has_function_privilege('anon', 'public.wt_owner_soft_delete_observation_entry(uuid)', 'EXECUTE') as anon_execute,
+  has_function_privilege('authenticated', 'public.wt_owner_soft_delete_observation_entry(uuid)', 'EXECUTE') as authenticated_execute,
+  (select relforcerowsecurity from pg_class where oid='public.wt_observation_entries'::regclass) as entry_forced,
+  (select relforcerowsecurity from pg_class where oid='public.wt_daily_checks'::regclass) as daily_forced,
+  (select relforcerowsecurity from pg_class where oid='public.wt_observation_events'::regclass) as event_forced
+  from pg_proc p join pg_roles r on r.oid=p.proowner
+  where p.oid='public.wt_owner_soft_delete_observation_entry(uuid)'::regprocedure`);
 assert.equal(security.prosecdef, true);
 assert.deepEqual(security.proconfig, ['search_path=""']);
-assert.equal(security.forced, false);
+assert.equal(security.owner_name, "postgres");
+assert.equal(security.public_execute, false);
+assert.equal(security.anon_execute, false);
+assert.equal(security.authenticated_execute, true);
+assert.equal(security.entry_forced, false);
+assert.equal(security.daily_forced, false);
+assert.equal(security.event_forced, false);
 await db.exec("set role anon");
 await blocked("select wt_owner_soft_delete_observation_entry($1)", [id(7)]);
 await db.exec("reset role; select set_config('app.user_id','',false); set role authenticated");
