@@ -92,7 +92,7 @@ begin
     raise exception 'Unexpected policy count on wt_observation_events';
   end if;
 end;
-$;
+$$;
 
 create or replace function public.wt_validate_observation_subtype()
 returns trigger
