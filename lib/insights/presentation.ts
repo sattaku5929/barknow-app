@@ -35,7 +35,7 @@ export function featuredDaily(trends: ObservationTrends): { current: DailyTrend;
     .sort((a, b) => (b.compare ? Math.abs(b.current.average_score - b.previous!.average_score) : -1) -
       (a.compare ? Math.abs(a.current.average_score - a.previous!.average_score) : -1) ||
       (a.current.metric_key === "calmness_score" ? -1 : b.current.metric_key === "calmness_score" ? 1 : 0))
-    .slice(0, 3);
+;
 }
 
 export function featuredInsights(trends: ObservationTrends) {
