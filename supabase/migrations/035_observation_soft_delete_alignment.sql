@@ -31,6 +31,9 @@ begin
   if not exists (select 1 from pg_policy where polrelid = 'public.wt_observation_entries'::regclass and polname = 'assigned coaches read observation entries' and polcmd = 'r' and polroles = array['authenticated'::regrole::oid]) then
     raise exception 'Unexpected policy: assigned coaches read observation entries';
   end if;
+  if (select relforcerowsecurity from pg_class where oid = 'public.wt_daily_checks'::regclass) then
+    raise exception 'Unexpected FORCE ROW LEVEL SECURITY on wt_daily_checks';
+  end if;
   if not (select relrowsecurity from pg_class where oid = 'public.wt_daily_checks'::regclass) then
     raise exception 'RLS must be enabled on wt_daily_checks';
   end if;
@@ -48,6 +51,9 @@ begin
   end if;
   if not exists (select 1 from pg_policy where polrelid = 'public.wt_daily_checks'::regclass and polname = 'assigned coaches read daily checks' and polcmd = 'r' and polroles = array['authenticated'::regrole::oid]) then
     raise exception 'Unexpected policy: assigned coaches read daily checks';
+  end if;
+  if (select relforcerowsecurity from pg_class where oid = 'public.wt_observation_events'::regclass) then
+    raise exception 'Unexpected FORCE ROW LEVEL SECURITY on wt_observation_events';
   end if;
   if not (select relrowsecurity from pg_class where oid = 'public.wt_observation_events'::regclass) then
     raise exception 'RLS must be enabled on wt_observation_events';
@@ -128,7 +134,8 @@ alter policy "owners update own observation entries"
     )
   )
   with check (
-    owner_id = auth.uid()
+    deleted_at is null
+    and owner_id = auth.uid()
     and exists (
       select 1 from public.wt_dogs dog
       where dog.id = wt_observation_entries.dog_id
@@ -296,7 +303,7 @@ alter policy "assigned coaches read observation events"
 -- RLS only for this one UPDATE; the predicates explicitly enforce ownership.
 -- Missing, already-deleted and another owner's entries share one error so the
 -- caller cannot distinguish another owner's entry by probing its UUID.
-create function public.wt_owner_soft_delete_observation_entry(p_entry_id uuid)
+create or replace function public.wt_owner_soft_delete_observation_entry(p_entry_id uuid)
 returns uuid
 language plpgsql
 security definer
@@ -330,7 +337,12 @@ begin
 end;
 $$;
 
-revoke all on function public.wt_owner_soft_delete_observation_entry(uuid) from public, anon;
+alter function public.wt_owner_soft_delete_observation_entry(uuid) owner to postgres;
+
+revoke all on function public.wt_owner_soft_delete_observation_entry(uuid) from public, anon, authenticated;
 grant execute on function public.wt_owner_soft_delete_observation_entry(uuid) to authenticated;
+
+comment on function public.wt_owner_soft_delete_observation_entry(uuid) is
+  'Owner-only soft delete for one active Observation entry. Missing, already-deleted, and non-owned UUIDs are intentionally indistinguishable.';
 
 commit;
