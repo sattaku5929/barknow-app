@@ -30,6 +30,15 @@ export type DailyTrend = {
 export type DailyEventDay = {
   local_date: string; calmness_score: number | null; event_count: number; concern_count: number;
 };
+export type DailyCheckDay = {
+  local_date: string;
+  appetite_score: number | null;
+  sleep_rest_score: number | null;
+  activity_score: number | null;
+  exploration_score: number | null;
+  calmness_score: number | null;
+  toilet_score: number | null;
+};
 export type ObservationTrends = {
   as_of_local_date: string; current_start: string; previous_start: string; previous_end: string;
   event_overall: EventCount[]; event_themes: ThemeTrend[]; handlers: HandlerTrend[];
