@@ -39,28 +39,41 @@ export function insightCandidates(trends: ObservationTrends, labelForTheme: (key
   const candidates: InsightCandidate[] = [];
   const previousThemes = new Map(trends.event_themes.filter((row) => row.period === "previous")
     .map((row) => [row.theme_key, row]));
+
   for (const current of trends.event_themes.filter((row) => row.period === "current")) {
-    const level = evidenceLevel(current.total_count);
-    if (level === "collecting") continue;
+    if (current.total_count < 3) continue;
     const label = labelForTheme(current.theme_key);
-    candidates.push({
-      kind: level === "reference" ? "reference" : "trend",
-      text: `「${label}」の記録が${current.total_count}件あります。`,
-      evidence: level === "reference" ? "参考傾向として表示しています。" : "直近7日間の記録です。",
-      themeKey: current.theme_key,
-      period: "current",
-    });
     const previous = previousThemes.get(current.theme_key) as ThemeTrend | undefined;
+
     if (previous && eligiblePeriods(current.total_count, previous.total_count) &&
         Math.abs(current.concern_rate - previous.concern_rate) >= 10) {
-      const direction = current.concern_rate > previous.concern_rate ? "高い" : "低い";
+      const direction = current.concern_rate > previous.concern_rate ? "高め" : "低め";
       candidates.push({
         kind: "period",
-        text: `記録では、「${label}」の「気になった」割合が前の7日間より${direction}ようです。`,
-        evidence: `直近 ${current.concern_count}/${current.total_count}件（${current.concern_rate}%）、前期間 ${previous.concern_count}/${previous.total_count}件（${previous.concern_rate}%）。遭遇機会や記録頻度は比較できません。`,
+        text: `「${label}」では、“気になった”記録の割合が前の7日間より${direction}です。`,
+        evidence: `直近 ${current.concern_count}/${current.total_count}件（${current.concern_rate}%）、前の7日間 ${previous.concern_count}/${previous.total_count}件（${previous.concern_rate}%）。遭遇機会や記録頻度は比較していません。`,
         themeKey: current.theme_key,
       });
     }
+
+    if (current.concern_count >= 2 && current.concern_rate >= 40) {
+      candidates.push({
+        kind: "trend",
+        text: `「${label}」では、“気になった”記録がやや目立っています。`,
+        evidence: `直近7日間の ${current.concern_count}/${current.total_count}件（${current.concern_rate}%）が「気になった」でした。`,
+        themeKey: current.theme_key,
+        period: "current",
+      });
+    } else if (current.success_count >= 3 && current.success_rate >= 60) {
+      candidates.push({
+        kind: "trend",
+        text: `「${label}」では、“うまくできた”記録が多めです。`,
+        evidence: `直近7日間の ${current.success_count}/${current.total_count}件（${current.success_rate}%）が「うまくできた」でした。`,
+        themeKey: current.theme_key,
+        period: "current",
+      });
+    }
+
     const comparison = comparableHandlers(trends, current);
     if (comparison) {
       const [higher, lower] = comparison;
@@ -68,7 +81,7 @@ export function insightCandidates(trends: ObservationTrends, labelForTheme: (key
       const lowerName = `${lower.display_name}${lower.archived ? "（削除済み）" : ""}`;
       candidates.push({
         kind: "handler",
-        text: `記録では、「${label}」で${higherName}が担当したときの「うまくできた」割合が高いようです。`,
+        text: `「${label}」では、${higherName}が担当した記録の“うまくできた”割合が高めです。`,
         evidence: `${higherName} ${higher.success_count}/${higher.total_count}件（${higher.success_rate}%）、${lowerName} ${lower.success_count}/${lower.total_count}件（${lower.success_rate}%）。担当者以外の条件は揃っていません。`,
         themeKey: current.theme_key,
         period: "current",
@@ -76,16 +89,27 @@ export function insightCandidates(trends: ObservationTrends, labelForTheme: (key
       });
     }
   }
-  const current = trends.daily_metrics.find((row) => row.period === "current" && row.metric_key === "calmness_score");
-  const previous = trends.daily_metrics.find((row) => row.period === "previous" && row.metric_key === "calmness_score");
-  if (current && previous && eligiblePeriods(current.entered_days, previous.entered_days) &&
-      Math.abs(current.average_score - previous.average_score) >= 0.5) {
-    const direction = current.average_score > previous.average_score ? "高い" : "低い";
+
+  const previousDaily = new Map(trends.daily_metrics.filter((row) => row.period === "previous").map((row) => [row.metric_key, row]));
+  const dailyChanges = trends.daily_metrics.filter((row) => row.period === "current").flatMap((current) => {
+    const previous = previousDaily.get(current.metric_key);
+    if (!previous || !eligiblePeriods(current.entered_days, previous.entered_days)) return [];
+    const difference = current.average_score - previous.average_score;
+    return Math.abs(difference) >= .5 ? [{ current, previous, difference }] : [];
+  }).sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
+
+  if (dailyChanges.length) {
+    const { current, previous, difference } = dailyChanges[0];
+    const labelMap: Record<string, string> = {
+      appetite_score: "食欲", sleep_rest_score: "睡眠・休息", activity_score: "活動・運動",
+      exploration_score: "探索・におい嗅ぎ", calmness_score: "落ち着き", toilet_score: "トイレ",
+    };
     candidates.push({
       kind: "daily",
-      text: `直近7日間の「落ち着き」は、前の7日間より少し${direction}記録になっています。`,
-      evidence: `直近 ${current.entered_days}日・平均${current.average_score}、前期間 ${previous.entered_days}日・平均${previous.average_score}。未入力日は除いています。`,
+      text: `Daily Checkの「${labelMap[current.metric_key]}」は、前の7日間より少し${difference > 0 ? "高め" : "低め"}です。`,
+      evidence: `直近 ${current.entered_days}日・平均${current.average_score}、前の7日間 ${previous.entered_days}日・平均${previous.average_score}。未入力日は除いています。`,
     });
   }
+
   return candidates;
 }
