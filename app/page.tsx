@@ -4211,7 +4211,8 @@ export default function Home() {
       <SectionTitle eyebrow="PROGRESS" title={`${dogName}の変化`} />
       <p className="lead">記録がつながると、調子・暮らし・困りごとの変化が見えてきます。</p>
 
-      <RecentObservationTrends key={profile.id} dogId={profile.id} online={connection === "online"} selectedThemes={eventThemesSelected} />
+      <RecentObservationTrends key={profile.id} dogId={profile.id} online={connection === "online"} selectedThemes={eventThemesSelected}
+        onCoachChat={coachingApplication?.ownerConfirmedAt ? () => { navigateOwnerView("coach"); setOwnerCoachTab("chat"); } : undefined} />
 
       <section className={`report-condition condition-${recordedConditionDays.length < 3 ? "collecting" : conditionScore >= 78 ? "good" : conditionScore >= 58 ? "middle" : "watch"}`}>
         <div className="condition-ring" style={{ background: `conic-gradient(var(--green) ${conditionScore * 3.6}deg, #e4ebe7 0deg)` }}>

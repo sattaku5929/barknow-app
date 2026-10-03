@@ -9,7 +9,11 @@ export default function ThemeTrendCard({ trend, onRecords }: { trend: ThemeTrend
       {trend.neutral_count > 0 && <i className="neutral" style={{ width: `${trend.neutral_rate}%` }} />}
       {trend.concern_count > 0 && <i className="concern" style={{ width: `${trend.concern_rate}%` }} />}
     </div>
-    <p>うまくできた {trend.success_count} · いつも通り {trend.neutral_count} · 気になった {trend.concern_count}</p>
-    <button type="button" onClick={onRecords}>記録を見る <span aria-hidden="true">→</span></button>
+    <div className="insight-theme-breakdown">
+      <span><b>{trend.success_rate}%</b>うまくできた <small>{trend.success_count}件</small></span>
+      <span><b>{trend.neutral_rate}%</b>いつも通り <small>{trend.neutral_count}件</small></span>
+      <span><b>{trend.concern_rate}%</b>気になった <small>{trend.concern_count}件</small></span>
+    </div>
+    <button type="button" onClick={onRecords}>根拠の記録を見る <span aria-hidden="true">→</span></button>
   </article>;
 }
