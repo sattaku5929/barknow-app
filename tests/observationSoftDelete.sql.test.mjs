@@ -191,7 +191,7 @@ assert.equal(await count("select count(*)::integer n from wt_observation_events 
 await db.exec("reset role");
 
 const { rows: [security] } = await db.query(`select p.prosecdef, p.proconfig, r.rolname as owner_name,
-  has_function_privilege('public', 'public.wt_owner_soft_delete_observation_entry(uuid)', 'EXECUTE') as public_execute,
+  p.proacl::text as acl_text,
   has_function_privilege('anon', 'public.wt_owner_soft_delete_observation_entry(uuid)', 'EXECUTE') as anon_execute,
   has_function_privilege('authenticated', 'public.wt_owner_soft_delete_observation_entry(uuid)', 'EXECUTE') as authenticated_execute,
   (select relforcerowsecurity from pg_class where oid='public.wt_observation_entries'::regclass) as entry_forced,
@@ -202,7 +202,7 @@ const { rows: [security] } = await db.query(`select p.prosecdef, p.proconfig, r.
 assert.equal(security.prosecdef, true);
 assert.deepEqual(security.proconfig, ['search_path=""']);
 assert.equal(security.owner_name, "postgres");
-assert.equal(security.public_execute, false);
+assert.ok(!security.acl_text.includes("=X/"), security.acl_text);
 assert.equal(security.anon_execute, false);
 assert.equal(security.authenticated_execute, true);
 assert.equal(security.entry_forced, false);
