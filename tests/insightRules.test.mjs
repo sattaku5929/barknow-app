@@ -14,11 +14,14 @@ const snapshot = (event_themes, handlers = [], daily_metrics = []) => ({
 });
 const labels = () => "他の犬への反応";
 
-test("件数が3未満なら候補を出さず、3/6/10の段階を区別する", () => {
+test("件数の段階は維持しつつ、件数だけではInsightを出さない", () => {
   assert.deepEqual([2, 3, 6, 10].map(evidenceLevel),
     ["collecting", "reference", "trend", "comparison"]);
   assert.deepEqual(insightCandidates(snapshot([theme("current", 2, 1)]), labels), []);
-  assert.equal(insightCandidates(snapshot([theme("current", 3, 1)]), labels)[0].kind, "reference");
+  assert.deepEqual(insightCandidates(snapshot([theme("current", 3, 1)]), labels), []);
+  const concernHeavy = insightCandidates(snapshot([theme("current", 5, 2, 3)]), labels);
+  assert.equal(concernHeavy.filter((row) => row.kind === "trend").length, 1);
+  assert.match(concernHeavy[0].evidence, /2\/5件/);
 });
 
 test("期間比較は両期間3件以上かつ合計10件以上だけ", () => {
