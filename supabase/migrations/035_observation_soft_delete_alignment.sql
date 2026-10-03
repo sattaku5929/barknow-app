@@ -1,6 +1,7 @@
--- Align the live Observation soft-delete rules with the final 030 definitions.
--- Owner soft delete uses a narrowly scoped RPC: an UPDATE with RETURNING would
--- also check the active-only SELECT policy against the newly deleted row.
+-- Align live Observation soft-delete behavior without re-running 030-034.
+-- Normal owner UPDATE remains active-row-only; soft delete is separated into
+-- a narrowly scoped SECURITY DEFINER RPC so deleted rows never need to pass
+-- owner/coach active-only SELECT or UPDATE policies.
 -- SQL Editor application does not register this file in migration history.
 begin;
 
