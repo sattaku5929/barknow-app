@@ -31,6 +31,9 @@ begin
   if not exists (select 1 from pg_policy where polrelid = 'public.wt_observation_entries'::regclass and polname = 'assigned coaches read observation entries' and polcmd = 'r' and polroles = array['authenticated'::regrole::oid]) then
     raise exception 'Unexpected policy: assigned coaches read observation entries';
   end if;
+  if not exists (select 1 from pg_policy where polrelid = 'public.wt_observation_entries'::regclass and polname = 'admins manage observation entries' and polcmd = '*' and polroles = array['authenticated'::regrole::oid]) then
+    raise exception 'Unexpected policy: admins manage observation entries';
+  end if;
   if (select relforcerowsecurity from pg_class where oid = 'public.wt_daily_checks'::regclass) then
     raise exception 'Unexpected FORCE ROW LEVEL SECURITY on wt_daily_checks';
   end if;
@@ -51,6 +54,9 @@ begin
   end if;
   if not exists (select 1 from pg_policy where polrelid = 'public.wt_daily_checks'::regclass and polname = 'assigned coaches read daily checks' and polcmd = 'r' and polroles = array['authenticated'::regrole::oid]) then
     raise exception 'Unexpected policy: assigned coaches read daily checks';
+  end if;
+  if not exists (select 1 from pg_policy where polrelid = 'public.wt_daily_checks'::regclass and polname = 'admins manage daily checks' and polcmd = '*' and polroles = array['authenticated'::regrole::oid]) then
+    raise exception 'Unexpected policy: admins manage daily checks';
   end if;
   if (select relforcerowsecurity from pg_class where oid = 'public.wt_observation_events'::regclass) then
     raise exception 'Unexpected FORCE ROW LEVEL SECURITY on wt_observation_events';
@@ -73,8 +79,20 @@ begin
   if not exists (select 1 from pg_policy where polrelid = 'public.wt_observation_events'::regclass and polname = 'assigned coaches read observation events' and polcmd = 'r' and polroles = array['authenticated'::regrole::oid]) then
     raise exception 'Unexpected policy: assigned coaches read observation events';
   end if;
+  if not exists (select 1 from pg_policy where polrelid = 'public.wt_observation_events'::regclass and polname = 'admins manage observation events' and polcmd = '*' and polroles = array['authenticated'::regrole::oid]) then
+    raise exception 'Unexpected policy: admins manage observation events';
+  end if;
+  if (select count(*) from pg_policy where polrelid = 'public.wt_observation_entries'::regclass) <> 6 then
+    raise exception 'Unexpected policy count on wt_observation_entries';
+  end if;
+  if (select count(*) from pg_policy where polrelid = 'public.wt_daily_checks'::regclass) <> 6 then
+    raise exception 'Unexpected policy count on wt_daily_checks';
+  end if;
+  if (select count(*) from pg_policy where polrelid = 'public.wt_observation_events'::regclass) <> 6 then
+    raise exception 'Unexpected policy count on wt_observation_events';
+  end if;
 end;
-$$;
+$;
 
 create or replace function public.wt_validate_observation_subtype()
 returns trigger
