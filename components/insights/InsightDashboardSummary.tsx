@@ -48,9 +48,9 @@ export default function InsightDashboardSummary({ trends, dailyDays }: {
   } else if (comparableEvents && currentConcernRate !== null && previousConcernRate !== null && Math.abs(currentConcernRate - previousConcernRate) >= 10) {
     headline = `“気になった”記録の割合が前の7日間より${currentConcernRate > previousConcernRate ? "高め" : "低め"}です`;
     detail = `前の7日間 ${previousConcernRate}% → 直近7日間 ${currentConcernRate}%です。遭遇機会の多さまでは比較していません。`;
-  } else if (currentDays.length >= 3 || (currentEvents?.total_count ?? 0) >= 3) {
+  } else if (comparableDaily || comparableEvents) {
     headline = "この7日間は、大きな変化はまだ目立っていません";
-    detail = "記録された範囲では、前の7日間との差が大きい項目はありません。引き続き同じ粒度で記録すると比較しやすくなります。";
+    detail = "比較できる記録の範囲では、前の7日間との差が大きい項目はありません。引き続き同じ粒度で記録すると比較しやすくなります。";
   }
 
   return <>
