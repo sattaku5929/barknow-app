@@ -100,6 +100,31 @@ for (const [table, policies] of Object.entries(names)) {
   await db.exec(`create policy "${adminPolicy}" on public.${table} for all to authenticated
     using (public.wt_is_admin()) with check (public.wt_is_admin())`);
 }
+
+// Reproduce the pre-035 collision separately: active-only SELECT plus an UPDATE
+// policy whose WITH CHECK still allows deleted_at. In this PostgreSQL-compatible
+// engine all three direct soft-delete variants are rejected once SELECT is active-only.
+await db.exec(`
+  alter policy "owners select own observation entries" on wt_observation_entries
+    using (owner_id=auth.uid() and deleted_at is null);
+  alter policy "owners update own observation entries" on wt_observation_entries
+    using (owner_id=auth.uid() and deleted_at is null)
+    with check (owner_id=auth.uid());
+  select set_config('app.user_id','${owner}',false);
+  select set_config('app.actor','owner',false);
+  set role authenticated;
+`);
+for (const [label, suffix, entryId] of [
+  ["A: no RETURNING", "", id(1)],
+  ["B: RETURNING id", " returning id", id(2)],
+  ["C: RETURNING *", " returning *", id(3)],
+]) {
+  let rejected = false;
+  try { await db.query(`update wt_observation_entries set deleted_at=now() where id=$1${suffix}`, [entryId]); }
+  catch (error) { rejected = error.code === "42501"; }
+  assert.equal(rejected, true, label);
+}
+await db.exec("reset role");
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
 await db.exec(migration);
 const { rows: installedPolicies } = await db.query(`select c.relname as table_name, p.polname,
@@ -191,7 +216,7 @@ assert.equal(await count("select count(*)::integer n from wt_observation_events 
 await db.exec("reset role");
 
 const { rows: [security] } = await db.query(`select p.prosecdef, p.proconfig, r.rolname as owner_name,
-  p.proacl::text as acl_text,
+  p.proacl::text as acl_text, pg_get_functiondef(p.oid) as function_definition,
   has_function_privilege('anon', 'public.wt_owner_soft_delete_observation_entry(uuid)', 'EXECUTE') as anon_execute,
   has_function_privilege('authenticated', 'public.wt_owner_soft_delete_observation_entry(uuid)', 'EXECUTE') as authenticated_execute,
   (select relforcerowsecurity from pg_class where oid='public.wt_observation_entries'::regclass) as entry_forced,
@@ -202,6 +227,10 @@ const { rows: [security] } = await db.query(`select p.prosecdef, p.proconfig, r.
 assert.equal(security.prosecdef, true);
 assert.deepEqual(security.proconfig, ['search_path=""']);
 assert.equal(security.owner_name, "postgres");
+assert.match(security.function_definition, /SECURITY DEFINER/i);
+assert.match(security.function_definition, /SET search_path TO ''/i);
+assert.match(security.function_definition, /auth\.uid\(\)/);
+assert.match(security.function_definition, /public\.wt_observation_entries/);
 assert.ok(!security.acl_text.includes("=X/"), security.acl_text);
 assert.equal(security.anon_execute, false);
 assert.equal(security.authenticated_execute, true);
