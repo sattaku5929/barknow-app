@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "mkdir -p public; (node --test --test-name-pattern='A full old' tests/observationSoftDeleteAlignment.sql.test.mjs > public/alignment-a.log 2>&1; echo $? > public/alignment-a-exit.txt); next build",
+    "build": "node --test --test-name-pattern=\"A1 old-state migration preflight only\" tests/observationSoftDeleteAlignment.sql.test.mjs && next build",
     "test:insights": "node --experimental-strip-types --test tests/insightRules.test.mjs && node tests/observationTrends.sql.test.mjs && node tests/observationEventIntensity.sql.test.mjs",
     "test:observations": "node tests/observationSoftDelete.sql.test.mjs && node --test tests/observationSoftDeleteAlignment.sql.test.mjs",
     "start": "next start",
