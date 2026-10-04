@@ -30,10 +30,6 @@ jobs:
           rm -rf supabase
           cp -R /tmp/candidate/supabase ./supabase
           sed -i '0,/port = 55432/s//port = 54322/' supabase/config.toml
-          cp /tmp/candidate/tests/observationTrends.sql.test.mjs tests/observationTrends.sql.test.mjs
-          cp /tmp/candidate/tests/observationEventIntensity.sql.test.mjs tests/observationEventIntensity.sql.test.mjs
-          cp /tmp/candidate/tests/observationSoftDelete.sql.test.mjs tests/observationSoftDelete.sql.test.mjs
-          cp /tmp/candidate/tests/observationSoftDeleteAlignment.sql.test.mjs tests/observationSoftDeleteAlignment.sql.test.mjs
           rm -f baseline-semantic-fingerprints.txt
           rm -f .github/workflows/supabase-baseline-diagnostic.yml
 
