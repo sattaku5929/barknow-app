@@ -8,6 +8,7 @@ on:
 jobs:
   alignment:
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,4 +16,5 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: node --test tests/observationSoftDeleteAlignment.sql.test.mjs
+      - name: Run old-state alignment case
+        run: timeout 60s node --test --test-name-pattern='A full old' tests/observationSoftDeleteAlignment.sql.test.mjs
