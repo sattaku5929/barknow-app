@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node --test --test-name-pattern=\"A5 old-state alignment DDL before postflight\" tests/observationSoftDeleteAlignment.sql.test.mjs && next build",
+    "build": "next build",
     "test:insights": "node --experimental-strip-types --test tests/insightRules.test.mjs && node tests/observationTrends.sql.test.mjs && node tests/observationEventIntensity.sql.test.mjs",
     "test:observations": "node tests/observationSoftDelete.sql.test.mjs && node --test tests/observationSoftDeleteAlignment.sql.test.mjs",
     "start": "next start",
