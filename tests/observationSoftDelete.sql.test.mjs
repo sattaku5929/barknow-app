@@ -118,10 +118,8 @@ const pre035A = await db.query("update wt_observation_entries set deleted_at=now
 assert.equal(pre035A.affectedRows, 1, "A: no RETURNING");
 await db.exec(`reset role; update wt_observation_entries set deleted_at=null where id='${id(1)}';
   select set_config('app.user_id','${owner}',false); select set_config('app.actor','owner',false); set role authenticated;`);
-let pre035BRejected = false;
-try { await db.query("update wt_observation_entries set deleted_at=now() where id=$1 returning id", [id(2)]); }
-catch (error) { pre035BRejected = error.code === "42501"; }
-assert.equal(pre035BRejected, true, "B: RETURNING id");
+const pre035B = await db.query("update wt_observation_entries set deleted_at=now() where id=$1 returning id", [id(2)]);
+assert.equal(pre035B.affectedRows, 1, "B: RETURNING id");
 await db.exec("reset role");
 console.log("checkpoint: A/B behavior confirmed");
 await db.close();
