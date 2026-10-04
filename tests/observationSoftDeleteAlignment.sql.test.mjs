@@ -190,6 +190,16 @@ test("A2 old-state metadata preflight", async () => {
   await db.close();
 });
 
+
+test("A3 migration expected-state setup only", async () => {
+  const db=await baseDb();
+  await installState(db,"old");
+  const cut=migration.indexOf("-- Strict preflight");
+  assert.ok(cut>0);
+  await db.exec(migration.slice(0,cut)+"rollback;");
+  await db.close();
+});
+
 for (const [label,state] of [["A full old","old"],["B production-like partial","partial"],["C already final","final"]]) {
   test(label, async () => {
     const db=await baseDb(); await installState(db,state); await db.exec(migration); await assertFinal(db);
