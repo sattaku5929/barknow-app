@@ -99,3 +99,51 @@ jobs:
           union all select 'publications',count(*),md5(coalesce(string_agg(row_to_json(x)::text,E'\n' order by pubname,nspname,relname),'')) from pubrels x
           ) s order by category;
           SQL
+      - name: Managed schema object fingerprints
+        run: |
+          echo '--- GENERATED CONFIG ---'
+          cat supabase/config.toml
+          echo '--- MIGRATION NEW PROBE ---'
+          npx -y supabase@latest migration new baseline_probe
+          ls -1 supabase/migrations/*baseline_probe.sql
+          rm supabase/migrations/*baseline_probe.sql
+          echo '--- OBJECT FINGERPRINTS ---'
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -At <<'SQL'
+          select 'COL|'||table_name||'.'||column_name||'|'||
+            md5(row_to_json(x)::text)
+          from (
+            select table_name,column_name,ordinal_position,data_type,udt_schema,udt_name,is_nullable,
+                   coalesce(column_default,'') column_default,is_identity,coalesce(identity_generation,'') identity_generation,
+                   is_generated,coalesce(generation_expression,'') generation_expression
+            from information_schema.columns
+            where table_schema='public' and (table_name like 'wt\_%' escape '\' or table_name='push_subscriptions')
+          ) x order by table_name,ordinal_position;
+
+          select 'CON|'||c.relname||'.'||con.conname||'|'||
+            md5(con.contype::text||'|'||pg_get_constraintdef(con.oid,true))
+          from pg_constraint con join pg_class c on c.oid=con.conrelid join pg_namespace n on n.oid=c.relnamespace
+          where n.nspname='public' and (c.relname like 'wt\_%' escape '\' or c.relname='push_subscriptions')
+          order by c.relname,con.conname;
+
+          select 'IDX|'||tablename||'.'||indexname||'|'||md5(indexdef)
+          from pg_indexes
+          where schemaname='public' and (tablename like 'wt\_%' escape '\' or tablename='push_subscriptions')
+          order by tablename,indexname;
+
+          select 'FUN|'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')|'||
+             md5(pg_get_function_result(p.oid)||'|'||l.lanname||'|'||r.rolname||'|'||p.prosecdef::text||'|'||
+                 coalesce(array_to_string(p.proconfig,','),'')||'|'||pg_get_functiondef(p.oid)||'|'||
+                 coalesce(obj_description(p.oid,'pg_proc'),''))
+          from pg_proc p join pg_namespace n on n.oid=p.pronamespace join pg_language l on l.oid=p.prolang join pg_roles r on r.oid=p.proowner
+          where n.nspname='public' and p.proname like 'wt\_%' escape '\'
+          order by p.proname,pg_get_function_identity_arguments(p.oid);
+
+          select 'POL|'||n.nspname||'.'||c.relname||'.'||p.polname||'|'||
+            md5(p.polcmd::text||'|'||p.polpermissive::text||'|'||
+                coalesce(array_to_string(array(select rr.rolname from unnest(p.polroles) x(oid) join pg_roles rr on rr.oid=x.oid order by rr.rolname),','),'')||'|'||
+                coalesce(pg_get_expr(p.polqual,p.polrelid),'')||'|'||coalesce(pg_get_expr(p.polwithcheck,p.polrelid),''))
+          from pg_policy p join pg_class c on c.oid=p.polrelid join pg_namespace n on n.oid=c.relnamespace
+          where (n.nspname='public' and (c.relname like 'wt\_%' escape '\' or c.relname='push_subscriptions'))
+             or (n.nspname='storage' and c.relname='objects' and (p.polname ilike '%avatar%' or p.polname ilike '%dog%' or p.polname ilike '%coach%'))
+          order by n.nspname,c.relname,p.polname;
+          SQL
