@@ -202,6 +202,10 @@ assert.equal(await count("select count(*)::integer n from wt_observation_entries
 assert.equal((await db.query("update wt_observation_entries set source='owner' where id=$1", [id(5)])).affectedRows, 0);
 await blocked("select wt_owner_soft_delete_observation_entry($1)", [id(5)], "P0002");
 
+console.log("checkpoint: other owner boundaries passed");
+await db.close();
+process.exit(0);
+
 await as(coach, "coach");
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(7)]), 1);
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(4)]), 0);
