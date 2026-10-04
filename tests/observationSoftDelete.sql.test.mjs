@@ -345,6 +345,14 @@ assert.deepEqual(
   "C: RETURNING *",
 );
 
+const { rows: subtypeBefore035 } = await db.query(`
+  select n.nspname, p.proname, pg_get_function_identity_arguments(p.oid) as args,
+         pg_get_function_result(p.oid) as result, p.proconfig, p.prosecdef
+  from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+  where n.nspname='public' and p.proname='wt_validate_observation_subtype'
+  order by args
+`);
+console.log("Subtype before 035:", JSON.stringify(subtypeBefore035));
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
 await db.exec(migration);
 const { rows: installedPolicies } = await db.query(`select c.relname as table_name, p.polname,
@@ -449,7 +457,6 @@ const { rows: [security] } = await db.query(`select p.prosecdef, p.proconfig, r.
   from pg_proc p join pg_roles r on r.oid=p.proowner
   where p.oid='public.wt_owner_soft_delete_observation_entry(uuid)'::regprocedure`);
 assert.equal(security.prosecdef, true);
-process.exit(0); // TEMP_PROSECDEF_SPLIT
 assert.deepEqual(security.proconfig, ['search_path=""']);
 assert.equal(security.owner_name, "postgres");
 assert.match(security.function_definition, /SECURITY DEFINER/i);
