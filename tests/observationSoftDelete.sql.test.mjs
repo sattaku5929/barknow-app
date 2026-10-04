@@ -285,18 +285,18 @@ await db.exec(`reset role;
 console.log("Pre-035 UPDATE variants:", JSON.stringify(pre035UpdateResults));
 
 assert.deepEqual(
-  [pre035UpdateResults[0].outcome, pre035UpdateResults[0].affectedRows ?? pre035UpdateResults[0].code],
-  ["success", 1],
+  [pre035UpdateResults[0].outcome, pre035UpdateResults[0].code],
+  ["error", "42501"],
   "A: no RETURNING",
 );
 assert.deepEqual(
-  [pre035UpdateResults[1].outcome, pre035UpdateResults[1].affectedRows ?? pre035UpdateResults[1].code],
-  ["success", 1],
+  [pre035UpdateResults[1].outcome, pre035UpdateResults[1].code],
+  ["error", "42501"],
   "B: RETURNING id",
 );
 assert.deepEqual(
-  [pre035UpdateResults[2].outcome, pre035UpdateResults[2].affectedRows ?? pre035UpdateResults[2].code],
-  ["success", 1],
+  [pre035UpdateResults[2].outcome, pre035UpdateResults[2].code],
+  ["error", "42501"],
   "C: RETURNING *",
 );
 
