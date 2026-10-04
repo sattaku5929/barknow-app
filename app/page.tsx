@@ -4018,11 +4018,6 @@ export default function Home() {
         </section>
       </div>
 
-      <section className="home-insight" aria-labelledby="home-insight-title">
-        <span className="home-insight-mark" aria-hidden="true">↗</span>
-        <div><p className="card-label">TODAY&apos;S NOTE</p><h2 id="home-insight-title">小さな気づき</h2><p>{diaryInsight}</p></div>
-        <button onClick={() => navigateOwnerView("report")}>変化を見る <span aria-hidden="true">→</span></button>
-      </section>
     </div>
   );
 
@@ -4328,7 +4323,6 @@ export default function Home() {
         <button onClick={() => navigateOwnerView("coach")}>{coachingApplication ? "担当状況を確認する" : "コーチングについて相談する"}<span>→</span></button>
       </section>
 
-      <button className="primary-button report-add" onClick={() => { openNewRecord("barking"); if (reportBehaviorType === "other") setBehaviorTypes([]); else setBehaviorTypes([reportBehaviorType]); }}>{behaviorInfo(reportBehaviorType).label}を記録する<span>→</span></button>
       <p className="report-note">表示しているのは記録回数の変化です。記録漏れや生活リズムも影響するため、実際の発生回数や因果関係を断定するものではありません。</p>
     </section>
   );
