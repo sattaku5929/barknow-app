@@ -120,14 +120,10 @@ await db.exec(`reset role; update wt_observation_entries set deleted_at=null whe
   select set_config('app.user_id','${owner}',false); select set_config('app.actor','owner',false); set role authenticated;`);
 const pre035B = await db.query("update wt_observation_entries set deleted_at=now() where id=$1 returning id", [id(2)]);
 assert.equal(pre035B.affectedRows, 1, "B: RETURNING id");
-await db.exec("reset role");
-console.log("checkpoint: A/B behavior confirmed");
-await db.close();
-process.exit(0);
-
-console.log("checkpoint: pre-035 reproduction passed");
-await db.close();
-process.exit(0);
+const pre035C = await db.query("update wt_observation_entries set deleted_at=now() where id=$1 returning *", [id(3)]);
+assert.equal(pre035C.affectedRows, 1, "C: RETURNING *");
+await db.exec(`reset role;
+  update wt_observation_entries set deleted_at=null where id in ('${id(1)}','${id(2)}','${id(3)}');`);
 
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
 await db.exec(migration);
