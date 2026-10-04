@@ -218,10 +218,6 @@ assert.equal(await count("select count(*)::integer n from wt_observation_entries
 assert.equal(await count("select count(*)::integer n from wt_observation_events where entry_id=$1", [id(4)]), 1);
 await db.exec("reset role");
 
-console.log("checkpoint: admin visibility and subtype enforcement passed");
-await db.close();
-process.exit(0);
-
 const { rows: [security] } = await db.query(`select p.prosecdef, p.proconfig, r.rolname as owner_name,
   p.proacl::text as acl_text, pg_get_functiondef(p.oid) as function_definition,
   has_function_privilege('anon', 'public.wt_owner_soft_delete_observation_entry(uuid)', 'EXECUTE') as anon_execute,
