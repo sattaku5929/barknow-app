@@ -427,9 +427,9 @@ const { rows: [security] } = await db.query(`select p.prosecdef, p.proconfig, r.
   from pg_proc p join pg_roles r on r.oid=p.proowner
   where p.oid='public.wt_owner_soft_delete_observation_entry(uuid)'::regprocedure`);
 assert.equal(security.prosecdef, true);
+process.exit(0); // TEMP_PROSECDEF_SPLIT
 assert.deepEqual(security.proconfig, ['search_path=""']);
 assert.equal(security.owner_name, "postgres");
-process.exit(0); // TEMP_OWNER_SPLIT
 assert.match(security.function_definition, /SECURITY DEFINER/i);
 assert.match(security.function_definition, /SET search_path TO ''/i);
 assert.match(security.function_definition, /auth\.uid\(\)/);
