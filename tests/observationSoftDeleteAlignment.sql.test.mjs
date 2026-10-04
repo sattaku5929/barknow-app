@@ -136,6 +136,32 @@ async function assertFinal(db) {
   assert.equal(rpc.prosecdef,true); assert.equal(rpc.owner_name,'postgres'); assert.deepEqual(rpc.proconfig,['search_path=""']); assert.equal(rpc.body_hash,'76977a6fd2800e8015ce724c48c8f8fa');
 }
 
+
+test("A0 old-state preflight fingerprints", async () => {
+  const db=await baseDb();
+  await installState(db,"old");
+  const { rows: policies } = await db.query(`
+    select c.relname table_name,p.polname,
+      md5(regexp_replace(lower(coalesce(pg_get_expr(p.polqual,p.polrelid),'')),'\\s+','','g')) using_md5,
+      md5(regexp_replace(lower(coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'')),'\\s+','','g')) check_md5
+    from pg_policy p join pg_class c on c.oid=p.polrelid
+    where c.relname in ('wt_observation_entries','wt_daily_checks','wt_observation_events')
+    order by c.relname,p.polname
+  `);
+  const byName=new Map(policies.map(row=>[`${row.table_name}:${row.polname}`,row]));
+  assert.equal(byName.get("wt_observation_entries:owners select own observation entries").using_md5,"ba198383004b57209da3642439100224");
+  assert.equal(byName.get("wt_observation_entries:owners insert own observation entries").check_md5,"909d4158199ed321cdc00f4c11f4abe5");
+  assert.equal(byName.get("wt_observation_entries:owners update own observation entries").using_md5,"ba198383004b57209da3642439100224");
+  assert.equal(byName.get("wt_observation_entries:assigned coaches read observation entries").using_md5,"e5feb1dcb23eb97c017b59c8656bbea0");
+  assert.equal(byName.get("wt_daily_checks:owners select own daily checks").using_md5,"f64bca5cdd1ec0605701b9b77e1c35d1");
+  assert.equal(byName.get("wt_daily_checks:assigned coaches read daily checks").using_md5,"9004bf683a85e110522bd26bf51f65af");
+  assert.equal(byName.get("wt_observation_events:owners select own observation events").using_md5,"90475b7968b68116070eabebf9d6fcfb");
+  assert.equal(byName.get("wt_observation_events:assigned coaches read observation events").using_md5,"406a7e35b8cc549bb3a74f147a4b4e9e");
+  const { rows:[subtype] }=await db.query(`select md5(regexp_replace(lower(prosrc),'\\s+','','g')) hash from pg_proc where proname='wt_validate_observation_subtype'`);
+  assert.equal(subtype.hash,"b8410c9c13d0f2a8c8d7361653dba203");
+  await db.close();
+});
+
 for (const [label,state] of [["A full old","old"],["B production-like partial","partial"],["C already final","final"]]) {
   test(label, async () => {
     const db=await baseDb(); await installState(db,state); await db.exec(migration); await assertFinal(db);
