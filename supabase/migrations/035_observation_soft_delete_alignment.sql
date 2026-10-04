@@ -44,7 +44,7 @@ values
 
 -- Strict preflight: only known old/final definitions, plus the single known
 -- production partial state (entry UPDATE final USING + old WITH CHECK), pass.
-do $
+do $$
 declare
   table_state record;
   policy_state record;
@@ -79,10 +79,10 @@ begin
     from pg_policy p
     join pg_class c on c.oid=p.polrelid
     join pg_namespace n on n.oid=c.relnamespace
-    left join wt035_expected_policy e on policy_state.table_name=c.relname and policy_state.policy_name=p.polname
+    left join wt035_expected_policy e on e.table_name=c.relname and e.policy_name=p.polname
     where n.nspname='public'
       and c.relname in ('wt_observation_entries','wt_daily_checks','wt_observation_events')
-      and policy_state.policy_name is null
+      and e.policy_name is null
   ) then
     raise exception 'Unexpected Observation policy name detected';
   end if;
@@ -293,21 +293,21 @@ begin
       md5(regexp_replace(lower(coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'')),'\s+','','g')) check_md5
       into a
     from pg_policy p join pg_class c on c.oid=p.polrelid join pg_namespace n on n.oid=c.relnamespace
-    where n.nspname='public' and c.relname=policy_state.table_name and p.polname=policy_state.policy_name;
-    if policy_state.optional_when_final then
-      if found then raise exception 'Owner DELETE policy still exists: %.%',policy_state.table_name,policy_state.policy_name; end if;
+    where n.nspname='public' and c.relname=e.table_name and p.polname=e.policy_name;
+    if e.optional_when_final then
+      if found then raise exception 'Owner DELETE policy still exists: %.%',e.table_name,e.policy_name; end if;
     else
-      if not found or a.polcmd<>policy_state.polcmd or a.polroles<>array['authenticated'::regrole::oid]
-         or a.using_md5<>policy_state.final_using_md5 or a.check_md5<>policy_state.final_check_md5 then
-        raise exception 'Final policy mismatch: %.%',policy_state.table_name,policy_state.policy_name;
+      if not found or a.polcmd<>e.polcmd or a.polroles<>array['authenticated'::regrole::oid]
+         or a.using_md5<>e.final_using_md5 or a.check_md5<>e.final_check_md5 then
+        raise exception 'Final policy mismatch: %.%',e.table_name,e.policy_name;
       end if;
     end if;
   end loop;
 
   if exists (
     select 1 from pg_policy p join pg_class c on c.oid=p.polrelid join pg_namespace n on n.oid=c.relnamespace
-    left join wt035_expected_policy e on policy_state.table_name=c.relname and policy_state.policy_name=p.polname
-    where n.nspname='public' and c.relname in ('wt_observation_entries','wt_daily_checks','wt_observation_events') and policy_state.policy_name is null
+    left join wt035_expected_policy e on e.table_name=c.relname and e.policy_name=p.polname
+    where n.nspname='public' and c.relname in ('wt_observation_entries','wt_daily_checks','wt_observation_events') and e.policy_name is null
   ) then raise exception 'Unexpected final Observation policy'; end if;
 
   if (select md5(regexp_replace(lower(p.prosrc),'\s+','','g')) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
