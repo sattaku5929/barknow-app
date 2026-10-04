@@ -187,10 +187,6 @@ assert.equal((await db.query("update wt_observation_entries set source='owner' w
 await blocked("select wt_owner_soft_delete_observation_entry($1)", [id(4)], "P0002");
 await blocked("insert into wt_observation_events values ($1,'neutral')", [id(4)], "23514");
 assert.equal((await db.query("update wt_observation_events set event_result='concern' where entry_id=$1", [id(4)])).affectedRows, 0);
-console.log("checkpoint: deleted parent owner boundaries passed");
-await db.close();
-process.exit(0);
-
 await db.query("insert into wt_observation_events values ($1,'neutral')", [id(9)]);
 await db.query("insert into wt_daily_checks values ($1,3)", [id(8)]);
 await db.query("update wt_observation_events set event_result='success' where entry_id=$1", [id(7)]);
