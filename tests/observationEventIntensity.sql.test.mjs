@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 
-const migration = await readFile(new URL("../supabase/migrations/034_observation_event_intensity_five_levels.sql", import.meta.url), "utf8");
+const migration = await readFile(new URL("../supabase/legacy_migrations/034_observation_event_intensity_five_levels.sql", import.meta.url), "utf8");
 
 async function database(values) {
   const db = new PGlite();

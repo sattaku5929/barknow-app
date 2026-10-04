@@ -110,7 +110,7 @@ await db.exec(`
   grant execute on function auth.uid(), public.wt_is_coach() to authenticated;
 `);
 
-const migration = await readFile(new URL("../supabase/migrations/033_observation_trends.sql", import.meta.url), "utf8");
+const migration = await readFile(new URL("../supabase/legacy_migrations/033_observation_trends.sql", import.meta.url), "utf8");
 await db.exec(migration);
 await db.exec(`select set_config('app.owner_id','${owner}',false); set role authenticated;`);
 const { rows: [trend] } = await db.query("select wt_observation_trends($1,'Asia/Tokyo',$2::date) as result", [dog, "2026-09-28"]);

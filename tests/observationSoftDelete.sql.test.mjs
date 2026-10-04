@@ -345,7 +345,7 @@ assert.deepEqual(
   "C: RETURNING *",
 );
 
-const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
+const migration = await readFile(new URL("../supabase/legacy_migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
 await db.exec(migration);
 const { rows: installedPolicies } = await db.query(`select c.relname as table_name, p.polname,
   p.polcmd, lower(coalesce(pg_get_expr(p.polqual,p.polrelid),'')) as using_expression,
