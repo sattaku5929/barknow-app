@@ -190,6 +190,8 @@ jobs:
           -- Production user data is never copied into local development.
           SQL
 
+          sed -i 's#../supabase/migrations/033_observation_trends.sql#../supabase/legacy_migrations/033_observation_trends.sql#g' tests/observationTrends.sql.test.mjs
+          sed -i 's#../supabase/migrations/034_observation_event_intensity_five_levels.sql#../supabase/legacy_migrations/034_observation_event_intensity_five_levels.sql#g' tests/observationEventIntensity.sql.test.mjs
           sed -i 's#../supabase/migrations/035_observation_soft_delete_alignment.sql#../supabase/legacy_migrations/035_observation_soft_delete_alignment.sql#g' tests/observationSoftDelete.sql.test.mjs
           sed -i 's#../supabase/migrations/035_observation_soft_delete_alignment.sql#../supabase/legacy_migrations/035_observation_soft_delete_alignment.sql#g' tests/observationSoftDeleteAlignment.sql.test.mjs
 
@@ -299,7 +301,9 @@ jobs:
             where e.extname in ('btree_gist','pg_stat_statements','pgcrypto','supabase_vault','uuid-ossp')
           )
           select split_part(line,'|',1)||'|'||count(*)::text||'|'||md5(string_agg(line,E'\n' order by line))
-          from fp group by 1 order by 1;
+          from fp
+          group by split_part(line,'|',1)
+          order by split_part(line,'|',1);
           SQL
           cat baseline-semantic-fingerprints.txt
 
