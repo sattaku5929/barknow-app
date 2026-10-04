@@ -162,17 +162,8 @@ alter policy "owners update own observation entries"
     )
   );
 
-alter policy "owners delete own observation entries"
-  on public.wt_observation_entries
-  using (
-    deleted_at is null
-    and owner_id = auth.uid()
-    and exists (
-      select 1 from public.wt_dogs dog
-      where dog.id = wt_observation_entries.dog_id
-        and dog.owner_id = auth.uid()
-    )
-  );
+-- Owners must not physically delete Observation rows. Deletion is soft-delete-only via the RPC below.
+drop policy "owners delete own observation entries" on public.wt_observation_entries;
 
 alter policy "assigned coaches read observation entries"
   on public.wt_observation_entries
@@ -227,16 +218,7 @@ alter policy "owners update own daily checks"
     )
   );
 
-alter policy "owners delete own daily checks"
-  on public.wt_daily_checks
-  using (
-    exists (
-      select 1 from public.wt_observation_entries entry
-      where entry.id = wt_daily_checks.entry_id
-        and entry.owner_id = auth.uid()
-        and entry.deleted_at is null
-    )
-  );
+drop policy "owners delete own daily checks" on public.wt_daily_checks;
 
 alter policy "assigned coaches read daily checks"
   on public.wt_daily_checks
@@ -293,16 +275,7 @@ alter policy "owners update own observation events"
     )
   );
 
-alter policy "owners delete own observation events"
-  on public.wt_observation_events
-  using (
-    exists (
-      select 1 from public.wt_observation_entries entry
-      where entry.id = wt_observation_events.entry_id
-        and entry.owner_id = auth.uid()
-        and entry.deleted_at is null
-    )
-  );
+drop policy "owners delete own observation events" on public.wt_observation_events;
 
 alter policy "assigned coaches read observation events"
   on public.wt_observation_events
