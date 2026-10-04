@@ -247,6 +247,28 @@ await db.exec(`
     with check (public.wt_is_admin());
 `);
 
+await db.exec(`
+  create or replace function public.wt_validate_observation_subtype()
+  returns trigger
+  language plpgsql
+  set search_path = public, pg_catalog
+  as $$
+  declare
+    expected_kind text := tg_argv[0];
+  begin
+    if not exists (
+      select 1 from public.wt_observation_entries entry
+      where entry.id = new.entry_id
+        and entry.entry_kind = expected_kind
+    ) then
+      raise exception 'observation subtype requires entry_kind %', expected_kind
+        using errcode = '23514';
+    end if;
+    return new;
+  end;
+  $$;
+`);
+
 // Reproduce and record the pre-035 collision separately. This is diagnostic:
 // the final safety guarantee is asserted after 035, where direct soft delete
 // must be rejected regardless of RETURNING shape.
