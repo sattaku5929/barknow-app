@@ -44,9 +44,10 @@ values
 
 -- Strict preflight: only known old/final definitions, plus the single known
 -- production partial state (entry UPDATE final USING + old WITH CHECK), pass.
-do $$
+do $
 declare
-  e record;
+  table_state record;
+  policy_state record;
   a record;
   subtype_count integer;
   subtype_src_md5 text;
@@ -58,14 +59,14 @@ begin
     raise exception '035 must be applied by postgres';
   end if;
 
-  for e in
+  for table_state in
     select c.oid, c.relname, c.relrowsecurity, c.relforcerowsecurity
     from pg_class c join pg_namespace n on n.oid=c.relnamespace
     where n.nspname='public'
       and c.relname in ('wt_observation_entries','wt_daily_checks','wt_observation_events')
   loop
-    if not e.relrowsecurity then raise exception 'RLS must be enabled on %', e.relname; end if;
-    if e.relforcerowsecurity then raise exception 'Unexpected FORCE ROW LEVEL SECURITY on %', e.relname; end if;
+    if not table_state.relrowsecurity then raise exception 'RLS must be enabled on %', table_state.relname; end if;
+    if table_state.relforcerowsecurity then raise exception 'Unexpected FORCE ROW LEVEL SECURITY on %', table_state.relname; end if;
   end loop;
 
   if (select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace
@@ -78,15 +79,15 @@ begin
     from pg_policy p
     join pg_class c on c.oid=p.polrelid
     join pg_namespace n on n.oid=c.relnamespace
-    left join wt035_expected_policy e on e.table_name=c.relname and e.policy_name=p.polname
+    left join wt035_expected_policy e on policy_state.table_name=c.relname and policy_state.policy_name=p.polname
     where n.nspname='public'
       and c.relname in ('wt_observation_entries','wt_daily_checks','wt_observation_events')
-      and e.policy_name is null
+      and policy_state.policy_name is null
   ) then
     raise exception 'Unexpected Observation policy name detected';
   end if;
 
-  for e in select * from wt035_expected_policy order by table_name, policy_name loop
+  for policy_state in select * from wt035_expected_policy order by table_name, policy_name loop
     select p.polcmd,
            p.polroles,
            md5(regexp_replace(lower(coalesce(pg_get_expr(p.polqual,p.polrelid),'')),'\s+','','g')) as using_md5,
@@ -95,23 +96,23 @@ begin
       from pg_policy p
       join pg_class c on c.oid=p.polrelid
       join pg_namespace n on n.oid=c.relnamespace
-     where n.nspname='public' and c.relname=e.table_name and p.polname=e.policy_name;
+     where n.nspname='public' and c.relname=policy_state.table_name and p.polname=policy_state.policy_name;
 
     if not found then
-      if e.optional_when_final then continue; end if;
-      raise exception 'Missing required policy %.%', e.table_name, e.policy_name;
+      if policy_state.optional_when_final then continue; end if;
+      raise exception 'Missing required policy %.%', policy_state.table_name, policy_state.policy_name;
     end if;
 
-    if a.polcmd <> e.polcmd or a.polroles <> array['authenticated'::regrole::oid] then
-      raise exception 'Unexpected command/roles for %.%', e.table_name, e.policy_name;
+    if a.polcmd <> policy_state.polcmd or a.polroles <> array['authenticated'::regrole::oid] then
+      raise exception 'Unexpected command/roles for %.%', policy_state.table_name, policy_state.policy_name;
     end if;
 
     if not (
-      (a.using_md5=e.old_using_md5 and a.check_md5=e.old_check_md5)
-      or (a.using_md5=e.final_using_md5 and a.check_md5=e.final_check_md5)
-      or (e.allow_known_mixed and a.using_md5=e.final_using_md5 and a.check_md5=e.old_check_md5)
+      (a.using_md5=policy_state.old_using_md5 and a.check_md5=policy_state.old_check_md5)
+      or (a.using_md5=policy_state.final_using_md5 and a.check_md5=policy_state.final_check_md5)
+      or (policy_state.allow_known_mixed and a.using_md5=policy_state.final_using_md5 and a.check_md5=policy_state.old_check_md5)
     ) then
-      raise exception 'Unexpected policy definition for %.%', e.table_name, e.policy_name;
+      raise exception 'Unexpected policy definition for %.%', policy_state.table_name, policy_state.policy_name;
     end if;
   end loop;
 
@@ -292,21 +293,21 @@ begin
       md5(regexp_replace(lower(coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'')),'\s+','','g')) check_md5
       into a
     from pg_policy p join pg_class c on c.oid=p.polrelid join pg_namespace n on n.oid=c.relnamespace
-    where n.nspname='public' and c.relname=e.table_name and p.polname=e.policy_name;
-    if e.optional_when_final then
-      if found then raise exception 'Owner DELETE policy still exists: %.%',e.table_name,e.policy_name; end if;
+    where n.nspname='public' and c.relname=policy_state.table_name and p.polname=policy_state.policy_name;
+    if policy_state.optional_when_final then
+      if found then raise exception 'Owner DELETE policy still exists: %.%',policy_state.table_name,policy_state.policy_name; end if;
     else
-      if not found or a.polcmd<>e.polcmd or a.polroles<>array['authenticated'::regrole::oid]
-         or a.using_md5<>e.final_using_md5 or a.check_md5<>e.final_check_md5 then
-        raise exception 'Final policy mismatch: %.%',e.table_name,e.policy_name;
+      if not found or a.polcmd<>policy_state.polcmd or a.polroles<>array['authenticated'::regrole::oid]
+         or a.using_md5<>policy_state.final_using_md5 or a.check_md5<>policy_state.final_check_md5 then
+        raise exception 'Final policy mismatch: %.%',policy_state.table_name,policy_state.policy_name;
       end if;
     end if;
   end loop;
 
   if exists (
     select 1 from pg_policy p join pg_class c on c.oid=p.polrelid join pg_namespace n on n.oid=c.relnamespace
-    left join wt035_expected_policy e on e.table_name=c.relname and e.policy_name=p.polname
-    where n.nspname='public' and c.relname in ('wt_observation_entries','wt_daily_checks','wt_observation_events') and e.policy_name is null
+    left join wt035_expected_policy e on policy_state.table_name=c.relname and policy_state.policy_name=p.polname
+    where n.nspname='public' and c.relname in ('wt_observation_entries','wt_daily_checks','wt_observation_events') and policy_state.policy_name is null
   ) then raise exception 'Unexpected final Observation policy'; end if;
 
   if (select md5(regexp_replace(lower(p.prosrc),'\s+','','g')) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
