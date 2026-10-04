@@ -6,9 +6,9 @@ on:
       - chore/supabase-migration-baseline
 
 jobs:
-  audit:
+  generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,110 +16,140 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Supabase CLI version and help
+      - name: Initialize local Supabase
         run: |
-          npx -y supabase@latest --version
-          npx -y supabase@latest --help
-          npx -y supabase@latest migration --help
-          npx -y supabase@latest migration new --help
-          npx -y supabase@latest migration repair --help
-          npx -y supabase@latest migration list --help
-          npx -y supabase@latest migration squash --help
-          npx -y supabase@latest db dump --help
-          npx -y supabase@latest db push --help
-          npx -y supabase@latest db reset --help
-          npx -y supabase@latest start --help
-      - name: Fresh 001-035 rebuild attempt
+          npx -y supabase@2.119.0 init
+          npx -y supabase@2.119.0 start
+      - name: Add production alignment only in disposable workspace
         run: |
-          if [ ! -f supabase/config.toml ]; then
-            npx -y supabase@latest init
-          fi
-          npx -y supabase@latest start
-          npx -y supabase@latest db reset
-      - name: Canonical local schema hashes
-        run: |
-          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -At <<'SQL'
-          with app_columns as (
-            select table_schema,table_name,column_name,ordinal_position,data_type,udt_schema,udt_name,is_nullable,
-                   coalesce(column_default,''),is_identity,coalesce(identity_generation,''),is_generated,coalesce(generation_expression,'')
-            from information_schema.columns where table_schema='public'
-          ),
-          app_constraints as (
-            select n.nspname,c.relname,con.conname,con.contype,pg_get_constraintdef(con.oid,true) def
-            from pg_constraint con join pg_class c on c.oid=con.conrelid join pg_namespace n on n.oid=c.relnamespace
-            where n.nspname='public'
-          ),
-          app_indexes as (
-            select schemaname,tablename,indexname,indexdef from pg_indexes where schemaname='public'
-          ),
-          app_functions as (
-            select n.nspname,p.proname,pg_get_function_identity_arguments(p.oid) args,pg_get_function_result(p.oid) result,
-                   l.lanname,r.rolname,p.prosecdef,coalesce(array_to_string(p.proconfig,','),'') config,
-                   pg_get_functiondef(p.oid) def,coalesce(obj_description(p.oid,'pg_proc'),'') comment
-            from pg_proc p join pg_namespace n on n.oid=p.pronamespace join pg_language l on l.oid=p.prolang join pg_roles r on r.oid=p.proowner
-            where n.nspname='public'
-          ),
-          app_triggers as (
-            select n.nspname,c.relname,t.tgname,pg_get_triggerdef(t.oid,true) def
-            from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace
-            where not t.tgisinternal and n.nspname in ('public','auth')
-          ),
-          app_policies as (
-            select n.nspname,c.relname,p.polname,p.polcmd,p.polpermissive,
-                   array_to_string(array(select r.rolname from unnest(p.polroles) x(oid) join pg_roles r on r.oid=x.oid order by r.rolname),',') roles,
-                   coalesce(pg_get_expr(p.polqual,p.polrelid),''),coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'')
-            from pg_policy p join pg_class c on c.oid=p.polrelid join pg_namespace n on n.oid=c.relnamespace
-            where n.nspname in ('public','storage')
-          ),
-          table_security as (
-            select n.nspname,c.relname,c.relkind,c.relrowsecurity,c.relforcerowsecurity,coalesce(obj_description(c.oid,'pg_class'),'') comment
-            from pg_class c join pg_namespace n on n.oid=c.relnamespace
-            where n.nspname='public' and c.relkind in ('r','p','v','m','S')
-          ),
-          grants as (
-            select table_schema,table_name,grantee,privilege_type,is_grantable
-            from information_schema.role_table_grants where table_schema='public'
-          ),
-          buckets as (
-            select id,name,public,file_size_limit,coalesce(array_to_string(allowed_mime_types,','),'') allowed_mime_types from storage.buckets
-          ),
-          pubrels as (
-            select p.pubname,n.nspname,c.relname
-            from pg_publication p left join pg_publication_rel pr on pr.prpubid=p.oid left join pg_class c on c.oid=pr.prrelid left join pg_namespace n on n.oid=c.relnamespace
-            where n.nspname='public'
+          cat > supabase/migrations/20261004043000_production_baseline_alignment.sql <<'SQL'
+          -- Disposable local-only alignment used to generate the production baseline.
+          -- This file is never applied to production.
+
+          drop table if exists public.push_subscriptions cascade;
+          create table public.push_subscriptions (
+            id uuid primary key default gen_random_uuid(),
+            user_id uuid not null unique references auth.users(id) on delete cascade,
+            subscription jsonb not null,
+            created_at timestamptz not null default timezone('utc'::text, now())
+          );
+          alter table public.push_subscriptions enable row level security;
+          create policy "users manage own push subscription"
+            on public.push_subscriptions for all to authenticated
+            using (user_id = auth.uid())
+            with check (user_id = auth.uid());
+          create policy "ユーザーは自分の購読情報のみ操作可能"
+            on public.push_subscriptions for all
+            using (auth.uid() = user_id);
+          grant select, insert, update, delete on public.push_subscriptions to authenticated;
+
+          alter table public.wt_dogs drop constraint if exists wt_dogs_gender_check;
+          alter table public.wt_dogs add constraint wt_dogs_gender_check
+            check (gender is null or gender in ('male_neutered','male_intact','female_spayed','female_intact','unknown'));
+          alter table public.wt_dogs drop constraint if exists wt_dogs_training_experience_check;
+
+          alter table public.wt_owner_profiles drop constraint if exists wt_owner_profiles_full_name_kana_check;
+
+          alter table public.wt_observation_events rename column goal_success to success;
+
+          drop function if exists public.wt_admin_customer_overview();
+          create function public.wt_admin_customer_overview()
+          returns table (
+            assignment_id uuid,
+            owner_id uuid,
+            owner_name text,
+            owner_phone_number text,
+            owner_prefecture text,
+            owner_address text,
+            owner_birth_date date,
+            dog_id uuid,
+            dog_name text,
+            breed text,
+            records_7d bigint,
+            concerns_7d bigint,
+            latest_message text,
+            latest_message_at timestamptz
           )
-          select * from (
-          select 'columns' category,count(*) n,md5(coalesce(string_agg(row_to_json(x)::text,E'\n' order by table_schema,table_name,ordinal_position),'')) hash from app_columns x
-          union all select 'constraints',count(*),md5(coalesce(string_agg(row_to_json(x)::text,E'\n' order by nspname,relname,conname),'')) from app_constraints x
-          union all select 'indexes',count(*),md5(coalesce(string_agg(row_to_json(x)::text,E'\n' order by schemaname,tablename,indexname),'')) from app_indexes x
-          union all select 'functions',count(*),md5(coalesce(string_agg(row_to_json(x)::text,E'\n' order by nspname,proname,args),'')) from app_functions x
-          union all select 'triggers',count(*),md5(coalesce(string_agg(row_to_json(x)::text,E'\n' order by nspname,relname,tgname),'')) from app_triggers x
-          union all select 'policies',count(*),md5(coalesce(string_agg(row_to_json(x)::text,E'\n' order by nspname,relname,polname),'')) from app_policies x
-          union all select 'table_security',count(*),md5(coalesce(string_agg(row_to_json(x)::text,E'\n' order by nspname,relname),'')) from table_security x
-          union all select 'grants',count(*),md5(coalesce(string_agg(row_to_json(x)::text,E'\n' order by table_schema,table_name,grantee,privilege_type),'')) from grants x
-          union all select 'buckets',count(*),md5(coalesce(string_agg(row_to_json(x)::text,E'\n' order by id),'')) from buckets x
-          union all select 'publications',count(*),md5(coalesce(string_agg(row_to_json(x)::text,E'\n' order by pubname,nspname,relname),'')) from pubrels x
-          ) s order by category;
+          language plpgsql
+          stable
+          security definer
+          set search_path = public
+          as $$
+          begin
+            if not public.wt_is_staff() then
+              raise exception 'staff role required';
+            end if;
+
+            return query
+            select
+              assignment.id,
+              assignment.owner_id,
+              coalesce(owner_profile.full_name, '')::text,
+              coalesce(owner_profile.phone_number, '')::text,
+              coalesce(owner_profile.prefecture, '')::text,
+              coalesce(owner_profile.address, '')::text,
+              owner_profile.owner_birth_date,
+              dog.id,
+              dog.name::text,
+              coalesce(dog.breed, '')::text,
+              count(record.id) filter (where record.recorded_on >= current_date - 6),
+              count(record.id) filter (
+                where record.recorded_on >= current_date - 6
+                  and (
+                    record.appetite = '気になる'
+                    or record.activity = '気になる'
+                    or record.toilet = '気になる'
+                    or record.sleep = '気になる'
+                    or coalesce(record.behavior_intensity, 0) >= 7
+                  )
+              ),
+              (
+                select message.body from public.wt_coach_messages message
+                where message.dog_id = dog.id order by message.created_at desc limit 1
+              ),
+              (
+                select message.created_at from public.wt_coach_messages message
+                where message.dog_id = dog.id order by message.created_at desc limit 1
+              )
+            from public.wt_coach_assignments assignment
+            join public.wt_dogs dog on dog.id = assignment.dog_id
+            left join public.wt_owner_profiles owner_profile on owner_profile.user_id = assignment.owner_id
+            left join public.wt_daily_records record on record.dog_id = dog.id
+            where (public.wt_is_admin() or assignment.coach_id = auth.uid())
+              and not exists (
+                select 1 from public.wt_coaching_applications application
+                where application.dog_id = assignment.dog_id and application.status = 'offered'
+              )
+            group by assignment.id, assignment.owner_id, owner_profile.full_name,
+              owner_profile.phone_number, owner_profile.prefecture, owner_profile.address,
+              owner_profile.owner_birth_date, dog.id, dog.name, dog.breed
+            order by 14 desc nulls last, dog.name;
+          end;
+          $$;
+          revoke all on function public.wt_admin_customer_overview() from public;
+          grant execute on function public.wt_admin_customer_overview() to authenticated;
           SQL
-      - name: Managed schema object fingerprints
+      - name: Rebuild production-like local database
+        run: npx -y supabase@2.119.0 db reset
+      - name: Squash to timestamp baseline
         run: |
-          echo '--- GENERATED CONFIG ---'
-          cat supabase/config.toml
-          echo '--- MIGRATION NEW PROBE ---'
-          npx -y supabase@latest migration new baseline_probe
-          ls -1 supabase/migrations/*baseline_probe.sql
-          rm supabase/migrations/*baseline_probe.sql
-          echo '--- OBJECT FINGERPRINTS ---'
-          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -At <<'SQL'
+          npx -y supabase@2.119.0 migration squash --local --version 20261004043000 --yes
+          echo "=== migrations after squash ==="
+          find supabase/migrations -maxdepth 1 -type f -printf '%f\n' | sort
+      - name: Verify squashed baseline from clean database
+        run: npx -y supabase@2.119.0 db reset
+      - name: Dump managed fingerprints
+        run: |
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -At > baseline-fingerprints.txt <<'SQL'
           select 'COL|'||table_name||'.'||column_name||'|'||
             md5(row_to_json(x)::text)
           from (
-            select table_name,column_name,ordinal_position,data_type,udt_schema,udt_name,is_nullable,
+            select table_name,column_name,data_type,udt_schema,udt_name,is_nullable,
                    coalesce(column_default,'') column_default,is_identity,coalesce(identity_generation,'') identity_generation,
                    is_generated,coalesce(generation_expression,'') generation_expression
             from information_schema.columns
             where table_schema='public' and (table_name like 'wt\_%' escape '\' or table_name='push_subscriptions')
-          ) x order by table_name,ordinal_position;
+          ) x order by table_name,column_name;
 
           select 'CON|'||c.relname||'.'||con.conname||'|'||
             md5(con.contype::text||'|'||pg_get_constraintdef(con.oid,true))
@@ -132,14 +162,6 @@ jobs:
           where schemaname='public' and (tablename like 'wt\_%' escape '\' or tablename='push_subscriptions')
           order by tablename,indexname;
 
-          select 'FUN|'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')|'||
-             md5(pg_get_function_result(p.oid)||'|'||l.lanname||'|'||r.rolname||'|'||p.prosecdef::text||'|'||
-                 coalesce(array_to_string(p.proconfig,','),'')||'|'||pg_get_functiondef(p.oid)||'|'||
-                 coalesce(obj_description(p.oid,'pg_proc'),''))
-          from pg_proc p join pg_namespace n on n.oid=p.pronamespace join pg_language l on l.oid=p.prolang join pg_roles r on r.oid=p.proowner
-          where n.nspname='public' and p.proname like 'wt\_%' escape '\'
-          order by p.proname,pg_get_function_identity_arguments(p.oid);
-
           select 'POL|'||n.nspname||'.'||c.relname||'.'||p.polname||'|'||
             md5(p.polcmd::text||'|'||p.polpermissive::text||'|'||
                 coalesce(array_to_string(array(select rr.rolname from unnest(p.polroles) x(oid) join pg_roles rr on rr.oid=x.oid order by rr.rolname),','),'')||'|'||
@@ -149,3 +171,11 @@ jobs:
              or (n.nspname='storage' and c.relname='objects' and (p.polname ilike '%avatar%' or p.polname ilike '%dog%' or p.polname ilike '%coach%'))
           order by n.nspname,c.relname,p.polname;
           SQL
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-baseline-candidate
+          path: |
+            supabase/config.toml
+            supabase/migrations/
+            baseline-fingerprints.txt
+          if-no-files-found: error
