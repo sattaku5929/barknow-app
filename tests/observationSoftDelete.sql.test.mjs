@@ -133,8 +133,9 @@ const { rows: installedPolicies } = await db.query(`select c.relname as table_na
   from pg_policy p join pg_class c on c.oid=p.polrelid
   where c.relname in ('wt_observation_entries','wt_daily_checks','wt_observation_events')
   and p.polname not like 'admins %'`);
-assert.equal(installedPolicies.length, 15);
+assert.equal(installedPolicies.length, 12);
 for (const policy of installedPolicies) {
+  assert.notEqual(policy.polcmd, "d", `owner/coach DELETE policy must not remain: ${policy.table_name} / ${policy.polname}`);
   if (policy.polcmd !== "a") assert.match(policy.using_expression, /deleted_at is null/);
   if (policy.polcmd === "a" || policy.polcmd === "w") {
     assert.equal(policy.check_expression.includes("deleted_at is null"), true);
@@ -164,6 +165,10 @@ async function blocked(query, params, code = "42501") {
 await as(owner);
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(1)]), 1);
 await db.query("update wt_observation_entries set source='owner' where id=$1", [id(1)]);
+
+await blocked("delete from wt_observation_entries where id=$1", [id(1)]);
+await blocked("delete from wt_observation_events where entry_id=$1", [id(7)]);
+await blocked("delete from wt_daily_checks where entry_id=$1", [id(5)]);
 
 // Explicitly distinguish A, B, and C. RETURNING requires SELECT on the new
 // row; the direct no-RETURNING path is also rejected by this PostgreSQL engine.
