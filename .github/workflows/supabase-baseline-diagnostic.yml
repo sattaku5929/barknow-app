@@ -6,324 +6,43 @@ on:
       - chore/supabase-migration-baseline
 
 jobs:
-  verify-final-candidate:
+  inspect-drift:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-
-      - name: Initialize local Supabase
-        run: |
-          npx -y supabase@2.119.0 init
-          mkdir -p supabase/legacy_migrations
-          cp supabase/migrations/*.sql supabase/legacy_migrations/
-          npx -y supabase@2.119.0 start
-
-      - name: Align disposable local database to production
-        run: |
-          cat > supabase/migrations/20261004043000_production_baseline_alignment.sql <<'SQL'
-          -- Disposable local-only alignment used to generate the production baseline.
-          drop table if exists public.push_subscriptions cascade;
-          create table public.push_subscriptions (
-            id uuid primary key default gen_random_uuid(),
-            user_id uuid not null unique references auth.users(id) on delete cascade,
-            subscription jsonb not null,
-            created_at timestamptz not null default timezone('utc'::text, now())
-          );
-          alter table public.push_subscriptions enable row level security;
-          create policy "users manage own push subscription"
-            on public.push_subscriptions for all to authenticated
-            using (user_id = auth.uid())
-            with check (user_id = auth.uid());
-          create policy "ユーザーは自分の購読情報のみ操作可能"
-            on public.push_subscriptions for all
-            using (auth.uid() = user_id);
-          grant select, insert, update, delete on public.push_subscriptions to authenticated;
-
-          alter table public.wt_dogs drop constraint if exists wt_dogs_gender_check;
-          alter table public.wt_dogs add constraint wt_dogs_gender_check
-            check (gender is null or gender in ('male_neutered','male_intact','female_spayed','female_intact','unknown'));
-          alter table public.wt_dogs drop constraint if exists wt_dogs_training_experience_check;
-
-          alter table public.wt_owner_profiles drop constraint if exists wt_owner_profiles_full_name_kana_check;
-          alter table public.wt_observation_events rename column goal_success to success;
-
-          drop function if exists public.wt_admin_customer_overview();
-          create function public.wt_admin_customer_overview()
-          returns table (
-            assignment_id uuid,
-            owner_id uuid,
-            owner_name text,
-            owner_phone_number text,
-            owner_prefecture text,
-            owner_address text,
-            owner_birth_date date,
-            dog_id uuid,
-            dog_name text,
-            breed text,
-            records_7d bigint,
-            concerns_7d bigint,
-            latest_message text,
-            latest_message_at timestamptz
-          )
-          language plpgsql
-          stable
-          security definer
-          set search_path = public
-          as $$
-          begin
-            if not public.wt_is_staff() then
-              raise exception 'staff role required';
-            end if;
-            return query
-            select
-              assignment.id,
-              assignment.owner_id,
-              coalesce(owner_profile.full_name, '')::text,
-              coalesce(owner_profile.phone_number, '')::text,
-              coalesce(owner_profile.prefecture, '')::text,
-              coalesce(owner_profile.address, '')::text,
-              owner_profile.owner_birth_date,
-              dog.id,
-              dog.name::text,
-              coalesce(dog.breed, '')::text,
-              count(record.id) filter (where record.recorded_on >= current_date - 6),
-              count(record.id) filter (
-                where record.recorded_on >= current_date - 6
-                  and (
-                    record.appetite = '気になる'
-                    or record.activity = '気になる'
-                    or record.toilet = '気になる'
-                    or record.sleep = '気になる'
-                    or coalesce(record.behavior_intensity, 0) >= 7
-                  )
-              ),
-              (
-                select message.body from public.wt_coach_messages message
-                where message.dog_id = dog.id order by message.created_at desc limit 1
-              ),
-              (
-                select message.created_at from public.wt_coach_messages message
-                where message.dog_id = dog.id order by message.created_at desc limit 1
-              )
-            from public.wt_coach_assignments assignment
-            join public.wt_dogs dog on dog.id = assignment.dog_id
-            left join public.wt_owner_profiles owner_profile on owner_profile.user_id = assignment.owner_id
-            left join public.wt_daily_records record on record.dog_id = dog.id
-            where (public.wt_is_admin() or assignment.coach_id = auth.uid())
-              and not exists (
-                select 1 from public.wt_coaching_applications application
-                where application.dog_id = assignment.dog_id and application.status = 'offered'
-              )
-            group by assignment.id, assignment.owner_id, owner_profile.full_name,
-              owner_profile.phone_number, owner_profile.prefecture, owner_profile.address,
-              owner_profile.owner_birth_date, dog.id, dog.name, dog.breed
-            order by 14 desc nulls last, dog.name;
-          end;
-          $$;
-          revoke all on function public.wt_admin_customer_overview() from public;
-          grant execute on function public.wt_admin_customer_overview() to authenticated;
-          SQL
-
-          npx -y supabase@2.119.0 db reset
-
-      - name: Squash to one production baseline
-        run: |
-          npx -y supabase@2.119.0 migration squash --local --version 20261004043000 --yes
-          mv supabase/migrations/20261004043000_production_baseline_alignment.sql supabase/migrations/20261004043000_production_baseline.sql
-
-          cat >> supabase/migrations/20261004043000_production_baseline.sql <<'SQL'
-
-          -- Required system configuration that schema-only squash does not preserve.
-          -- These rows define application Storage buckets and are not production user data.
-          insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-          values
-            ('coach-avatars', 'coach-avatars', true, 3145728, array['image/jpeg', 'image/png', 'image/webp']),
-            ('dog-avatars', 'dog-avatars', true, 8388608, array['image/jpeg', 'image/png', 'image/webp'])
-          on conflict (id) do update set
-            name = excluded.name,
-            public = excluded.public,
-            file_size_limit = excluded.file_size_limit,
-            allowed_mime_types = excluded.allowed_mime_types;
-
-          -- Legacy public schema retained only so a fresh database matches production.
-          -- WanTone does not use these relations for new development. No production rows are included.
-          create table public."CUSTOMERS" (
-            id bigint generated by default as identity primary key,
-            dog_name text not null,
-            dog_breed text,
-            birthday date,
-            owner_name text
-          );
-          alter table public."CUSTOMERS" enable row level security;
-
-          create table public.dogs (
-            id bigint generated by default as identity primary key,
-            name text not null,
-            breed text,
-            birthday date
-          );
-          alter table public.dogs enable row level security;
-
-          create table public.messages (
-            id uuid primary key default gen_random_uuid(),
-            user_id uuid not null references auth.users(id) on delete cascade,
-            room_id uuid not null,
-            content text,
-            media_url text,
-            media_type text check (media_type = any (array['image'::text, 'video'::text])),
-            created_at timestamptz not null default timezone('utc'::text, now())
-          );
-          alter table public.messages enable row level security;
-          create policy "メッセージの作成許可" on public.messages for insert with check (auth.uid() = user_id);
-          create policy "メッセージの参照許可" on public.messages for select using (true);
-          alter publication supabase_realtime add table only public.messages;
-          SQL
-
-          cat > supabase/seed.sql <<'SQL'
-          -- Intentionally empty.
-          -- Production user data is never copied into local development.
-          SQL
-
-          sed -i 's#../supabase/migrations/033_observation_trends.sql#../supabase/legacy_migrations/033_observation_trends.sql#g' tests/observationTrends.sql.test.mjs
-          sed -i 's#../supabase/migrations/034_observation_event_intensity_five_levels.sql#../supabase/legacy_migrations/034_observation_event_intensity_five_levels.sql#g' tests/observationEventIntensity.sql.test.mjs
-          sed -i 's#../supabase/migrations/035_observation_soft_delete_alignment.sql#../supabase/legacy_migrations/035_observation_soft_delete_alignment.sql#g' tests/observationSoftDelete.sql.test.mjs
-          sed -i 's#../supabase/migrations/035_observation_soft_delete_alignment.sql#../supabase/legacy_migrations/035_observation_soft_delete_alignment.sql#g' tests/observationSoftDeleteAlignment.sql.test.mjs
-
-      - name: Fresh reset from baseline only
-        run: npx -y supabase@2.119.0 db reset
-
-      - name: Verify auth and storage customization
-        run: |
-          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -v ON_ERROR_STOP=1 <<'SQL'
-          do $$
-          begin
-            if not exists (
-              select 1 from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace
-              where n.nspname='auth' and c.relname='users' and t.tgname='wt_on_auth_user_created' and not t.tgisinternal
-            ) then raise exception 'missing wt_on_auth_user_created'; end if;
-
-            if (select count(*) from storage.buckets where id in ('coach-avatars','dog-avatars')) <> 2
-            then raise exception 'avatar buckets missing'; end if;
-
-            if (select count(*) from pg_policy p join pg_class c on c.oid=p.polrelid join pg_namespace n on n.oid=c.relnamespace
-                where n.nspname='storage' and c.relname='objects'
-                  and p.polname in (
-                    'public read coach avatars','coaches upload own avatar','coaches update own avatar','coaches delete own avatar',
-                    'public read dog avatars','owners upload own dog avatar','owners update own dog avatar','owners delete own dog avatar'
-                  )) <> 8
-            then raise exception 'avatar storage policies missing'; end if;
-
-            if not exists (
-              select 1 from pg_publication p join pg_publication_rel pr on pr.prpubid=p.oid
-              join pg_class c on c.oid=pr.prrelid join pg_namespace n on n.oid=c.relnamespace
-              where p.pubname='supabase_realtime' and n.nspname='public' and c.relname='messages'
-            ) then raise exception 'legacy messages realtime membership missing'; end if;
-          end $$;
-          SQL
-
-      - name: Schema semantic fingerprints
-        run: |
-          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -At > baseline-semantic-fingerprints.txt <<'SQL'
-          with target_rel as (
-            select c.oid,n.nspname,c.relname,c.relkind,c.relrowsecurity,c.relforcerowsecurity,coalesce(obj_description(c.oid,'pg_class'),'') comment
-            from pg_class c join pg_namespace n on n.oid=c.relnamespace
-            where n.nspname='public'
-              and (c.relname like 'wt\_%' escape '\' or c.relname in ('push_subscriptions','CUSTOMERS','dogs','messages','CUSTOMERS_id_seq','dogs_id_seq'))
-              and c.relkind in ('r','p','v','m','S')
-          ),
-          fp as (
-            select 'REL|'||relname||'|'||md5(relkind::text||'|'||relrowsecurity::text||'|'||relforcerowsecurity::text||'|'||comment) line from target_rel
-            union all
-            select 'COL|'||c.table_name||'.'||c.column_name||'|'||
-              md5(c.ordinal_position::text||'|'||c.data_type||'|'||c.udt_schema||'|'||c.udt_name||'|'||c.is_nullable||'|'||
-                  coalesce(c.column_default,'')||'|'||c.is_identity||'|'||coalesce(c.identity_generation,'')||'|'||
-                  c.is_generated||'|'||coalesce(c.generation_expression,'')||'|'||coalesce(col_description(pc.oid,c.ordinal_position),''))
-            from information_schema.columns c
-            join pg_class pc on pc.relname=c.table_name
-            join pg_namespace pn on pn.oid=pc.relnamespace and pn.nspname=c.table_schema
-            where c.table_schema='public'
-              and (c.table_name like 'wt\_%' escape '\' or c.table_name in ('push_subscriptions','CUSTOMERS','dogs','messages'))
-            union all
-            select 'CON|'||c.relname||'.'||con.conname||'|'||
-              md5(con.contype::text||'|'||regexp_replace(lower(pg_get_constraintdef(con.oid,true)),'\s+','','g'))
-            from pg_constraint con join pg_class c on c.oid=con.conrelid join pg_namespace n on n.oid=c.relnamespace
-            where n.nspname='public' and (c.relname like 'wt\_%' escape '\' or c.relname in ('push_subscriptions','CUSTOMERS','dogs','messages'))
-            union all
-            select 'IDX|'||tablename||'.'||indexname||'|'||md5(regexp_replace(lower(indexdef),'\s+','','g'))
-            from pg_indexes where schemaname='public'
-              and (tablename like 'wt\_%' escape '\' or tablename in ('push_subscriptions','CUSTOMERS','dogs','messages'))
-            union all
-            select 'FUN|'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')|'||
-              md5(pg_get_function_result(p.oid)||'|'||l.lanname||'|'||r.rolname||'|'||p.prosecdef::text||'|'||
-                  coalesce(array_to_string(p.proconfig,','),'')||'|'||
-                  regexp_replace(lower(p.prosrc),'\s+','','g')||'|'||coalesce(obj_description(p.oid,'pg_proc'),''))
-            from pg_proc p join pg_namespace n on n.oid=p.pronamespace join pg_language l on l.oid=p.prolang join pg_roles r on r.oid=p.proowner
-            where n.nspname='public' and p.proname like 'wt\_%' escape '\'
-            union all
-            select 'TRG|'||n.nspname||'.'||c.relname||'.'||t.tgname||'|'||
-              md5(regexp_replace(lower(pg_get_triggerdef(t.oid,true)),'\s+','','g'))
-            from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace
-            where not t.tgisinternal and (
-              (n.nspname='public' and c.relname like 'wt\_%' escape '\')
-              or (n.nspname='auth' and c.relname='users' and t.tgname='wt_on_auth_user_created')
-            )
-            union all
-            select 'POL|'||n.nspname||'.'||c.relname||'.'||p.polname||'|'||
-              md5(p.polcmd::text||'|'||p.polpermissive::text||'|'||
-                  coalesce(array_to_string(array(select rr.rolname from unnest(p.polroles) x(oid) join pg_roles rr on rr.oid=x.oid order by rr.rolname),','),'')||'|'||
-                  regexp_replace(lower(coalesce(pg_get_expr(p.polqual,p.polrelid),'')),'\s+','','g')||'|'||
-                  regexp_replace(lower(coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'')),'\s+','','g'))
-            from pg_policy p join pg_class c on c.oid=p.polrelid join pg_namespace n on n.oid=c.relnamespace
-            where (n.nspname='public' and (c.relname like 'wt\_%' escape '\' or c.relname in ('push_subscriptions','CUSTOMERS','dogs','messages')))
-               or (n.nspname='storage' and c.relname='objects' and (p.polname ilike '%avatar%' or p.polname ilike '%dog%' or p.polname ilike '%coach%'))
-            union all
-            select 'GRANT|'||g.table_name||'.'||g.grantee||'.'||g.privilege_type||'|'||md5(g.is_grantable)
-            from information_schema.role_table_grants g
-            where g.table_schema='public'
-              and (g.table_name like 'wt\_%' escape '\' or g.table_name in ('push_subscriptions','CUSTOMERS','dogs','messages'))
-            union all
-            select 'BUCKET|'||id||'|'||md5(name||'|'||public::text||'|'||coalesce(file_size_limit::text,'')||'|'||coalesce(array_to_string(allowed_mime_types,','),''))
-            from storage.buckets where id in ('coach-avatars','dog-avatars')
-            union all
-            select 'PUB|'||p.pubname||'.'||c.relname||'|'||md5(n.nspname)
-            from pg_publication p join pg_publication_rel pr on pr.prpubid=p.oid join pg_class c on c.oid=pr.prrelid join pg_namespace n on n.oid=c.relnamespace
-            where n.nspname='public'
-              and (c.relname like 'wt\_%' escape '\' or c.relname in ('push_subscriptions','CUSTOMERS','dogs','messages'))
-            union all
-            select 'EXT|'||e.extname||'|'||md5(n.nspname)
-            from pg_extension e join pg_namespace n on n.oid=e.extnamespace
-            where e.extname in ('btree_gist','pg_stat_statements','pgcrypto','supabase_vault','uuid-ossp')
-          )
-          select split_part(line,'|',1)||'|'||count(*)::text||'|'||md5(string_agg(line,E'\n' order by line))
-          from fp
-          group by split_part(line,'|',1)
-          order by split_part(line,'|',1);
-          SQL
-          cat baseline-semantic-fingerprints.txt
-
-      - name: Application and security quality
-        run: |
-          npm run lint
-          npm run test:insights
-          npm run test:observations
-          npm run build
-          git diff --check
-
-      - uses: actions/upload-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: final-production-baseline-candidate
-          path: |
-            supabase/config.toml
-            supabase/seed.sql
-            supabase/migrations/
-            supabase/legacy_migrations/
-            tests/observationSoftDelete.sql.test.mjs
-            tests/observationSoftDeleteAlignment.sql.test.mjs
-            baseline-semantic-fingerprints.txt
-          if-no-files-found: error
+          path: /tmp/candidate
+          github-token: ${{ github.token }}
+          run-id: 37178844018
+      - name: Use validated candidate
+        run: |
+          rm -rf supabase
+          cp -R /tmp/candidate/supabase ./supabase
+          npx -y supabase@2.119.0 start
+          npx -y supabase@2.119.0 db reset
+      - name: Print column and grant fingerprints
+        run: |
+          psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -At <<'SQL'
+          select 'COL|'||c.table_name||'.'||c.column_name||'|'||
+            md5(c.ordinal_position::text||'|'||c.data_type||'|'||c.udt_schema||'|'||c.udt_name||'|'||c.is_nullable||'|'||
+                coalesce(c.column_default,'')||'|'||c.is_identity||'|'||coalesce(c.identity_generation,'')||'|'||
+                c.is_generated||'|'||coalesce(c.generation_expression,'')||'|'||coalesce(col_description(pc.oid,c.ordinal_position),''))
+          from information_schema.columns c
+          join pg_class pc on pc.relname=c.table_name
+          join pg_namespace pn on pn.oid=pc.relnamespace and pn.nspname=c.table_schema
+          where c.table_schema='public'
+            and (c.table_name like 'wt\_%' escape '\' or c.table_name in ('push_subscriptions','CUSTOMERS','dogs','messages'))
+          order by c.table_name,c.ordinal_position;
+
+          select 'GRANT|'||g.table_name||'.'||g.grantee||'.'||g.privilege_type||'|'||md5(g.is_grantable)
+          from information_schema.role_table_grants g
+          where g.table_schema='public'
+            and (g.table_name like 'wt\_%' escape '\' or g.table_name in ('push_subscriptions','CUSTOMERS','dogs','messages'))
+          order by g.table_name,g.grantee,g.privilege_type;
+          SQL
