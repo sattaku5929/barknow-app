@@ -197,10 +197,6 @@ assert.equal((await db.query("select wt_owner_soft_delete_observation_entry($1) 
 assert.equal(await count("select count(*)::integer n from wt_daily_checks where entry_id=$1", [id(8)]), 0);
 await blocked("insert into wt_daily_checks values ($1,3)", [id(8)], "23514");
 
-console.log("checkpoint: owner soft delete boundaries passed");
-await db.close();
-process.exit(0);
-
 await as(otherOwner);
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(5)]), 0);
 assert.equal((await db.query("update wt_observation_entries set source='owner' where id=$1", [id(5)])).affectedRows, 0);
