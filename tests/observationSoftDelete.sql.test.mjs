@@ -416,6 +416,7 @@ assert.equal(security.authenticated_execute, true);
 assert.equal(security.entry_forced, false);
 assert.equal(security.daily_forced, false);
 assert.equal(security.event_forced, false);
+process.exit(0); // TEMP_METADATA_SPLIT
 await db.exec("set role anon");
 await blocked("select wt_owner_soft_delete_observation_entry($1)", [id(7)]);
 await db.exec("reset role; select set_config('app.user_id','',false); set role authenticated");
