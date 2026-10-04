@@ -200,6 +200,55 @@ test("A3 migration expected-state setup only", async () => {
   await db.close();
 });
 
+
+test("A4 old-state policy preflight matrix", async () => {
+  const db=await baseDb();
+  await installState(db,"old");
+  const cut=migration.indexOf("-- Strict preflight");
+  assert.ok(cut>0);
+  await db.exec(migration.slice(0,cut));
+  const { rows:[unknown] }=await db.query(`
+    select count(*)::int n
+    from pg_policy p
+    join pg_class c on c.oid=p.polrelid
+    join pg_namespace n on n.oid=c.relnamespace
+    left join wt035_expected_policy e on e.table_name=c.relname and e.policy_name=p.polname
+    where n.nspname='public'
+      and c.relname in ('wt_observation_entries','wt_daily_checks','wt_observation_events')
+      and e.policy_name is null
+  `);
+  assert.equal(unknown.n,0);
+  const { rows:mismatches }=await db.query(`
+    select e.table_name,e.policy_name,
+           p.polcmd,p.polroles,
+           md5(regexp_replace(lower(coalesce(pg_get_expr(p.polqual,p.polrelid),'')),'\\s+','','g')) using_md5,
+           md5(regexp_replace(lower(coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'')),'\\s+','','g')) check_md5,
+           e.old_using_md5,e.old_check_md5,e.final_using_md5,e.final_check_md5,e.allow_known_mixed
+    from wt035_expected_policy e
+    left join pg_class c on c.relname=e.table_name
+    left join pg_namespace n on n.oid=c.relnamespace and n.nspname='public'
+    left join pg_policy p on p.polrelid=c.oid and p.polname=e.policy_name
+    where not (
+      p.polcmd=e.polcmd
+      and p.polroles=array['authenticated'::regrole::oid]
+      and (
+        (md5(regexp_replace(lower(coalesce(pg_get_expr(p.polqual,p.polrelid),'')),'\\s+','','g'))=e.old_using_md5
+         and md5(regexp_replace(lower(coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'')),'\\s+','','g'))=e.old_check_md5)
+        or
+        (md5(regexp_replace(lower(coalesce(pg_get_expr(p.polqual,p.polrelid),'')),'\\s+','','g'))=e.final_using_md5
+         and md5(regexp_replace(lower(coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'')),'\\s+','','g'))=e.final_check_md5)
+        or
+        (e.allow_known_mixed
+         and md5(regexp_replace(lower(coalesce(pg_get_expr(p.polqual,p.polrelid),'')),'\\s+','','g'))=e.final_using_md5
+         and md5(regexp_replace(lower(coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'')),'\\s+','','g'))=e.old_check_md5)
+      )
+    )
+  `);
+  assert.deepEqual(mismatches,[]);
+  await db.exec("rollback;");
+  await db.close();
+});
+
 for (const [label,state] of [["A full old","old"],["B production-like partial","partial"],["C already final","final"]]) {
   test(label, async () => {
     const db=await baseDb(); await installState(db,state); await db.exec(migration); await assertFinal(db);
