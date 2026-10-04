@@ -284,7 +284,7 @@ comment on function public.wt_owner_soft_delete_observation_entry(uuid) is
   'Owner-only soft delete for one active Observation entry. Missing, already-deleted, and non-owned UUIDs are intentionally indistinguishable.';
 
 -- Final postflight inside the same transaction. Any mismatch rolls back all DDL.
-do $
+do $$
 declare final_policy_state record; a record; rpc_oid oid;
 begin
   for final_policy_state in select * from wt035_expected_policy order by table_name,policy_name loop
