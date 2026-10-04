@@ -4584,7 +4584,7 @@ export default function Home() {
 
   const settingsMenuView = (
     <section className="settings-screen">
-      <header><p className="card-label">ACCOUNT &amp; APP</p><h1>設定</h1></header>
+      <header><p className="card-label">ACCOUNT &amp; APP</p><h1>マイページ</h1></header>
       <div className="settings-user-summary">
         <span className={profile.avatarUrl ? "has-image" : ""}>{profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : profile.name ? profile.name.slice(0, 1) : <SettingsGlyph name="dog" />}</span>
         <div><strong>{profile.name ? `${profile.name}ちゃん` : "愛犬を登録してください"}</strong><small>{userEmail}</small></div>
@@ -5024,7 +5024,7 @@ export default function Home() {
             {(userRole === "admin" || userRole === "coach") && <button className="owner-admin-switch" onClick={() => switchActiveViewMode("staff")}><NavGlyph name="coach" /><span>{userRole === "admin" ? "管理画面" : "コーチ画面"}</span></button>}
           </div>
         </header>
-        <main className={`app-main ${view === "home" ? "home-flat" : ""}`}>
+        <main className={`app-main owner-view-${view} ${view === "home" ? "home-flat" : ""}`}>
           {view === "home" && focusedHomeView}
           {view === "goals" && goalsView}
           {view === "record" && recordView}
@@ -5033,11 +5033,11 @@ export default function Home() {
           {view === "profile" && profileView}
         </main>
         <nav className="bottom-nav" aria-label="メインメニュー">
-          <button className={view === "home" ? "active" : ""} onClick={returnToOwnerHome}><Icon><NavGlyph name="home" /></Icon><span>ホーム</span></button>
-          <button className={view === "report" ? "active" : ""} onClick={() => navigateOwnerView("report")}><Icon><NavGlyph name="report" /></Icon><span>変化</span></button>
-          <button className={view === "record" ? "active" : ""} onClick={() => openNewRecord()}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>
-          <button className={view === "coach" ? "active" : ""} onClick={() => navigateOwnerView("coach")}><Icon><NavGlyph name="coach" /></Icon><span>コーチ</span></button>
-          <button className={view === "profile" ? "active" : ""} onClick={openSettingsMenu}><Icon><NavGlyph name="profile" /></Icon><span>設定</span></button>
+          <button className={view === "home" ? "active" : ""} aria-current={view === "home" ? "page" : undefined} onClick={returnToOwnerHome}><Icon><NavGlyph name="home" /></Icon><span>ホーム</span></button>
+          <button className={view === "record" ? "active" : ""} aria-current={view === "record" ? "page" : undefined} onClick={() => openNewRecord()}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>
+          <button className={view === "report" ? "active" : ""} aria-current={view === "report" ? "page" : undefined} onClick={() => navigateOwnerView("report")}><Icon><NavGlyph name="report" /></Icon><span>変化</span></button>
+          <button className={view === "coach" ? "active" : ""} aria-current={view === "coach" ? "page" : undefined} onClick={() => navigateOwnerView("coach")}><Icon><NavGlyph name="coach" /></Icon><span>チャット</span></button>
+          <button className={view === "profile" ? "active" : ""} aria-current={view === "profile" ? "page" : undefined} onClick={openSettingsMenu}><Icon><NavGlyph name="profile" /></Icon><span>マイページ</span></button>
         </nav>
         {celebration && (
           <div className="celebration-backdrop" role="dialog" aria-modal="true" aria-labelledby="celebration-title" onClick={closeCelebration}>
