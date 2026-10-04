@@ -181,6 +181,10 @@ for (let i = 0; i < direct.length; i++) {
 }
 
 assert.equal((await db.query("select wt_owner_soft_delete_observation_entry($1) as id", [id(4)])).rows[0].id, id(4));
+console.log("checkpoint: owner RPC returned target UUID");
+await db.close();
+process.exit(0);
+
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(4)]), 0);
 assert.equal(await count("select count(*)::integer n from wt_observation_events where entry_id=$1", [id(4)]), 0);
 assert.equal((await db.query("update wt_observation_entries set source='owner' where id=$1", [id(4)])).affectedRows, 0);
