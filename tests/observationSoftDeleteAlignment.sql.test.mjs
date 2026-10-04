@@ -249,6 +249,17 @@ test("A4 old-state policy preflight matrix", async () => {
   await db.close();
 });
 
+
+test("A5 old-state alignment DDL before postflight", async () => {
+  const db=await baseDb();
+  await installState(db,"old");
+  const cut=migration.indexOf("-- Final postflight");
+  assert.ok(cut>0);
+  await db.exec(migration.slice(0,cut)+"commit;");
+  await assertFinal(db);
+  await db.close();
+});
+
 for (const [label,state] of [["A full old","old"],["B production-like partial","partial"],["C already final","final"]]) {
   test(label, async () => {
     const db=await baseDb(); await installState(db,state); await db.exec(migration); await assertFinal(db);
