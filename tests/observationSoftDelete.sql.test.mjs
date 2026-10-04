@@ -147,10 +147,6 @@ await db.exec(`
     for each row execute function public.wt_validate_observation_subtype('event');
 `);
 
-console.log("checkpoint: policies and subtype triggers passed");
-await db.close();
-process.exit(0);
-
 async function as(user, actor = "owner") {
   await db.exec(`reset role; select set_config('app.user_id','${user}',false);
     select set_config('app.actor','${actor}',false); set role authenticated;`);
