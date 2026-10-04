@@ -1,0 +1,36 @@
+name: supabase-baseline-diagnostic
+
+on:
+  push:
+    branches:
+      - chore/supabase-migration-baseline
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Supabase CLI version and help
+        run: |
+          npx -y supabase@latest --version
+          npx -y supabase@latest --help
+          npx -y supabase@latest migration --help
+          npx -y supabase@latest migration new --help
+          npx -y supabase@latest migration repair --help
+          npx -y supabase@latest migration list --help
+          npx -y supabase@latest db push --help
+          npx -y supabase@latest db reset --help
+          npx -y supabase@latest start --help
+      - name: Fresh 001-035 rebuild attempt
+        run: |
+          if [ ! -f supabase/config.toml ]; then
+            npx -y supabase@latest init
+          fi
+          npx -y supabase@latest start
+          npx -y supabase@latest db reset
