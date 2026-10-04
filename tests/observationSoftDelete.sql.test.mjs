@@ -138,6 +138,15 @@ await db.exec(`reset role;
   update wt_observation_entries set deleted_at=null where id in ('${id(1)}','${id(2)}','${id(3)}');`);
 console.log("Pre-035 UPDATE variants:", JSON.stringify(pre035UpdateResults));
 
+assert.deepEqual(
+  pre035UpdateResults.map((row) => [row.label, row.outcome, row.affectedRows ?? row.code]),
+  [
+    ["A: no RETURNING", "success", 1],
+    ["B: RETURNING id", "error", "42501"],
+    ["C: RETURNING *", "error", "42501"],
+  ],
+);
+
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
 await db.exec(migration);
 const { rows: installedPolicies } = await db.query(`select c.relname as table_name, p.polname,
