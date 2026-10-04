@@ -260,6 +260,52 @@ test("A5 old-state alignment DDL before postflight", async () => {
   await db.close();
 });
 
+
+test("A6 final postflight fingerprints before commit", async () => {
+  const db=await baseDb();
+  await installState(db,"old");
+  const cut=migration.indexOf("-- Final postflight");
+  assert.ok(cut>0);
+  await db.exec(migration.slice(0,cut));
+
+  const { rows:mismatches }=await db.query(`
+    select e.table_name,e.policy_name,
+           case when p.polname is null then 'missing'
+                when p.polcmd<>e.polcmd then 'command'
+                when p.polroles<>array['authenticated'::regrole::oid] then 'roles'
+                when md5(regexp_replace(lower(coalesce(pg_get_expr(p.polqual,p.polrelid),'')),'\\s+','','g'))<>e.final_using_md5 then 'using'
+                when md5(regexp_replace(lower(coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'')),'\\s+','','g'))<>e.final_check_md5 then 'check'
+                else 'ok' end status,
+           e.optional_when_final
+    from wt035_expected_policy e
+    left join pg_class c on c.relname=e.table_name
+    left join pg_namespace n on n.oid=c.relnamespace and n.nspname='public'
+    left join pg_policy p on p.polrelid=c.oid and p.polname=e.policy_name
+    where (e.optional_when_final and p.polname is not null)
+       or (not e.optional_when_final and (
+          p.polname is null or p.polcmd<>e.polcmd or p.polroles<>array['authenticated'::regrole::oid]
+          or md5(regexp_replace(lower(coalesce(pg_get_expr(p.polqual,p.polrelid),'')),'\\s+','','g'))<>e.final_using_md5
+          or md5(regexp_replace(lower(coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'')),'\\s+','','g'))<>e.final_check_md5
+       ))
+  `);
+  assert.deepEqual(mismatches,[]);
+
+  const { rows:[rpc] }=await db.query(`
+    select obj_description(p.oid,'pg_proc') comment,
+           md5(regexp_replace(lower(p.prosrc),'\\s+','','g')) body_hash,
+           p.prosecdef,p.proconfig,r.rolname owner_name
+    from pg_proc p join pg_namespace n on n.oid=p.pronamespace join pg_roles r on r.oid=p.proowner
+    where n.nspname='public' and p.proname='wt_owner_soft_delete_observation_entry'
+  `);
+  assert.equal(rpc.comment,'Owner-only soft delete for one active Observation entry. Missing, already-deleted, and non-owned UUIDs are intentionally indistinguishable.');
+  assert.equal(rpc.body_hash,'76977a6fd2800e8015ce724c48c8f8fa');
+  assert.equal(rpc.prosecdef,true);
+  assert.deepEqual(rpc.proconfig,['search_path=""']);
+  assert.equal(rpc.owner_name,'postgres');
+  await db.exec("rollback;");
+  await db.close();
+});
+
 for (const [label,state] of [["A full old","old"],["B production-like partial","partial"],["C already final","final"]]) {
   test(label, async () => {
     const db=await baseDb(); await installState(db,state); await db.exec(migration); await assertFinal(db);
