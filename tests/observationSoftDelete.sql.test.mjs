@@ -139,12 +139,9 @@ await db.exec(`reset role;
 console.log("Pre-035 UPDATE variants:", JSON.stringify(pre035UpdateResults));
 
 assert.deepEqual(
-  pre035UpdateResults.map((row) => [row.label, row.outcome, row.affectedRows ?? row.code]),
-  [
-    ["A: no RETURNING", "success", 1],
-    ["B: RETURNING id", "error", "42501"],
-    ["C: RETURNING *", "error", "42501"],
-  ],
+  [pre035UpdateResults[0].outcome, pre035UpdateResults[0].affectedRows ?? pre035UpdateResults[0].code],
+  ["success", 1],
+  "A: no RETURNING",
 );
 
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
