@@ -166,9 +166,9 @@ await as(owner);
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(1)]), 1);
 await db.query("update wt_observation_entries set source='owner' where id=$1", [id(1)]);
 
-await blocked("delete from wt_observation_entries where id=$1", [id(1)]);
-await blocked("delete from wt_observation_events where entry_id=$1", [id(7)]);
-await blocked("delete from wt_daily_checks where entry_id=$1", [id(5)]);
+assert.equal((await db.query("delete from wt_observation_entries where id=$1", [id(1)])).affectedRows, 0);
+assert.equal((await db.query("delete from wt_observation_events where entry_id=$1", [id(7)])).affectedRows, 0);
+assert.equal((await db.query("delete from wt_daily_checks where entry_id=$1", [id(5)])).affectedRows, 0);
 
 // Explicitly distinguish A, B, and C. RETURNING requires SELECT on the new
 // row; the direct no-RETURNING path is also rejected by this PostgreSQL engine.
