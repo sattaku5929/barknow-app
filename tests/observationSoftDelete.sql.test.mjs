@@ -180,10 +180,6 @@ for (let i = 0; i < direct.length; i++) {
   assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1 and deleted_at is null", [id(i + 1)]), 1);
 }
 
-console.log("checkpoint: direct soft delete UPDATE variants rejected");
-await db.close();
-process.exit(0);
-
 assert.equal((await db.query("select wt_owner_soft_delete_observation_entry($1) as id", [id(4)])).rows[0].id, id(4));
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(4)]), 0);
 assert.equal(await count("select count(*)::integer n from wt_observation_events where entry_id=$1", [id(4)]), 0);
