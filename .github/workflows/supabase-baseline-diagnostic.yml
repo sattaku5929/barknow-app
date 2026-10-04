@@ -24,6 +24,8 @@ jobs:
           npx -y supabase@latest migration new --help
           npx -y supabase@latest migration repair --help
           npx -y supabase@latest migration list --help
+          npx -y supabase@latest migration squash --help
+          npx -y supabase@latest db dump --help
           npx -y supabase@latest db push --help
           npx -y supabase@latest db reset --help
           npx -y supabase@latest start --help
