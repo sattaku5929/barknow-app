@@ -114,12 +114,16 @@ await db.exec(`
   select set_config('app.actor','owner',false);
   set role authenticated;
 `);
-let pre035ARejected = false;
-try { await db.query("update wt_observation_entries set deleted_at=now() where id=$1", [id(1)]); }
-catch (error) { pre035ARejected = error.code === "42501"; }
-assert.equal(pre035ARejected, true, "A: no RETURNING");
+const pre035A = await db.query("update wt_observation_entries set deleted_at=now() where id=$1", [id(1)]);
+assert.equal(pre035A.affectedRows, 1, "A: no RETURNING");
+await db.exec(`reset role; update wt_observation_entries set deleted_at=null where id='${id(1)}';
+  select set_config('app.user_id','${owner}',false); select set_config('app.actor','owner',false); set role authenticated;`);
+let pre035BRejected = false;
+try { await db.query("update wt_observation_entries set deleted_at=now() where id=$1 returning id", [id(2)]); }
+catch (error) { pre035BRejected = error.code === "42501"; }
+assert.equal(pre035BRejected, true, "B: RETURNING id");
 await db.exec("reset role");
-console.log("checkpoint: A behavior confirmed");
+console.log("checkpoint: A/B behavior confirmed");
 await db.close();
 process.exit(0);
 
