@@ -27,4 +27,6 @@ jobs:
       - name: Build
         run: npm run build
       - name: Diff check
-        run: git diff --check origin/main...HEAD
+        run: |
+          git fetch origin main
+          git diff --check origin/main...HEAD
