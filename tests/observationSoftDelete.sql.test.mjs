@@ -114,20 +114,15 @@ await db.exec(`
   select set_config('app.actor','owner',false);
   set role authenticated;
 `);
+const pre035NoReturning = await db.query("update wt_observation_entries set deleted_at=now() where id=$1", [id(1)]);
+assert.equal(pre035NoReturning.affectedRows, 1, "A: no RETURNING should succeed before 035");
 for (const [label, suffix, entryId] of [
-  ["A: no RETURNING", "", id(1)],
   ["B: RETURNING id", " returning id", id(2)],
   ["C: RETURNING *", " returning *", id(3)],
 ]) {
-  let rejected = false;
-  try { await db.query(`update wt_observation_entries set deleted_at=now() where id=$1${suffix}`, [entryId]); }
-  catch (error) { rejected = error.code === "42501"; }
-  assert.equal(rejected, true, label);
+  await blocked(`update wt_observation_entries set deleted_at=now() where id=$1${suffix}`, [entryId]);
 }
-await db.exec("reset role");
-console.log("checkpoint: pre-035 UPDATE variants passed");
-await db.close();
-process.exit(0);
+await db.exec(`reset role; update wt_observation_entries set deleted_at=null where id='${id(1)}';`);
 
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
 await db.exec(migration);
