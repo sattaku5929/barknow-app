@@ -13,6 +13,7 @@ import ObservationEventHub from "@/components/observations/ObservationEventHub";
 import RecentObservationTrends from "@/components/insights/RecentObservationTrends";
 import CoachAssignedDogStats from "@/components/insights/CoachAssignedDogStats";
 import CoachObservationSummary from "@/components/insights/CoachObservationSummary";
+import OwnerDashboardIllustration from "@/components/owner/OwnerDashboardIllustration";
 import { deviceLocalDate, deviceLocalTime, loadDailyCheck } from "@/lib/observations/dailyCheck";
 import { loadEventThemes, loadEvents } from "@/lib/observations/observationEvent";
 import type { EventTheme, ObservationEvent } from "@/lib/observations/observationEvent";
@@ -3944,7 +3945,7 @@ export default function Home() {
             <button className="home-secondary-action" onClick={() => navigateOwnerView("goals")}>お世話を確認 <span aria-hidden="true">→</span></button>
           </div>
         </div>
-        <LifeMoment scene="park" eyebrow="LIFE WITH MY DOG" text="いつもの毎日を、かけがえのない記録に。" />
+        <div className="owner-home-hero__art" aria-hidden="true"><OwnerDashboardIllustration /></div>
       </section>
 
       {!profile.name && (
