@@ -141,15 +141,13 @@ jobs:
           from pathlib import Path
           path = Path("supabase/migrations/20261004043000_production_baseline.sql")
           sql = path.read_text()
-          old = '''    "training_experience" "text" DEFAULT ''::"text" NOT NULL,
-    "avatar_url" "text",'''
-          new = '''    "avatar_url" "text",
-    "training_experience" "text" DEFAULT ''::"text" NOT NULL,'''
+          old = '    "training_experience" "text" DEFAULT \'\'::"text" NOT NULL,\\n    "avatar_url" "text",'
+          new = '    "avatar_url" "text",\\n    "training_experience" "text" DEFAULT \'\'::"text" NOT NULL,'
           if old not in sql:
               raise SystemExit("wt_dogs column-order anchor not found")
           sql = sql.replace(old, new, 1)
-          old_comment = """COMMENT ON COLUMN "public"."wt_observation_events"."success" IS 'Whether the owner and dog achieved the goal behavior defined for this theme; event_result remains the common event classification.';"""
-          new_comment = """COMMENT ON COLUMN "public"."wt_observation_events"."success" IS 'Optional explicit result for a theme-specific goal; event_result remains the common exposure classification.';"""
+          old_comment = 'COMMENT ON COLUMN "public"."wt_observation_events"."success" IS \'Whether the owner and dog achieved the goal behavior defined for this theme; event_result remains the common event classification.\';'
+          new_comment = 'COMMENT ON COLUMN "public"."wt_observation_events"."success" IS \'Optional explicit result for a theme-specific goal; event_result remains the common exposure classification.\';'
           if old_comment not in sql:
               raise SystemExit("success comment anchor not found")
           sql = sql.replace(old_comment, new_comment, 1)
