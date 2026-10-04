@@ -63,40 +63,288 @@ await db.exec(`
     wt_observation_events to authenticated;
 `);
 
-// The live 030 policies predate their active-row filters. The migration must
-// alter this exact set, retaining command, role and admin behavior.
-const names = {
-  wt_observation_entries: [
-    ["owners select own observation entries", "select"],
-    ["owners insert own observation entries", "insert"],
-    ["owners update own observation entries", "update"],
-    ["owners delete own observation entries", "delete"],
-    ["assigned coaches read observation entries", "select"],
-  ],
-  wt_daily_checks: [
-    ["owners select own daily checks", "select"],
-    ["owners insert own daily checks", "insert"],
-    ["owners update own daily checks", "update"],
-    ["owners delete own daily checks", "delete"],
-    ["assigned coaches read daily checks", "select"],
-  ],
-  wt_observation_events: [
-    ["owners select own observation events", "select"],
-    ["owners insert own observation events", "insert"],
-    ["owners update own observation events", "update"],
-    ["owners delete own observation events", "delete"],
-    ["assigned coaches read observation events", "select"],
-  ],
-};
-for (const [table, policies] of Object.entries(names)) {
-  for (const [name, command] of policies) {
-    const expression = command === "insert" ? "with check (true)" :
-      command === "update" ? "using (true) with check (true)" : "using (true)";
-    await db.exec(`create policy "${name}" on public.${table} for ${command} to authenticated ${expression}`);
+// Recreate the exact old Observation policy shape from the pre-soft-delete 030
+// definition. The alignment migration must accept this known old state and
+// reject unrelated third states.
+await db.exec(`
+  create policy "owners select own observation entries"
+    on public.wt_observation_entries for select to authenticated
+    using (
+      owner_id = auth.uid()
+      and exists (
+        select 1 from public.wt_dogs dog
+        where dog.id = wt_observation_entries.dog_id
+          and dog.owner_id = auth.uid()
+      )
+    );
+
+  create policy "owners insert own observation entries"
+    on public.wt_observation_entries for insert to authenticated
+    with check (
+      owner_id = auth.uid()
+      and source = 'owner'
+      and exists (
+        select 1 from public.wt_dogs dog
+        where dog.id = wt_observation_entries.dog_id
+          and dog.owner_id = auth.uid()
+      )
+    );
+
+  create policy "owners update own observation entries"
+    on public.wt_observation_entries for update to authenticated
+    using (
+      owner_id = auth.uid()
+      and exists (
+        select 1 from public.wt_dogs dog
+        where dog.id = wt_observation_entries.dog_id
+          and dog.owner_id = auth.uid()
+      )
+    )
+    with check (
+      owner_id = auth.uid()
+      and exists (
+        select 1 from public.wt_dogs dog
+        where dog.id = wt_observation_entries.dog_id
+          and dog.owner_id = auth.uid()
+      )
+    );
+
+  create policy "owners delete own observation entries"
+    on public.wt_observation_entries for delete to authenticated
+    using (
+      owner_id = auth.uid()
+      and exists (
+        select 1 from public.wt_dogs dog
+        where dog.id = wt_observation_entries.dog_id
+          and dog.owner_id = auth.uid()
+      )
+    );
+
+  create policy "assigned coaches read observation entries"
+    on public.wt_observation_entries for select to authenticated
+    using (
+      public.wt_is_coach()
+      and exists (
+        select 1 from public.wt_coach_assignments assignment
+        where assignment.coach_id = auth.uid()
+          and assignment.dog_id = wt_observation_entries.dog_id
+      )
+    );
+
+  create policy "admins manage observation entries"
+    on public.wt_observation_entries for all to authenticated
+    using (public.wt_is_admin())
+    with check (public.wt_is_admin());
+
+  create policy "owners select own daily checks"
+    on public.wt_daily_checks for select to authenticated
+    using (exists (
+      select 1 from public.wt_observation_entries entry
+      where entry.id = wt_daily_checks.entry_id
+        and entry.owner_id = auth.uid()
+    ));
+
+  create policy "owners insert own daily checks"
+    on public.wt_daily_checks for insert to authenticated
+    with check (exists (
+      select 1 from public.wt_observation_entries entry
+      where entry.id = wt_daily_checks.entry_id
+        and entry.owner_id = auth.uid()
+    ));
+
+  create policy "owners update own daily checks"
+    on public.wt_daily_checks for update to authenticated
+    using (exists (
+      select 1 from public.wt_observation_entries entry
+      where entry.id = wt_daily_checks.entry_id
+        and entry.owner_id = auth.uid()
+    ))
+    with check (exists (
+      select 1 from public.wt_observation_entries entry
+      where entry.id = wt_daily_checks.entry_id
+        and entry.owner_id = auth.uid()
+    ));
+
+  create policy "owners delete own daily checks"
+    on public.wt_daily_checks for delete to authenticated
+    using (exists (
+      select 1 from public.wt_observation_entries entry
+      where entry.id = wt_daily_checks.entry_id
+        and entry.owner_id = auth.uid()
+    ));
+
+  create policy "assigned coaches read daily checks"
+    on public.wt_daily_checks for select to authenticated
+    using (
+      public.wt_is_coach()
+      and exists (
+        select 1
+        from public.wt_observation_entries entry
+        join public.wt_coach_assignments assignment on assignment.dog_id = entry.dog_id
+        where entry.id = wt_daily_checks.entry_id
+          and assignment.coach_id = auth.uid()
+      )
+    );
+
+  create policy "admins manage daily checks"
+    on public.wt_daily_checks for all to authenticated
+    using (public.wt_is_admin())
+    with check (public.wt_is_admin());
+
+  create policy "owners select own observation events"
+    on public.wt_observation_events for select to authenticated
+    using (exists (
+      select 1 from public.wt_observation_entries entry
+      where entry.id = wt_observation_events.entry_id
+        and entry.owner_id = auth.uid()
+    ));
+
+  create policy "owners insert own observation events"
+    on public.wt_observation_events for insert to authenticated
+    with check (exists (
+      select 1 from public.wt_observation_entries entry
+      where entry.id = wt_observation_events.entry_id
+        and entry.owner_id = auth.uid()
+    ));
+
+  create policy "owners update own observation events"
+    on public.wt_observation_events for update to authenticated
+    using (exists (
+      select 1 from public.wt_observation_entries entry
+      where entry.id = wt_observation_events.entry_id
+        and entry.owner_id = auth.uid()
+    ))
+    with check (exists (
+      select 1 from public.wt_observation_entries entry
+      where entry.id = wt_observation_events.entry_id
+        and entry.owner_id = auth.uid()
+    ));
+
+  create policy "owners delete own observation events"
+    on public.wt_observation_events for delete to authenticated
+    using (exists (
+      select 1 from public.wt_observation_entries entry
+      where entry.id = wt_observation_events.entry_id
+        and entry.owner_id = auth.uid()
+    ));
+
+  create policy "assigned coaches read observation events"
+    on public.wt_observation_events for select to authenticated
+    using (
+      public.wt_is_coach()
+      and exists (
+        select 1
+        from public.wt_observation_entries entry
+        join public.wt_coach_assignments assignment on assignment.dog_id = entry.dog_id
+        where entry.id = wt_observation_events.entry_id
+          and assignment.coach_id = auth.uid()
+      )
+    );
+
+  create policy "admins manage observation events"
+    on public.wt_observation_events for all to authenticated
+    using (public.wt_is_admin())
+    with check (public.wt_is_admin());
+`);
+
+await db.exec(`
+  create or replace function public.wt_validate_observation_subtype()
+  returns trigger
+  language plpgsql
+  set search_path = public, pg_catalog
+  as $$
+  declare
+    expected_kind text := tg_argv[0];
+  begin
+    if not exists (
+      select 1 from public.wt_observation_entries entry
+      where entry.id = new.entry_id
+        and entry.entry_kind = expected_kind
+    ) then
+      raise exception 'observation subtype requires entry_kind %', expected_kind
+        using errcode = '23514';
+    end if;
+    return new;
+  end;
+  $$;
+`);
+
+// Reproduce and record the pre-035 collision separately. This is diagnostic:
+// the final safety guarantee is asserted after 035, where direct soft delete
+// must be rejected regardless of RETURNING shape.
+await db.exec(`
+  alter policy "owners select own observation entries" on wt_observation_entries
+    using (
+      deleted_at is null
+      and owner_id = auth.uid()
+      and exists (
+        select 1 from public.wt_dogs dog
+        where dog.id = wt_observation_entries.dog_id
+          and dog.owner_id = auth.uid()
+      )
+    );
+  alter policy "owners update own observation entries" on wt_observation_entries
+    using (
+      deleted_at is null
+      and owner_id = auth.uid()
+      and exists (
+        select 1 from public.wt_dogs dog
+        where dog.id = wt_observation_entries.dog_id
+          and dog.owner_id = auth.uid()
+      )
+    )
+    with check (
+      owner_id = auth.uid()
+      and exists (
+        select 1 from public.wt_dogs dog
+        where dog.id = wt_observation_entries.dog_id
+          and dog.owner_id = auth.uid()
+      )
+    );
+  select set_config('app.user_id','${owner}',false);
+  select set_config('app.actor','owner',false);
+  set role authenticated;
+`);
+
+async function capturePre035(label, suffix, entryId) {
+  try {
+    const result = await db.query(
+      `update wt_observation_entries set deleted_at=now() where id=$1${suffix}`,
+      [entryId],
+    );
+    return { label, outcome: "success", affectedRows: result.affectedRows };
+  } catch (error) {
+    return { label, outcome: "error", code: error.code, message: error.message };
   }
-  await db.exec(`create policy "admins manage ${table}" on public.${table} for all to authenticated
-    using (public.wt_is_admin()) with check (public.wt_is_admin())`);
 }
+const pre035UpdateResults = [];
+pre035UpdateResults.push(await capturePre035("A: no RETURNING", "", id(1)));
+await db.exec(`reset role; update wt_observation_entries set deleted_at=null where id='${id(1)}';
+  select set_config('app.user_id','${owner}',false); select set_config('app.actor','owner',false); set role authenticated;`);
+pre035UpdateResults.push(await capturePre035("B: RETURNING id", " returning id", id(2)));
+await db.exec(`reset role; update wt_observation_entries set deleted_at=null where id='${id(2)}';
+  select set_config('app.user_id','${owner}',false); select set_config('app.actor','owner',false); set role authenticated;`);
+pre035UpdateResults.push(await capturePre035("C: RETURNING *", " returning *", id(3)));
+await db.exec(`reset role;
+  update wt_observation_entries set deleted_at=null where id in ('${id(1)}','${id(2)}','${id(3)}');`);
+console.log("Pre-035 UPDATE variants:", JSON.stringify(pre035UpdateResults));
+
+assert.deepEqual(
+  [pre035UpdateResults[0].outcome, pre035UpdateResults[0].code],
+  ["error", "42501"],
+  "A: no RETURNING",
+);
+assert.deepEqual(
+  [pre035UpdateResults[1].outcome, pre035UpdateResults[1].code],
+  ["error", "42501"],
+  "B: RETURNING id",
+);
+assert.deepEqual(
+  [pre035UpdateResults[2].outcome, pre035UpdateResults[2].code],
+  ["error", "42501"],
+  "C: RETURNING *",
+);
+
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
 await db.exec(migration);
 const { rows: installedPolicies } = await db.query(`select c.relname as table_name, p.polname,
@@ -105,12 +353,12 @@ const { rows: installedPolicies } = await db.query(`select c.relname as table_na
   from pg_policy p join pg_class c on c.oid=p.polrelid
   where c.relname in ('wt_observation_entries','wt_daily_checks','wt_observation_events')
   and p.polname not like 'admins %'`);
-assert.equal(installedPolicies.length, 15);
+assert.equal(installedPolicies.length, 12);
 for (const policy of installedPolicies) {
+  assert.notEqual(policy.polcmd, "d", `owner/coach DELETE policy must not remain: ${policy.table_name} / ${policy.polname}`);
   if (policy.polcmd !== "a") assert.match(policy.using_expression, /deleted_at is null/);
   if (policy.polcmd === "a" || policy.polcmd === "w") {
-    const ownerEntryUpdate = policy.table_name === "wt_observation_entries" && policy.polcmd === "w";
-    assert.equal(policy.check_expression.includes("deleted_at is null"), !ownerEntryUpdate);
+    assert.equal(policy.check_expression.includes("deleted_at is null"), true);
   }
 }
 await db.exec(`
@@ -137,6 +385,10 @@ async function blocked(query, params, code = "42501") {
 await as(owner);
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(1)]), 1);
 await db.query("update wt_observation_entries set source='owner' where id=$1", [id(1)]);
+
+assert.equal((await db.query("delete from wt_observation_entries where id=$1", [id(1)])).affectedRows, 0);
+assert.equal((await db.query("delete from wt_observation_events where entry_id=$1", [id(7)])).affectedRows, 0);
+assert.equal((await db.query("delete from wt_daily_checks where entry_id=$1", [id(5)])).affectedRows, 0);
 
 // Explicitly distinguish A, B, and C. RETURNING requires SELECT on the new
 // row; the direct no-RETURNING path is also rejected by this PostgreSQL engine.
@@ -167,8 +419,9 @@ assert.equal(await count("select count(*)::integer n from wt_daily_checks where 
 await blocked("insert into wt_daily_checks values ($1,3)", [id(8)], "23514");
 
 await as(otherOwner);
-await blocked("select wt_owner_soft_delete_observation_entry($1)", [id(5)], "P0002");
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(5)]), 0);
+assert.equal((await db.query("update wt_observation_entries set source='owner' where id=$1", [id(5)])).affectedRows, 0);
+await blocked("select wt_owner_soft_delete_observation_entry($1)", [id(5)], "P0002");
 
 await as(coach, "coach");
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(7)]), 1);
@@ -177,7 +430,6 @@ assert.equal(await count("select count(*)::integer n from wt_observation_events 
 await blocked("select wt_owner_soft_delete_observation_entry($1)", [id(7)], "P0002");
 await as(otherCoach, "coach");
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(7)]), 0);
-
 await db.exec("reset role");
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(4)]), 1);
 await blocked("update wt_observation_events set event_result='concern' where entry_id=$1", [id(4)], "23514");
@@ -187,12 +439,29 @@ assert.equal(await count("select count(*)::integer n from wt_observation_entries
 assert.equal(await count("select count(*)::integer n from wt_observation_events where entry_id=$1", [id(4)]), 1);
 await db.exec("reset role");
 
-const { rows: [security] } = await db.query(`select p.prosecdef, p.proconfig,
-  (select relforcerowsecurity from pg_class where oid='public.wt_observation_entries'::regclass) as forced
-  from pg_proc p where p.oid='public.wt_owner_soft_delete_observation_entry(uuid)'::regprocedure`);
+const { rows: [security] } = await db.query(`select p.prosecdef, p.proconfig, r.rolname as owner_name,
+  p.proacl::text as acl_text, pg_get_functiondef(p.oid) as function_definition,
+  has_function_privilege('public', 'public.wt_owner_soft_delete_observation_entry(uuid)', 'EXECUTE') as public_execute,
+  has_function_privilege('anon', 'public.wt_owner_soft_delete_observation_entry(uuid)', 'EXECUTE') as anon_execute,
+  has_function_privilege('authenticated', 'public.wt_owner_soft_delete_observation_entry(uuid)', 'EXECUTE') as authenticated_execute,
+  (select relforcerowsecurity from pg_class where oid='public.wt_observation_entries'::regclass) as entry_forced,
+  (select relforcerowsecurity from pg_class where oid='public.wt_daily_checks'::regclass) as daily_forced,
+  (select relforcerowsecurity from pg_class where oid='public.wt_observation_events'::regclass) as event_forced
+  from pg_proc p join pg_roles r on r.oid=p.proowner
+  where p.oid='public.wt_owner_soft_delete_observation_entry(uuid)'::regprocedure`);
 assert.equal(security.prosecdef, true);
 assert.deepEqual(security.proconfig, ['search_path=""']);
-assert.equal(security.forced, false);
+assert.equal(security.owner_name, "postgres");
+assert.match(security.function_definition, /SECURITY DEFINER/i);
+assert.match(security.function_definition, /SET search_path TO ''/i);
+assert.match(security.function_definition, /auth\.uid\(\)/);
+assert.match(security.function_definition, /public\.wt_observation_entries/);
+assert.equal(security.public_execute, false);
+assert.equal(security.anon_execute, false);
+assert.equal(security.authenticated_execute, true);
+assert.equal(security.entry_forced, false);
+assert.equal(security.daily_forced, false);
+assert.equal(security.event_forced, false);
 await db.exec("set role anon");
 await blocked("select wt_owner_soft_delete_observation_entry($1)", [id(7)]);
 await db.exec("reset role; select set_config('app.user_id','',false); set role authenticated");
