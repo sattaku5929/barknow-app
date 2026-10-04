@@ -4590,21 +4590,39 @@ export default function Home() {
         <div><strong>{profile.name ? `${profile.name}ちゃん` : "愛犬を登録してください"}</strong><small>{userEmail}</small></div>
       </div>
 
-      <div className="settings-list" aria-label="設定メニュー">
-        <a href="https://barknow-official.vercel.app/#contact" target="_blank" rel="noopener noreferrer"><span className="settings-row-icon"><SettingsGlyph name="mail" /></span><strong>お問い合わせ・ご要望</strong><i aria-hidden="true">›</i></a>
-        <button type="button" onClick={() => navigateSettingsPanel("profile")}><span className="settings-row-icon"><SettingsGlyph name="dog" /></span><span><strong>愛犬プロフィール管理</strong><small>画像・基本情報・生活リズムを編集</small></span><i aria-hidden="true">›</i></button>
-        <button type="button" onClick={() => navigateSettingsPanel("owner")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>飼い主情報</strong><small>氏名・連絡先・住所を確認、変更</small></span><i aria-hidden="true">›</i></button>
-        <button type="button" onClick={() => navigateSettingsPanel("household")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>家族・お世話する人</strong><small>できごとの担当者を登録・編集</small></span><i aria-hidden="true">›</i></button>
-        <div className="settings-notification-row"><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>通知</strong><small>{isSubscribed ? "新着メッセージを通知します" : permissionStatus === "denied" ? "端末の設定で通知が拒否されています" : "新着メッセージ通知はオフです"}</small></span><button type="button" className={`settings-toggle ${isSubscribed ? "is-on" : ""}`} role="switch" aria-checked={isSubscribed} aria-label={`通知を${isSubscribed ? "オフ" : "オン"}にする`} disabled={pushBusy || subscriptionStatus === "checking" || subscriptionStatus === "unsupported"} onClick={() => void (isSubscribed ? disablePushNotifications() : enablePushNotifications())}><i></i></button></div>
-        <button type="button" onClick={() => navigateSettingsPanel("disclaimer")}><span className="settings-row-icon"><SettingsGlyph name="info" /></span><strong>免責事項</strong><i aria-hidden="true">›</i></button>
-        <button type="button" onClick={() => navigateSettingsPanel("terms")}><span className="settings-row-icon"><SettingsGlyph name="document" /></span><strong>利用規約</strong><i aria-hidden="true">›</i></button>
-        <button type="button" onClick={() => navigateSettingsPanel("privacy")}><span className="settings-row-icon"><SettingsGlyph name="shield" /></span><strong>プライバシーポリシー</strong><i aria-hidden="true">›</i></button>
-      </div>
+      <section className="settings-group" aria-labelledby="settings-family-title">
+        <p className="settings-group-label" id="settings-family-title">プロフィールと暮らし</p>
+        <div className="settings-list">
+          <button type="button" onClick={() => navigateSettingsPanel("profile")}><span className="settings-row-icon"><SettingsGlyph name="dog" /></span><span><strong>愛犬プロフィール管理</strong><small>画像・基本情報・生活リズムを編集</small></span><i aria-hidden="true">›</i></button>
+          <button type="button" onClick={() => navigateSettingsPanel("owner")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>飼い主情報</strong><small>氏名・連絡先・住所を確認、変更</small></span><i aria-hidden="true">›</i></button>
+          <button type="button" onClick={() => navigateSettingsPanel("household")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>家族・お世話する人</strong><small>できごとの担当者を登録・編集</small></span><i aria-hidden="true">›</i></button>
+          <div className="settings-notification-row"><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>通知</strong><small>{isSubscribed ? "新着メッセージを通知します" : permissionStatus === "denied" ? "端末の設定で通知が拒否されています" : "新着メッセージ通知はオフです"}</small></span><button type="button" className={`settings-toggle ${isSubscribed ? "is-on" : ""}`} role="switch" aria-checked={isSubscribed} aria-label={`通知を${isSubscribed ? "オフ" : "オン"}にする`} disabled={pushBusy || subscriptionStatus === "checking" || subscriptionStatus === "unsupported"} onClick={() => void (isSubscribed ? disablePushNotifications() : enablePushNotifications())}><i></i></button></div>
+        </div>
+      </section>
 
-      <div className="settings-list settings-account-actions" aria-label="アカウント操作">
-        <button type="button" onClick={() => void signOut()}><span className="settings-row-icon"><SettingsGlyph name="logout" /></span><strong>ログアウト</strong><i aria-hidden="true">›</i></button>
-        <button type="button" onClick={openDeleteAccountDialog}><span className="settings-row-icon"><SettingsGlyph name="account" /></span><strong>アカウントを削除</strong><i aria-hidden="true">›</i></button>
-      </div>
+      <section className="settings-group" aria-labelledby="settings-support-title">
+        <p className="settings-group-label" id="settings-support-title">サポート</p>
+        <div className="settings-list">
+          <a href="https://barknow-official.vercel.app/#contact" target="_blank" rel="noopener noreferrer"><span className="settings-row-icon"><SettingsGlyph name="mail" /></span><strong>お問い合わせ・ご要望</strong><i aria-hidden="true">›</i></a>
+        </div>
+      </section>
+
+      <section className="settings-group" aria-labelledby="settings-info-title">
+        <p className="settings-group-label" id="settings-info-title">情報と規約</p>
+        <div className="settings-list">
+          <button type="button" onClick={() => navigateSettingsPanel("disclaimer")}><span className="settings-row-icon"><SettingsGlyph name="info" /></span><strong>免責事項</strong><i aria-hidden="true">›</i></button>
+          <button type="button" onClick={() => navigateSettingsPanel("terms")}><span className="settings-row-icon"><SettingsGlyph name="document" /></span><strong>利用規約</strong><i aria-hidden="true">›</i></button>
+          <button type="button" onClick={() => navigateSettingsPanel("privacy")}><span className="settings-row-icon"><SettingsGlyph name="shield" /></span><strong>プライバシーポリシー</strong><i aria-hidden="true">›</i></button>
+        </div>
+      </section>
+
+      <section className="settings-group settings-account-actions" aria-labelledby="settings-account-title">
+        <p className="settings-group-label" id="settings-account-title">アカウント</p>
+        <div className="settings-list">
+          <button type="button" onClick={() => void signOut()}><span className="settings-row-icon"><SettingsGlyph name="logout" /></span><strong>ログアウト</strong><i aria-hidden="true">›</i></button>
+          <button type="button" onClick={openDeleteAccountDialog}><span className="settings-row-icon"><SettingsGlyph name="account" /></span><strong>アカウントを削除</strong><i aria-hidden="true">›</i></button>
+        </div>
+      </section>
       <footer><strong>WanTone</strong><span>by BarKnow</span><small>大切な家族との毎日を、記録に。</small></footer>
     </section>
   );
