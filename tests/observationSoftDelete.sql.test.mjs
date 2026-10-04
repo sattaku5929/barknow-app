@@ -209,10 +209,6 @@ assert.equal(await count("select count(*)::integer n from wt_observation_events 
 await blocked("select wt_owner_soft_delete_observation_entry($1)", [id(7)], "P0002");
 await as(otherCoach, "coach");
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(7)]), 0);
-console.log("checkpoint: coach boundaries passed");
-await db.close();
-process.exit(0);
-
 await db.exec("reset role");
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(4)]), 1);
 await blocked("update wt_observation_events set event_result='concern' where entry_id=$1", [id(4)], "23514");
@@ -221,6 +217,10 @@ await as(owner, "admin");
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(4)]), 1);
 assert.equal(await count("select count(*)::integer n from wt_observation_events where entry_id=$1", [id(4)]), 1);
 await db.exec("reset role");
+
+console.log("checkpoint: admin visibility and subtype enforcement passed");
+await db.close();
+process.exit(0);
 
 const { rows: [security] } = await db.query(`select p.prosecdef, p.proconfig, r.rolname as owner_name,
   p.proacl::text as acl_text, pg_get_functiondef(p.oid) as function_definition,
