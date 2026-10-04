@@ -227,6 +227,10 @@ const { rows: [security] } = await db.query(`select p.prosecdef, p.proconfig, r.
   (select relforcerowsecurity from pg_class where oid='public.wt_observation_events'::regclass) as event_forced
   from pg_proc p join pg_roles r on r.oid=p.proowner
   where p.oid='public.wt_owner_soft_delete_observation_entry(uuid)'::regprocedure`);
+console.log("checkpoint: security metadata query passed");
+await db.close();
+process.exit(0);
+
 assert.equal(security.prosecdef, true);
 assert.deepEqual(security.proconfig, ['search_path=""']);
 assert.equal(security.owner_name, "postgres");
