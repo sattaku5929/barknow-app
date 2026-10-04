@@ -126,10 +126,6 @@ await db.exec(`reset role;
   update wt_observation_entries set deleted_at=null where id in ('${id(1)}','${id(2)}','${id(3)}');`);
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
 await db.exec(migration);
-console.log("checkpoint: 035 applied");
-await db.close();
-process.exit(0);
-
 const { rows: installedPolicies } = await db.query(`select c.relname as table_name, p.polname,
   p.polcmd, lower(coalesce(pg_get_expr(p.polqual,p.polrelid),'')) as using_expression,
   lower(coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'')) as check_expression
@@ -150,6 +146,10 @@ await db.exec(`
   create trigger wt_validate_observation_event_before_write before insert or update on wt_observation_events
     for each row execute function public.wt_validate_observation_subtype('event');
 `);
+
+console.log("checkpoint: policies and subtype triggers passed");
+await db.close();
+process.exit(0);
 
 async function as(user, actor = "owner") {
   await db.exec(`reset role; select set_config('app.user_id','${user}',false);
