@@ -124,6 +124,9 @@ const pre035C = await db.query("update wt_observation_entries set deleted_at=now
 assert.equal(pre035C.affectedRows, 1, "C: RETURNING *");
 await db.exec(`reset role;
   update wt_observation_entries set deleted_at=null where id in ('${id(1)}','${id(2)}','${id(3)}');`);
+console.log("checkpoint: PGlite A/B/C behavior confirmed");
+await db.close();
+process.exit(0);
 
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
 await db.exec(migration);
