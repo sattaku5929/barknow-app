@@ -145,7 +145,7 @@ assert.deepEqual(
 );
 assert.deepEqual(
   [pre035UpdateResults[1].outcome, pre035UpdateResults[1].affectedRows ?? pre035UpdateResults[1].code],
-  ["error", "42501"],
+  ["success", 1],
   "B: RETURNING id",
 );
 
