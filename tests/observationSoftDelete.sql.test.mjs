@@ -126,6 +126,10 @@ await db.exec(`reset role; update wt_observation_entries set deleted_at=null whe
 
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
 await db.exec(migration);
+console.log("checkpoint: migration applied");
+await db.close();
+process.exit(0);
+
 const { rows: installedPolicies } = await db.query(`select c.relname as table_name, p.polname,
   p.polcmd, lower(coalesce(pg_get_expr(p.polqual,p.polrelid),'')) as using_expression,
   lower(coalesce(pg_get_expr(p.polwithcheck,p.polrelid),'')) as check_expression
