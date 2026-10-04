@@ -1,0 +1,2 @@
+-- Intentionally empty.
+-- Production user data is never copied into local development.
