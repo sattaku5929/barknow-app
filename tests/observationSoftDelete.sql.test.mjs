@@ -165,13 +165,9 @@ await as(owner);
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(1)]), 1);
 await db.query("update wt_observation_entries set source='owner' where id=$1", [id(1)]);
 
-let parentDeleteRejected = false;
-try { await db.query("delete from wt_observation_entries where id=$1", [id(1)]); }
-catch (error) { parentDeleteRejected = error.code === "42501"; }
-assert.equal(parentDeleteRejected, true, "owner parent physical DELETE");
-console.log("checkpoint: owner parent physical DELETE rejected");
-await db.close();
-process.exit(0);
+assert.equal((await db.query("delete from wt_observation_entries where id=$1", [id(1)])).affectedRows, 0);
+assert.equal((await db.query("delete from wt_observation_events where entry_id=$1", [id(7)])).affectedRows, 0);
+assert.equal((await db.query("delete from wt_daily_checks where entry_id=$1", [id(5)])).affectedRows, 0);
 
 // Explicitly distinguish A, B, and C. RETURNING requires SELECT on the new
 // row; the direct no-RETURNING path is also rejected by this PostgreSQL engine.
@@ -183,6 +179,10 @@ for (let i = 0; i < direct.length; i++) {
   await blocked(`update wt_observation_entries set deleted_at=now() where id=$1${direct[i][1]}`, [id(i + 1)]);
   assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1 and deleted_at is null", [id(i + 1)]), 1);
 }
+
+console.log("checkpoint: direct soft delete UPDATE variants rejected");
+await db.close();
+process.exit(0);
 
 assert.equal((await db.query("select wt_owner_soft_delete_observation_entry($1) as id", [id(4)])).rows[0].id, id(4));
 assert.equal(await count("select count(*)::integer n from wt_observation_entries where id=$1", [id(4)]), 0);
