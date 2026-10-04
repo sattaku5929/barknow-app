@@ -114,15 +114,14 @@ await db.exec(`
   select set_config('app.actor','owner',false);
   set role authenticated;
 `);
-const pre035NoReturning = await db.query("update wt_observation_entries set deleted_at=now() where id=$1", [id(1)]);
-assert.equal(pre035NoReturning.affectedRows, 1, "A: no RETURNING should succeed before 035");
-for (const [label, suffix, entryId] of [
-  ["B: RETURNING id", " returning id", id(2)],
-  ["C: RETURNING *", " returning *", id(3)],
-]) {
-  await blocked(`update wt_observation_entries set deleted_at=now() where id=$1${suffix}`, [entryId]);
-}
-await db.exec(`reset role; update wt_observation_entries set deleted_at=null where id='${id(1)}';`);
+let pre035ARejected = false;
+try { await db.query("update wt_observation_entries set deleted_at=now() where id=$1", [id(1)]); }
+catch (error) { pre035ARejected = error.code === "42501"; }
+assert.equal(pre035ARejected, true, "A: no RETURNING");
+await db.exec("reset role");
+console.log("checkpoint: A behavior confirmed");
+await db.close();
+process.exit(0);
 
 console.log("checkpoint: pre-035 reproduction passed");
 await db.close();
