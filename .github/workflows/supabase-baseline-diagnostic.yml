@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   materialize:
-    if: github.event.head_commit.message != 'chore: establish production Supabase baseline'
+    if: github.event.head_commit.message != 'chore: materialize validated Supabase baseline'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,190 +25,23 @@ jobs:
           github-token: ${{ github.token }}
           run-id: 37181215534
 
-      - name: Materialize validated baseline
+      - name: Copy validated files
         run: |
           rm -rf supabase
           cp -R /tmp/candidate/supabase ./supabase
-
-          # Keep the repository default local DB port conventional.
-          python - <<'PY'
-          from pathlib import Path
-          p = Path("supabase/config.toml")
-          text = p.read_text().replace("port = 55432", "port = 54322", 1)
-          p.write_text(text)
-          PY
-
+          sed -i '0,/port = 55432/s//port = 54322/' supabase/config.toml
           cp /tmp/candidate/tests/observationTrends.sql.test.mjs tests/observationTrends.sql.test.mjs
           cp /tmp/candidate/tests/observationEventIntensity.sql.test.mjs tests/observationEventIntensity.sql.test.mjs
           cp /tmp/candidate/tests/observationSoftDelete.sql.test.mjs tests/observationSoftDelete.sql.test.mjs
           cp /tmp/candidate/tests/observationSoftDeleteAlignment.sql.test.mjs tests/observationSoftDeleteAlignment.sql.test.mjs
-
-          mkdir -p docs
-          cat > docs/supabase-migrations.md <<'MD'
-          # Supabase migration baseline
-
-          WanTone uses the repository's Supabase migration chain as the source of truth.
-
-          ## Active migration chain
-
-          - Active migrations live in `supabase/migrations/`.
-          - The production baseline is `20261004043000_production_baseline.sql`.
-          - Historical pre-baseline migrations `001` through `035` are retained in `supabase/legacy_migrations/` for auditability and SQL regression tests only.
-          - Do not move a legacy migration back into the active chain and do not re-run `001` through `035` against production.
-
-          ## Fresh local database
-
-          Requirements:
-
-          - Docker
-          - Node.js
-          - Supabase CLI 2.119.0 or a compatible newer CLI
-
-          Commands:
-
-          ```bash
-          npx supabase@2.119.0 start
-          npx supabase@2.119.0 db reset
-          ```
-
-          `supabase/seed.sql` is intentionally empty. Production user data is not copied into local development.
-
-          ## Creating a migration
-
-          Always create a timestamped migration with the CLI:
-
-          ```bash
-          npx supabase@2.119.0 migration new <description>
-          ```
-
-          This creates a filename like:
-
-          ```text
-          YYYYMMDDHHMMSS_description.sql
-          ```
-
-          Write only the forward change needed from the current baseline/current schema. Do not edit the production baseline after it has been established, except to correct the baseline procedure itself before any subsequent migration exists.
-
-          ## Verification before production
-
-          Run at minimum:
-
-          ```bash
-          npx supabase@2.119.0 db reset
-          npm run lint
-          npm run test:insights
-          npm run test:observations
-          npm run build
-          git diff --check
-          ```
-
-          Confirm RLS, functions/RPC, triggers, grants, Storage policies and required extensions when the migration touches them.
-
-          ## Production history synchronization
-
-          The production schema existed before Supabase migration history was initialized. The baseline migration therefore must be marked as already applied in production **without executing the baseline SQL against production**.
-
-          The synchronized production history should contain:
-
-          ```text
-          20261004043000  production_baseline
-          ```
-
-          Before changing migration history, confirm production schema and user-data snapshots are unchanged and that a fresh database built from the baseline is semantically equivalent to production.
-
-          After synchronization, verify the migration list and run a remote dry-run / diff workflow before applying any future migration.
-
-          ## Legacy objects
-
-          Production contains legacy public relations `CUSTOMERS`, `dogs`, and `messages`. They are preserved in the baseline so a fresh schema matches production, but WanTone should not use them for new development. The baseline recreates their schema only; it does not copy production rows.
-
-          ## Storage and auth customizations
-
-          The baseline explicitly preserves the two application Storage buckets and their policies and the WanTone auth-user trigger. These are part of the reproducible schema/system configuration even though Storage bucket rows are not application user data.
-          MD
-
-          python - <<'PY'
-          from pathlib import Path
-          p=Path("README.md")
-          text=p.read_text()
-          marker="## Supabase local development"
-          if marker not in text:
-              text += """
-
-          ## Supabase local development
-
-          The repository now has a production-aligned Supabase baseline.
-
-          ```bash
-          npx supabase@2.119.0 start
-          npx supabase@2.119.0 db reset
-          ```
-
-          Create all new migrations with:
-
-          ```bash
-          npx supabase@2.119.0 migration new <description>
-          ```
-
-          Historical migrations `001`–`035` live under `supabase/legacy_migrations/` and must not be re-applied to production.
-
-          See `docs/supabase-migrations.md` for the baseline, migration, verification, and production-history rules.
-          """
-          p.write_text(text)
-          PY
-
-          cat > .github/workflows/supabase-baseline.yml <<'YAML'
-          name: Supabase baseline
-
-          on:
-            pull_request:
-            push:
-              branches:
-                - main
-
-          jobs:
-            fresh-db:
-              runs-on: ubuntu-latest
-              timeout-minutes: 25
-              steps:
-                - uses: actions/checkout@v4
-                - uses: actions/setup-node@v4
-                  with:
-                    node-version: 22
-                    cache: npm
-                - run: npm ci
-                - name: Start Supabase with isolated CI DB port
-                  run: |
-                    cp supabase/config.toml /tmp/config.toml
-                    python - <<'PY'
-                    from pathlib import Path
-                    p=Path("supabase/config.toml")
-                    text=p.read_text().replace("port = 54322", "port = 55432", 1)
-                    p.write_text(text)
-                    PY
-                    npx -y supabase@2.119.0 start
-                - name: Fresh rebuild
-                  run: npx -y supabase@2.119.0 db reset
-                - name: Quality checks
-                  run: |
-                    npm run lint
-                    npm run test:insights
-                    npm run test:observations
-                    npm run build
-                    git diff --check
-                - name: Restore tracked config
-                  if: always()
-                  run: cp /tmp/config.toml supabase/config.toml
-          YAML
-
-          rm -f .github/workflows/supabase-baseline-diagnostic.yml
           rm -f baseline-semantic-fingerprints.txt
+          rm -f .github/workflows/supabase-baseline-diagnostic.yml
 
-      - name: Commit baseline
+      - name: Commit validated baseline
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --check
-          git commit -m "chore: establish production Supabase baseline"
+          git commit -m "chore: materialize validated Supabase baseline"
           git push origin HEAD:chore/supabase-migration-baseline
