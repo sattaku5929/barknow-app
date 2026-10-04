@@ -1,0 +1,37 @@
+name: Supabase baseline
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - chore/supabase-migration-baseline
+
+jobs:
+  fresh-db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Start Supabase
+        run: |
+          cp supabase/config.toml /tmp/supabase-config.toml
+          sed -i '0,/port = 54322/s//port = 55432/' supabase/config.toml
+          npx -y supabase@2.119.0 start
+      - name: Fresh rebuild
+        run: npx -y supabase@2.119.0 db reset
+      - name: Quality checks
+        run: |
+          npm run lint
+          npm run test:insights
+          npm run test:observations
+          npm run build
+          git diff --check
+      - name: Restore tracked config
+        if: always()
+        run: cp /tmp/supabase-config.toml supabase/config.toml
