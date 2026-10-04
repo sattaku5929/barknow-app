@@ -76,3 +76,25 @@ R2_PUBLIC_URL=https://<PUBLIC_BUCKET_OR_CUSTOM_DOMAIN>
 Add the Vercel Preview origin while testing a Preview deployment. Never prefix R2 credentials with `NEXT_PUBLIC_`. The API issues five-minute upload URLs, while the browser uploads the file directly to R2.
 
 `.env.local` is only used by local development. Vercel Production must have all five `R2_*` values in **Project Settings → Environment Variables → Production**, followed by a redeploy. The upload API returns the names of missing variables without exposing their values. If an existing login predates an environment-key change, the client refreshes its Supabase session once before asking the user to sign in again. Presigned URL authorization uses the signed-in user's access token and the existing RLS policies, so owner uploads do not require `SUPABASE_SERVICE_ROLE_KEY`.
+
+
+## Supabase local development
+
+The repository has a production-aligned Supabase baseline.
+
+```bash
+npx supabase@2.119.0 start
+npx supabase@2.119.0 db reset
+```
+
+Create every new migration with the CLI:
+
+```bash
+npx supabase@2.119.0 migration new <description>
+```
+
+Historical migrations `001`–`035` live under `supabase/legacy_migrations/` for auditability and SQL regression tests only. Do not re-apply them to production.
+
+`supabase/seed.sql` is intentionally empty; production user data is not copied into local development.
+
+See `docs/supabase-migrations.md` for baseline, migration, verification, and production-history rules.
