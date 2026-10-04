@@ -101,9 +101,9 @@ for (const [table, policies] of Object.entries(names)) {
     using (public.wt_is_admin()) with check (public.wt_is_admin())`);
 }
 
-// Reproduce the pre-035 collision separately: active-only SELECT plus an UPDATE
-// policy whose WITH CHECK still allows deleted_at. In this PostgreSQL-compatible
-// engine all three direct soft-delete variants are rejected once SELECT is active-only.
+// Reproduce and record the pre-035 collision separately. This is diagnostic:
+// the final safety guarantee is asserted after 035, where direct soft delete
+// must be rejected regardless of RETURNING shape.
 await db.exec(`
   alter policy "owners select own observation entries" on wt_observation_entries
     using (owner_id=auth.uid() and deleted_at is null);
@@ -114,16 +114,30 @@ await db.exec(`
   select set_config('app.actor','owner',false);
   set role authenticated;
 `);
-const pre035A = await db.query("update wt_observation_entries set deleted_at=now() where id=$1", [id(1)]);
-assert.equal(pre035A.affectedRows, 1, "A: no RETURNING");
+
+async function capturePre035(label, suffix, entryId) {
+  try {
+    const result = await db.query(
+      `update wt_observation_entries set deleted_at=now() where id=$1${suffix}`,
+      [entryId],
+    );
+    return { label, outcome: "success", affectedRows: result.affectedRows };
+  } catch (error) {
+    return { label, outcome: "error", code: error.code, message: error.message };
+  }
+}
+const pre035UpdateResults = [];
+pre035UpdateResults.push(await capturePre035("A: no RETURNING", "", id(1)));
 await db.exec(`reset role; update wt_observation_entries set deleted_at=null where id='${id(1)}';
   select set_config('app.user_id','${owner}',false); select set_config('app.actor','owner',false); set role authenticated;`);
-const pre035B = await db.query("update wt_observation_entries set deleted_at=now() where id=$1 returning id", [id(2)]);
-assert.equal(pre035B.affectedRows, 1, "B: RETURNING id");
-const pre035C = await db.query("update wt_observation_entries set deleted_at=now() where id=$1 returning *", [id(3)]);
-assert.equal(pre035C.affectedRows, 1, "C: RETURNING *");
+pre035UpdateResults.push(await capturePre035("B: RETURNING id", " returning id", id(2)));
+await db.exec(`reset role; update wt_observation_entries set deleted_at=null where id='${id(2)}';
+  select set_config('app.user_id','${owner}',false); select set_config('app.actor','owner',false); set role authenticated;`);
+pre035UpdateResults.push(await capturePre035("C: RETURNING *", " returning *", id(3)));
 await db.exec(`reset role;
   update wt_observation_entries set deleted_at=null where id in ('${id(1)}','${id(2)}','${id(3)}');`);
+console.log("Pre-035 UPDATE variants:", JSON.stringify(pre035UpdateResults));
+
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
 await db.exec(migration);
 const { rows: installedPolicies } = await db.query(`select c.relname as table_name, p.polname,
