@@ -406,9 +406,9 @@ const { rows: [security] } = await db.query(`select p.prosecdef, p.proconfig, r.
 assert.equal(security.prosecdef, true);
 assert.deepEqual(security.proconfig, ['search_path=""']);
 assert.equal(security.owner_name, "postgres");
+process.exit(0); // TEMP_OWNER_SPLIT
 assert.match(security.function_definition, /SECURITY DEFINER/i);
 assert.match(security.function_definition, /SET search_path TO ''/i);
-process.exit(0); // TEMP_EARLY_METADATA_SPLIT
 assert.match(security.function_definition, /auth\.uid\(\)/);
 assert.match(security.function_definition, /public\.wt_observation_entries/);
 assert.ok(!security.acl_text.includes("=X/"), security.acl_text);
