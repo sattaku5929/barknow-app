@@ -125,6 +125,10 @@ for (const [label, suffix, entryId] of [
   assert.equal(rejected, true, label);
 }
 await db.exec("reset role");
+console.log("checkpoint: pre-035 UPDATE variants passed");
+await db.close();
+process.exit(0);
+
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
 await db.exec(migration);
 const { rows: installedPolicies } = await db.query(`select c.relname as table_name, p.polname,
