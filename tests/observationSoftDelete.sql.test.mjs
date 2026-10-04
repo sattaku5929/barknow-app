@@ -252,10 +252,33 @@ await db.exec(`
 // must be rejected regardless of RETURNING shape.
 await db.exec(`
   alter policy "owners select own observation entries" on wt_observation_entries
-    using (owner_id=auth.uid() and deleted_at is null);
+    using (
+      deleted_at is null
+      and owner_id = auth.uid()
+      and exists (
+        select 1 from public.wt_dogs dog
+        where dog.id = wt_observation_entries.dog_id
+          and dog.owner_id = auth.uid()
+      )
+    );
   alter policy "owners update own observation entries" on wt_observation_entries
-    using (owner_id=auth.uid() and deleted_at is null)
-    with check (owner_id=auth.uid());
+    using (
+      deleted_at is null
+      and owner_id = auth.uid()
+      and exists (
+        select 1 from public.wt_dogs dog
+        where dog.id = wt_observation_entries.dog_id
+          and dog.owner_id = auth.uid()
+      )
+    )
+    with check (
+      owner_id = auth.uid()
+      and exists (
+        select 1 from public.wt_dogs dog
+        where dog.id = wt_observation_entries.dog_id
+          and dog.owner_id = auth.uid()
+      )
+    );
   select set_config('app.user_id','${owner}',false);
   select set_config('app.actor','owner',false);
   set role authenticated;
