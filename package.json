@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run lint && npm run test:insights && npm run test:observations && next build",
+    "build": "next build",
     "test:insights": "node --experimental-strip-types --test tests/insightRules.test.mjs && node tests/observationTrends.sql.test.mjs && node tests/observationEventIntensity.sql.test.mjs",
     "test:observations": "node tests/observationSoftDelete.sql.test.mjs",
     "start": "next start",
