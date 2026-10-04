@@ -168,10 +168,7 @@ test("A1 old-state migration preflight only", async () => {
   await installState(db,"old");
   const cut=migration.indexOf("-- Align subtype validation");
   assert.ok(cut>0);
-  await assert.rejects(
-    db.exec(migration.slice(0,cut)+"rollback;"),
-    /(/(syntax|record|column|relation|operator|function|permission|transaction|temporary|does not exist|cannot|unsupported)/i)/
-  );
+  await db.exec(migration.slice(0,cut)+"rollback;");
   await db.close();
 });
 
