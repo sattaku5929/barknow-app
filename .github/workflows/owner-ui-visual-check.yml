@@ -1,0 +1,160 @@
+name: Owner UI visual check
+
+on:
+  push:
+    branches:
+      - feat/owner-ui-refresh
+
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Start local Supabase
+        run: |
+          cp supabase/config.toml /tmp/supabase-config.toml
+          sed -i '0,/port = 54322/s//port = 55432/' supabase/config.toml
+          npx -y supabase@2.119.0 start
+          npx -y supabase@2.119.0 db reset
+          npx -y supabase@2.119.0 status -o env > /tmp/supabase.env
+          cat /tmp/supabase.env | sed -E 's/(KEY=).+$/\1***masked***/'
+          set -a
+          source /tmp/supabase.env
+          set +a
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+
+      - name: Install browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start WanTone
+        run: |
+          npm run dev -- --hostname 127.0.0.1 --port 3000 > /tmp/wantone-next.log 2>&1 &
+          echo $! > /tmp/wantone-next.pid
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:3000 >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/wantone-next.log
+          exit 1
+
+      - name: Capture owner screens at 375px
+        run: |
+          cat > /tmp/owner-visual-check.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+          (async () => {
+            const browser = await chromium.launch({ headless: true });
+            const context = await browser.newContext({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 1 });
+            const page = await context.newPage();
+            const base = 'http://127.0.0.1:3000';
+            const output = 'artifacts/owner-ui-refresh';
+            fs.mkdirSync(output, { recursive: true });
+            const checks = [];
+
+            async function overflowCheck(name) {
+              const metrics = await page.evaluate(() => ({
+                innerWidth: window.innerWidth,
+                htmlWidth: document.documentElement.scrollWidth,
+                bodyWidth: document.body.scrollWidth,
+                navHeight: document.querySelector('.bottom-nav')?.getBoundingClientRect().height ?? 0,
+                mainPaddingBottom: getComputedStyle(document.querySelector('.app-main')).paddingBottom,
+              }));
+              metrics.name = name;
+              metrics.ok = metrics.htmlWidth <= metrics.innerWidth + 1 && metrics.bodyWidth <= metrics.innerWidth + 1;
+              checks.push(metrics);
+              if (!metrics.ok) throw new Error(name + ' has horizontal overflow: ' + JSON.stringify(metrics));
+            }
+
+            await page.goto(base, { waitUntil: 'networkidle' });
+            await page.getByRole('button', { name: '新規登録' }).click();
+            await page.getByLabel('メールアドレス').fill('ui-refresh@example.com');
+            await page.getByLabel('パスワード').fill('WanToneTest123!');
+            await page.getByRole('button', { name: 'アカウントを作る' }).click();
+
+            await page.getByRole('heading', { name: /まず、飼い主さまのことを/ }).waitFor({ timeout: 20000 });
+            await page.getByLabel(/お名前（氏名）/).fill('テスト 飼い主');
+            await page.getByLabel(/フリガナ/).fill('テスト カイヌシ');
+            await page.getByLabel(/電話番号/).fill('09012345678');
+            await page.getByLabel(/生年月日/).fill('1993-01-01');
+            await page.getByLabel(/都道府県/).selectOption({ label: '東京都' });
+            await page.getByLabel(/市区町村/).fill('目黒区テスト1-1-1');
+            await page.getByRole('button', { name: '愛犬情報へ進む' }).click();
+
+            await page.getByRole('heading', { name: /次に、愛犬の毎日を/ }).waitFor({ timeout: 15000 });
+            await page.getByLabel(/愛犬の名前/).fill('むぎ');
+            await page.getByLabel(/犬種/).fill('トイプードル');
+            await page.getByLabel(/誕生日/).fill('2024-01-01');
+            await page.getByLabel(/犬を飼うのは初めて/).selectOption('yes');
+            await page.getByLabel(/性別/).selectOption('unknown');
+            await page.getByLabel(/しつけトレーニング/).selectOption('first_time');
+            await page.getByLabel(/保育園への頻度/).selectOption({ label: '通っていない' });
+            await page.getByLabel(/散歩の頻度/).selectOption({ label: '毎日1回' });
+            await page.getByLabel(/主な悩み/).fill('散歩中の様子を記録したい');
+            await page.getByRole('button', { name: /登録して始める/ }).click();
+
+            await page.locator('.home-dashboard').waitFor({ timeout: 20000 });
+            await overflowCheck('Home');
+            await page.screenshot({ path: output + '/home-375.png', fullPage: true });
+
+            const dailyButton = page.locator('.home-daily-check button');
+            await dailyButton.click();
+            await page.locator('.daily-check-form').waitFor({ timeout: 15000 });
+            await page.locator('.daily-check-score').first().locator('button').nth(2).click();
+            await page.locator('.daily-check-form .primary-button').click();
+            await page.locator('.home-dashboard').waitFor({ timeout: 15000 });
+
+            await page.locator('.bottom-nav').getByText('記録', { exact: true }).click();
+            await page.locator('.topic-screen').waitFor({ timeout: 15000 });
+            await overflowCheck('Record');
+            await page.screenshot({ path: output + '/record-375.png', fullPage: true });
+
+            await page.locator('.bottom-nav').getByText('変化', { exact: true }).click();
+            await page.locator('.report-screen').waitFor({ timeout: 15000 });
+            await overflowCheck('Trends');
+            await page.screenshot({ path: output + '/trends-375.png', fullPage: true });
+
+            await page.locator('.bottom-nav').getByText('チャット', { exact: true }).click();
+            await page.locator('.coach-screen').waitFor({ timeout: 15000 });
+            await overflowCheck('Chat');
+            await page.screenshot({ path: output + '/chat-375.png', fullPage: true });
+
+            await page.locator('.bottom-nav').getByText('マイページ', { exact: true }).click();
+            await page.locator('.settings-screen').waitFor({ timeout: 15000 });
+            await overflowCheck('MyPage');
+            await page.screenshot({ path: output + '/mypage-375.png', fullPage: true });
+
+            await page.locator('.bottom-nav').getByText('ホーム', { exact: true }).click();
+            await page.locator('.home-dashboard').waitFor();
+            await page.setViewportSize({ width: 1280, height: 900 });
+            await page.screenshot({ path: output + '/home-desktop.png', fullPage: true });
+
+            fs.writeFileSync(output + '/layout-check.json', JSON.stringify(checks, null, 2));
+            console.log(JSON.stringify(checks, null, 2));
+            await browser.close();
+          })().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          JS
+          NODE_PATH="$PWD/node_modules" node /tmp/owner-visual-check.cjs
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: owner-ui-refresh-screenshots
+          path: artifacts/owner-ui-refresh/
+          if-no-files-found: warn
+
+      - name: Restore tracked config
+        if: always()
+        run: cp /tmp/supabase-config.toml supabase/config.toml
