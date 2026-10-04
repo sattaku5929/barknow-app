@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node --test --test-name-pattern=\"A full old\" tests/observationSoftDeleteAlignment.sql.test.mjs && next build",
+    "build": "node --test --test-name-pattern=\"A0 old-state preflight fingerprints\" tests/observationSoftDeleteAlignment.sql.test.mjs && next build",
     "test:insights": "node --experimental-strip-types --test tests/insightRules.test.mjs && node tests/observationTrends.sql.test.mjs && node tests/observationEventIntensity.sql.test.mjs",
     "test:observations": "node tests/observationSoftDelete.sql.test.mjs && node --test tests/observationSoftDeleteAlignment.sql.test.mjs",
     "start": "next start",
