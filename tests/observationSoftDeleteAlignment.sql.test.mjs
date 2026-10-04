@@ -170,7 +170,7 @@ test("A1 old-state migration preflight only", async () => {
   assert.ok(cut>0);
   await assert.rejects(
     db.exec(migration.slice(0,cut)+"rollback;"),
-    /(RLS must be enabled|Unexpected FORCE ROW LEVEL SECURITY|Observation table set is incomplete|Unexpected Observation policy name detected|Missing required policy|Unexpected command\/roles|Unexpected policy definition)/
+    /(035 must be applied by postgres|Unexpected wt_validate_observation_subtype overload set|Unexpected wt_validate_observation_subtype definition|Unexpected wt_owner_soft_delete_observation_entry overload set|Unexpected soft delete RPC definition|Unexpected soft delete RPC EXECUTE grants|Unexpected soft delete RPC grantee|Unexpected soft delete RPC comment)/
   );
   await db.close();
 });
