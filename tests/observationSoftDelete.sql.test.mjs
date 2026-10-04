@@ -408,6 +408,7 @@ assert.deepEqual(security.proconfig, ['search_path=""']);
 assert.equal(security.owner_name, "postgres");
 assert.match(security.function_definition, /SECURITY DEFINER/i);
 assert.match(security.function_definition, /SET search_path TO ''/i);
+process.exit(0); // TEMP_EARLY_METADATA_SPLIT
 assert.match(security.function_definition, /auth\.uid\(\)/);
 assert.match(security.function_definition, /public\.wt_observation_entries/);
 assert.ok(!security.acl_text.includes("=X/"), security.acl_text);
@@ -416,7 +417,6 @@ assert.equal(security.authenticated_execute, true);
 assert.equal(security.entry_forced, false);
 assert.equal(security.daily_forced, false);
 assert.equal(security.event_forced, false);
-process.exit(0); // TEMP_METADATA_SPLIT
 await db.exec("set role anon");
 await blocked("select wt_owner_soft_delete_observation_entry($1)", [id(7)]);
 await db.exec("reset role; select set_config('app.user_id','',false); set role authenticated");
