@@ -143,6 +143,11 @@ assert.deepEqual(
   ["success", 1],
   "A: no RETURNING",
 );
+assert.deepEqual(
+  [pre035UpdateResults[1].outcome, pre035UpdateResults[1].affectedRows ?? pre035UpdateResults[1].code],
+  ["error", "42501"],
+  "B: RETURNING id",
+);
 
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
 await db.exec(migration);
