@@ -345,14 +345,6 @@ assert.deepEqual(
   "C: RETURNING *",
 );
 
-const { rows: subtypeBefore035 } = await db.query(`
-  select n.nspname, p.proname, pg_get_function_identity_arguments(p.oid) as args,
-         pg_get_function_result(p.oid) as result, p.proconfig, p.prosecdef
-  from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-  where n.nspname='public' and p.proname='wt_validate_observation_subtype'
-  order by args
-`);
-console.log("Subtype before 035:", JSON.stringify(subtypeBefore035));
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
 await db.exec(migration);
 const { rows: installedPolicies } = await db.query(`select c.relname as table_name, p.polname,
@@ -449,6 +441,7 @@ await db.exec("reset role");
 
 const { rows: [security] } = await db.query(`select p.prosecdef, p.proconfig, r.rolname as owner_name,
   p.proacl::text as acl_text, pg_get_functiondef(p.oid) as function_definition,
+  has_function_privilege('public', 'public.wt_owner_soft_delete_observation_entry(uuid)', 'EXECUTE') as public_execute,
   has_function_privilege('anon', 'public.wt_owner_soft_delete_observation_entry(uuid)', 'EXECUTE') as anon_execute,
   has_function_privilege('authenticated', 'public.wt_owner_soft_delete_observation_entry(uuid)', 'EXECUTE') as authenticated_execute,
   (select relforcerowsecurity from pg_class where oid='public.wt_observation_entries'::regclass) as entry_forced,
@@ -463,7 +456,7 @@ assert.match(security.function_definition, /SECURITY DEFINER/i);
 assert.match(security.function_definition, /SET search_path TO ''/i);
 assert.match(security.function_definition, /auth\.uid\(\)/);
 assert.match(security.function_definition, /public\.wt_observation_entries/);
-assert.ok(!security.acl_text.includes("=X/"), security.acl_text);
+assert.equal(security.public_execute, false);
 assert.equal(security.anon_execute, false);
 assert.equal(security.authenticated_execute, true);
 assert.equal(security.entry_forced, false);
