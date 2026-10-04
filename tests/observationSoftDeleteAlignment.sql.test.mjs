@@ -172,6 +172,24 @@ test("A1 old-state migration preflight only", async () => {
   await db.close();
 });
 
+
+test("A2 old-state metadata preflight", async () => {
+  const db=await baseDb();
+  await installState(db,"old");
+  const { rows:[who] }=await db.query("select current_user");
+  assert.equal(who.current_user,"postgres");
+  const { rows:tables }=await db.query(`select c.relname,c.relrowsecurity,c.relforcerowsecurity from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname in ('wt_observation_entries','wt_daily_checks','wt_observation_events') order by c.relname`);
+  assert.equal(tables.length,3);
+  for(const row of tables){ assert.equal(row.relrowsecurity,true); assert.equal(row.relforcerowsecurity,false); }
+  const { rows:badRoles }=await db.query(`select c.relname,p.polname,p.polroles from pg_policy p join pg_class c on c.oid=p.polrelid where c.relname in ('wt_observation_entries','wt_daily_checks','wt_observation_events') and p.polroles<>array['authenticated'::regrole::oid]`);
+  assert.equal(badRoles.length,0);
+  const { rows:[subtype] }=await db.query(`select pg_get_function_identity_arguments(p.oid) args,pg_get_function_result(p.oid) result,l.lanname,p.prosecdef,r.rolname owner_name,p.proconfig from pg_proc p join pg_namespace n on n.oid=p.pronamespace join pg_roles r on r.oid=p.proowner join pg_language l on l.oid=p.prolang where n.nspname='public' and p.proname='wt_validate_observation_subtype'`);
+  assert.equal(subtype.args,""); assert.equal(subtype.result,"trigger"); assert.equal(subtype.lanname,"plpgsql"); assert.equal(subtype.prosecdef,false); assert.equal(subtype.owner_name,"postgres"); assert.deepEqual(subtype.proconfig,["search_path=public, pg_catalog"]);
+  const { rows:[rpcCount] }=await db.query(`select count(*)::int n from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='wt_owner_soft_delete_observation_entry'`);
+  assert.equal(rpcCount.n,0);
+  await db.close();
+});
+
 for (const [label,state] of [["A full old","old"],["B production-like partial","partial"],["C already final","final"]]) {
   test(label, async () => {
     const db=await baseDb(); await installState(db,state); await db.exec(migration); await assertFinal(db);
