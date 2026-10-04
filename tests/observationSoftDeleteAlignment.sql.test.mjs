@@ -3,7 +3,7 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 
-const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
+const migration = await readFile(new URL("../supabase/legacy_migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
 const owner = "11111111-1111-4111-8111-111111111111";
 const dog = "55555555-5555-4555-8555-555555555555";
 
