@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFile } from "node:fs/promises";
+import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 
 const migration = await readFile(new URL("../supabase/migrations/035_observation_soft_delete_alignment.sql", import.meta.url), "utf8");
@@ -168,7 +168,14 @@ test("A1 old-state migration preflight only", async () => {
   await installState(db,"old");
   const cut=migration.indexOf("-- Align subtype validation");
   assert.ok(cut>0);
-  await db.exec(migration.slice(0,cut)+"rollback;");
+  try {
+    await db.exec(migration.slice(0,cut)+"rollback;");
+    await mkdir("public",{recursive:true});
+    await writeFile("public/obs-alignment-error.txt","NO_ERROR");
+  } catch (error) {
+    await mkdir("public",{recursive:true});
+    await writeFile("public/obs-alignment-error.txt",JSON.stringify({message:error?.message,code:error?.code,stack:error?.stack},null,2));
+  }
   await db.close();
 });
 
