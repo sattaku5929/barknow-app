@@ -3534,3 +3534,83 @@ body { font-size: 16px; }
 }
 .app-stage .household-manager form { gap:12px; }
 .app-stage .household-manager button { min-height:44px; border-radius:13px; }
+
+
+/* ===== Owner Home Lifestyle Illustration ===== */
+.app-stage .home-hero {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.98), rgba(249,250,251,.96)),
+    var(--wt-bg-surface);
+}
+.app-stage .home-hero-copy {
+  position: relative;
+  z-index: 2;
+}
+.app-stage .owner-home-hero__art {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(20, 40, 30, .055);
+  border-radius: 22px;
+  background: #F9FAFB;
+}
+.app-stage .owner-home-hero__art::after {
+  position: absolute;
+  right: -24px;
+  bottom: -42px;
+  width: 122px;
+  height: 122px;
+  border-radius: 50%;
+  background: rgba(0, 134, 97, .055);
+  content: "";
+  pointer-events: none;
+}
+.app-stage .owner-dashboard-illustration {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 360 / 250;
+}
+
+@media (max-width: 759px) {
+  .app-stage .home-hero {
+    grid-template-columns: 1fr;
+  }
+  .app-stage .owner-home-hero__art {
+    width: min(100%, 430px);
+    margin: 2px auto 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .app-stage .owner-home-hero__art {
+    border-radius: 18px;
+  }
+  .app-stage .owner-dashboard-illustration {
+    max-height: 210px;
+  }
+}
+
+@media (max-width: 375px) {
+  .app-stage .owner-home-hero__art {
+    margin-top: 0;
+  }
+  .app-stage .owner-dashboard-illustration {
+    max-height: 188px;
+  }
+}
+
+@media (min-width: 760px) {
+  .app-stage .owner-home-hero__art {
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    min-height: 236px;
+  }
+  .app-stage .owner-dashboard-illustration {
+    width: 100%;
+  }
+}
