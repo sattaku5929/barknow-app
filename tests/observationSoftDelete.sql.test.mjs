@@ -185,7 +185,7 @@ assert.equal(await count("select count(*)::integer n from wt_observation_entries
 assert.equal(await count("select count(*)::integer n from wt_observation_events where entry_id=$1", [id(4)]), 0);
 assert.equal((await db.query("update wt_observation_entries set source='owner' where id=$1", [id(4)])).affectedRows, 0);
 await blocked("select wt_owner_soft_delete_observation_entry($1)", [id(4)], "P0002");
-await blocked("insert into wt_observation_events values ($1,'neutral')", [id(4)]);
+await blocked("insert into wt_observation_events values ($1,'neutral')", [id(4)], "23514");
 assert.equal((await db.query("update wt_observation_events set event_result='concern' where entry_id=$1", [id(4)])).affectedRows, 0);
 console.log("checkpoint: deleted parent owner boundaries passed");
 await db.close();
@@ -199,7 +199,7 @@ assert.equal((await db.query("select event_result from wt_observation_events whe
 await blocked("select wt_owner_soft_delete_observation_entry($1)", [id(6)], "P0002");
 assert.equal((await db.query("select wt_owner_soft_delete_observation_entry($1) as id", [id(8)])).rows[0].id, id(8));
 assert.equal(await count("select count(*)::integer n from wt_daily_checks where entry_id=$1", [id(8)]), 0);
-await blocked("insert into wt_daily_checks values ($1,3)", [id(8)]);
+await blocked("insert into wt_daily_checks values ($1,3)", [id(8)], "23514");
 
 console.log("checkpoint: owner soft delete boundaries passed");
 await db.close();
