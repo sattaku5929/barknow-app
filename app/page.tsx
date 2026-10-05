@@ -13,8 +13,8 @@ import ObservationEventHub from "@/components/observations/ObservationEventHub";
 import RecentObservationTrends from "@/components/insights/RecentObservationTrends";
 import CoachAssignedDogStats from "@/components/insights/CoachAssignedDogStats";
 import CoachObservationSummary from "@/components/insights/CoachObservationSummary";
-import OwnerDashboardIllustration from "@/components/owner/OwnerDashboardIllustration";
 import OwnerAppBackdrop from "@/components/owner/OwnerAppBackdrop";
+import OwnerHomeScene from "@/components/owner/illustrations/OwnerHomeScene";
 import OwnerRecordScene from "@/components/owner/illustrations/OwnerRecordScene";
 import OwnerReportScene from "@/components/owner/illustrations/OwnerReportScene";
 import { deviceLocalDate, deviceLocalTime, loadDailyCheck } from "@/lib/observations/dailyCheck";
@@ -3948,7 +3948,7 @@ export default function Home() {
             <button className="home-secondary-action" onClick={() => navigateOwnerView("goals")}>お世話を確認 <span aria-hidden="true">→</span></button>
           </div>
         </div>
-        <div className="owner-home-hero__art" aria-hidden="true"><OwnerDashboardIllustration /></div>
+        <div className="owner-home-hero__art owner-scene-panel owner-scene-panel--home" aria-hidden="true"><OwnerHomeScene /></div>
       </section>
 
       {!profile.name && (
