@@ -15,6 +15,8 @@ import CoachAssignedDogStats from "@/components/insights/CoachAssignedDogStats";
 import CoachObservationSummary from "@/components/insights/CoachObservationSummary";
 import OwnerDashboardIllustration from "@/components/owner/OwnerDashboardIllustration";
 import OwnerAppBackdrop from "@/components/owner/OwnerAppBackdrop";
+import OwnerRecordScene from "@/components/owner/illustrations/OwnerRecordScene";
+import OwnerReportScene from "@/components/owner/illustrations/OwnerReportScene";
 import { deviceLocalDate, deviceLocalTime, loadDailyCheck } from "@/lib/observations/dailyCheck";
 import { loadEventThemes, loadEvents } from "@/lib/observations/observationEvent";
 import type { EventTheme, ObservationEvent } from "@/lib/observations/observationEvent";
@@ -4033,6 +4035,7 @@ export default function Home() {
     <section className="topic-screen">
       <SectionTitle eyebrow="EVENT LOG" title="できごとを記録" />
       <p className="lead">観察テーマから選んで、今日あったことを残しましょう。</p>
+      <div className="owner-scene-panel owner-scene-panel--record" aria-hidden="true"><OwnerRecordScene /></div>
       {eventStatus === "unavailable" && <p className="observation-error" role="alert">できごとを読み込めませんでした。画面を開き直してください。</p>}
       <ObservationEventHub selectedThemes={eventThemesSelected} events={todayEvents} onSelect={startEvent} onEdit={editEvent}
         disabled={connection !== "online" || !profile.id || eventStatus !== "ready"} />
@@ -4207,10 +4210,17 @@ export default function Home() {
     <section className="report-screen">
       <SectionTitle eyebrow="PROGRESS" title={`${dogName}の変化`} />
       <p className="lead">記録がつながると、調子・暮らし・困りごとの変化が見えてきます。</p>
+      <div className="owner-scene-panel owner-scene-panel--report" aria-hidden="true"><OwnerReportScene /></div>
 
       <RecentObservationTrends key={profile.id} dogId={profile.id} online={connection === "online"} selectedThemes={eventThemesSelected}
         onCoachChat={coachingApplication?.ownerConfirmedAt ? () => { navigateOwnerView("coach"); setOwnerCoachTab("chat"); } : undefined} />
 
+      <details className="report-deep-dive">
+        <summary>
+          <span><strong>詳細データを見る</strong><small>状態・カレンダー・困りごとの推移</small></span>
+          <i aria-hidden="true">⌄</i>
+        </summary>
+        <div className="report-deep-dive-body">
       <section className={`report-condition condition-${recordedConditionDays.length < 3 ? "collecting" : conditionScore >= 78 ? "good" : conditionScore >= 58 ? "middle" : "watch"}`}>
         <div className="condition-ring" style={{ background: `conic-gradient(var(--green) ${conditionScore * 3.6}deg, #e4ebe7 0deg)` }}>
           <span><strong>{recordedConditionDays.length ? conditionScore : "–"}</strong><small>{recordedConditionDays.length ? "/100" : "集計中"}</small></span>
@@ -4319,6 +4329,9 @@ export default function Home() {
       ) : (
         <div className="report-empty"><strong>{behaviorInfo(reportBehaviorType).label}の記録はまだありません</strong><p>起きたときに、時刻と程度を残してみましょう。</p></div>
       )}
+
+        </div>
+      </details>
 
       <section className="report-coaching-cta">
         <div><p className="card-label">FROM DATA TO ACTION</p><h2>この変化、どう見ればいい？</h2><p>回数だけでは分からない背景もあります。記録をコーチと一緒に読み、次に試すことを整理できます。</p></div>
