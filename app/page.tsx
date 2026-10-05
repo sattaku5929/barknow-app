@@ -653,6 +653,24 @@ function normalizeDogGender(gender: unknown): DogProfile["gender"] {
   return gender === "unknown" ? "unknown" : "";
 }
 
+function persistedDogGender(
+  gender: DogProfile["gender"],
+  existingGender?: string | null,
+) {
+  if (gender === "unknown") return "unknown";
+  if (gender === "male") {
+    return existingGender === "male_neutered" || existingGender === "male_intact"
+      ? existingGender
+      : "male_intact";
+  }
+  if (gender === "female") {
+    return existingGender === "female_spayed" || existingGender === "female_intact"
+      ? existingGender
+      : "female_intact";
+  }
+  return null;
+}
+
 function getSubmissionErrorDetail(error: unknown) {
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === "string" && error) return error;
@@ -1284,7 +1302,23 @@ export default function Home() {
     appHistoryLayersRef.current = [];
     appHistoryTransitioningRef.current = false;
     const initialUrl = new URL(window.location.href);
-    if (initialUrl.hash.startsWith("#wan-tone-")) initialUrl.hash = "";
+    const initialHash = initialUrl.hash.replace(/^#wan-tone-/, "");
+    const validViews: View[] = ["home", "goals", "record", "report", "coach", "profile"];
+    const validPanels: SettingsPanel[] = ["menu", "profile", "owner", "household", "disclaimer", "terms", "privacy"];
+
+    if (validViews.includes(initialHash as View)) {
+      setView(initialHash as View);
+    } else if (initialHash.startsWith("settings-")) {
+      const panel = initialHash.replace("settings-", "") as SettingsPanel;
+      if (validPanels.includes(panel)) {
+        setView("profile");
+        setSettingsPanel(panel);
+      }
+    } else if (initialHash === "coach-chat" || initialHash === "coach-sessions") {
+      setView("coach");
+      setOwnerCoachTab(initialHash === "coach-sessions" ? "sessions" : "chat");
+    }
+
     const baseMarker: AppHistoryMarker = { depth: 0, layer: null };
     window.history.replaceState(
       { ...(window.history.state ?? {}), [APP_HISTORY_STATE_KEY]: baseMarker },
@@ -3133,6 +3167,13 @@ export default function Home() {
       const userId = await getUserId();
       if (!userId) throw new Error("No session");
       const completedAt = profile.profileCompletedAt || new Date().toISOString();
+      const { data: existingDog, error: existingDogError } = await supabase
+        .from("wt_dogs")
+        .select("gender")
+        .eq("owner_id", userId)
+        .maybeSingle();
+      if (existingDogError) console.warn("[Dog profile] existing gender lookup failed", { error: existingDogError });
+      const dbGender = persistedDogGender(normalized.gender, existingDog?.gender ?? null);
       const payload = {
         owner_id: userId,
         avatar_url: profile.avatarUrl || null,
@@ -3141,7 +3182,7 @@ export default function Home() {
         birthday: normalized.birthday,
         birth_date: normalized.birthday,
         is_first_time_owner: normalized.isFirstTimeOwner === "yes",
-        gender: normalized.gender,
+        gender: dbGender,
         training_experience: normalized.trainingExperience,
         daycare_frequency: normalized.daycareFrequency,
         walk_frequency: normalized.walkFrequency,
