@@ -3932,96 +3932,130 @@ export default function Home() {
   );
 
   const focusedHomeView = (
-    <div className="home-dashboard">
-      <section className="home-hero" aria-labelledby="home-greeting-title">
-        <div className="home-hero-copy">
-          <div className="home-hero-heading">
-            <div>
-              <p className="eyebrow">{todayLabel}</p>
-              <h1 id="home-greeting-title">{profile.name ? `${profile.name}ちゃんと、今日もいい日に。` : "今日から、ひとつずつ。"}</h1>
-            </div>
-            <button className={`avatar ${profile.avatarUrl ? "has-image" : ""}`} onClick={() => navigateOwnerView("profile")} aria-label="愛犬プロフィールを開く">{profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : profile.name ? profile.name.slice(0, 1) : "＋"}</button>
+    <div className="home-editorial">
+      <section className="editorial-home-hero" aria-labelledby="home-greeting-title">
+        <div className="editorial-home-hero__copy">
+          <div className="editorial-home-kicker">
+            <span>WAN TONE / CITY LIFE WITH DOGS</span>
+            <span>{todayLabel}</span>
           </div>
-          <p className="welcome-copy">完璧じゃなくて大丈夫。小さな「できた」を残すことから始めよう。</p>
-          <div className="home-hero-actions">
-            <button className="home-primary-action" onClick={() => openNewRecord()}><span aria-hidden="true">＋</span>今日を記録する</button>
-            <button className="home-secondary-action" onClick={() => navigateOwnerView("goals")}>お世話を確認 <span aria-hidden="true">→</span></button>
+          <h1 id="home-greeting-title">{profile.name ? `${profile.name}ちゃんとの、今日。` : "今日から、ひとつずつ。"}</h1>
+          <p>愛犬との暮らしを、記録から少しずつ知っていく。</p>
+          <div className="editorial-home-hero__actions">
+            <button className="editorial-primary" onClick={() => openNewRecord()}>＋ 今日を記録する</button>
+            <button className="editorial-text-action" onClick={() => navigateOwnerView("goals")}>お世話を確認 →</button>
           </div>
         </div>
-        <div className="owner-home-hero__art owner-scene-panel owner-scene-panel--home" aria-hidden="true"><OwnerHomeScene /></div>
+        <div className="editorial-home-visual" aria-hidden="true"><OwnerHomeScene /></div>
+        <button className={`editorial-dog-switch ${profile.avatarUrl ? "has-image" : ""}`} onClick={() => navigateOwnerView("profile")} aria-label="愛犬プロフィールを開く">
+          {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : <span>{profile.name ? profile.name.slice(0, 1) : "＋"}</span>}
+        </button>
       </section>
 
       {!profile.name && (
-        <button className="profile-nudge" onClick={() => navigateOwnerView("profile")}>
+        <button className="profile-nudge editorial-profile-nudge" onClick={() => navigateOwnerView("profile")}>
           <span className="profile-nudge-mark">01</span>
           <span><strong>まず、愛犬を登録する</strong><small>その子に合う記録と目標を始められます。</small></span>
           <span aria-hidden="true">→</span>
         </button>
       )}
 
-      <section className="home-daily-check" aria-labelledby="home-daily-check-title">
-        <div><p className="card-label">DAILY CHECK</p><h2 id="home-daily-check-title">今日のチェック</h2>
-          <p>{!profile.id ? "愛犬登録後に記録できます。" : connection !== "online" ? "接続後に記録を確認できます。" : todayCheckStatus === "recorded" ? "✓ 記録済み" : todayCheckStatus === "missing" ? `今日の${dogName}ちゃんの様子を残してみましょう。` : todayCheckStatus === "unavailable" ? "記録を確認できませんでした。" : "記録を確認しています…"}</p></div>
-        <button type="button" onClick={() => openNewRecord("daily")} disabled={connection !== "online" || !profile.id || todayCheckStatus === "loading"}>{todayCheckStatus === "recorded" ? "内容を見る・編集" : "記録する"}<span aria-hidden="true"> →</span></button>
-      </section>
-
-      <section className="home-summary" aria-label="今日のサマリー">
+      <section className="editorial-home-metrics" aria-label="今日のサマリー">
         <button onClick={() => openNewRecord()}>
-          <span className="home-summary-icon is-log"><TopicIcon name="daily" /></span>
-          <span><small>今日のできごと</small><strong>{eventStatus === "ready" ? todayEvents.length : "—"}<em>件</em></strong></span>
-          <i aria-hidden="true">＋</i>
+          <span>TODAY LOG</span>
+          <strong>{eventStatus === "ready" ? todayEvents.length : "—"}<small> LOG</small></strong>
+          <em>今日のできごと</em>
         </button>
         <button onClick={() => navigateOwnerView("goals")}>
-          <span className="home-summary-icon is-care"><CareIcon name="paws" /></span>
-          <span><small>今日のお世話</small><strong>{completedGoalCount}<em>/{careGoals.length || "–"}</em></strong></span>
-          <i aria-hidden="true">→</i>
+          <span>CARE</span>
+          <strong>{completedGoalCount}<small> / {careGoals.length || "–"}</small></strong>
+          <em>今日のお世話</em>
         </button>
         <button onClick={() => navigateOwnerView("report")}>
-          <span className="home-summary-icon is-rhythm"><NavGlyph name="report" /></span>
-          <span><small>7日間の記録</small><strong>{recentDays.filter((day) => day.entries.length > 0).length}<em>日</em></strong></span>
-          <i aria-hidden="true">→</i>
+          <span>7 DAYS</span>
+          <strong>{recentDays.filter((day) => day.entries.length > 0).length}<small> DAYS</small></strong>
+          <em>記録した日</em>
         </button>
       </section>
 
-      <div className="home-action-grid">
-        <section className="today-mission" aria-labelledby="today-mission-title">
-          <div className="mission-head">
-            <div><p className="card-label">TODAY&apos;S CARE</p><h2 id="today-mission-title">今日のお世話</h2></div>
-            <div className="mission-score"><strong>{completedGoalCount}</strong><span>/{careGoals.length || "–"}</span></div>
+      <section className="editorial-daily-check" aria-labelledby="home-daily-check-title">
+        <div>
+          <span className="editorial-index">01</span>
+          <div>
+            <p>DAILY CHECK</p>
+            <h2 id="home-daily-check-title">今日の状態</h2>
+            <small>{!profile.id ? "愛犬登録後に記録できます。" : connection !== "online" ? "接続後に記録を確認できます。" : todayCheckStatus === "recorded" ? "記録済み。今日の様子を確認できます。" : todayCheckStatus === "missing" ? `今日の${dogName}ちゃんの様子を残してみましょう。` : todayCheckStatus === "unavailable" ? "記録を確認できませんでした。" : "記録を確認しています…"}</small>
           </div>
-          <p className="home-section-copy">できたものから、ぽんとチェック。</p>
-          {careGoals.length === 0 ? (
-            <button className="mission-empty" onClick={() => navigateOwnerView("goals")}>
-              <span><CareIcon name="paws" /></span>
-              <b>続けたいことを、ひとつ決める</b><i>→</i>
-            </button>
-          ) : (
-            <div className="mission-list">
-              {careGoals.slice(0, 4).map((goal) => {
-                const progress = goalProgress(goal);
-                const done = progress >= goal.targetCount;
-                return (
-                  <button key={goal.id} className={done ? "is-done" : ""} onClick={() => void completeCareGoal(goal)} disabled={done}>
-                    <span className={`care-icon care-${goal.goalType}`}><CareIcon name={goal.goalType} /></span>
-                    <span><strong>{goal.title}</strong><small>{done ? "できた！" : `${goalFrequency(goal)} · ${progress}/${goal.targetCount}`}</small></span>
-                    <b aria-hidden="true">{done ? "✓" : "できた"}</b>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          <button className="mission-manage" onClick={() => navigateOwnerView("goals")}>目標とお知らせを編集する <span aria-hidden="true">→</span></button>
-        </section>
+        </div>
+        <button type="button" onClick={() => openNewRecord("daily")} disabled={connection !== "online" || !profile.id || todayCheckStatus === "loading"}>
+          {todayCheckStatus === "recorded" ? "内容を見る・編集" : "記録する"} →
+        </button>
+      </section>
 
-        <section className="quick-log" aria-labelledby="quick-log-title">
-          <div className="compact-section-head"><div><p className="card-label">QUICK LOG</p><h2 id="quick-log-title">できごとを記録</h2></div><span>今日のできごと {eventStatus === "ready" ? `${todayEvents.length}件` : "—"}</span></div>
-          <p className="home-section-copy">今日あったことを残しておくと、あとから変化が見つけやすくなります。</p>
-          {eventStatus === "unavailable" && <p className="observation-error" role="alert">できごとを読み込めませんでした。画面を開き直してください。</p>}
-          <ObservationEventHub selectedThemes={eventThemesSelected} events={todayEvents} onSelect={startEvent} onEdit={editEvent}
-            compact disabled={connection !== "online" || !profile.id || eventStatus !== "ready"} />
-        </section>
-      </div>
+      <section className="editorial-care-block" aria-labelledby="today-mission-title">
+        <header>
+          <div>
+            <span className="editorial-index">02</span>
+            <p>TODAY&apos;S CARE</p>
+            <h2 id="today-mission-title">今日のお世話</h2>
+          </div>
+          <div className="editorial-care-score"><strong>{completedGoalCount}</strong><span>/ {careGoals.length || "–"}</span></div>
+        </header>
 
+        {careGoals.length === 0 ? (
+          <button className="editorial-care-empty" onClick={() => navigateOwnerView("goals")}>
+            <strong>続けたいことを、ひとつ決める</strong><span>→</span>
+          </button>
+        ) : (
+          <div className="editorial-care-list">
+            {careGoals.slice(0, 4).map((goal, index) => {
+              const progress = goalProgress(goal);
+              const done = progress >= goal.targetCount;
+              return (
+                <button key={goal.id} className={done ? "is-done" : ""} onClick={() => void completeCareGoal(goal)} disabled={done}>
+                  <span className="editorial-care-number">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="editorial-care-copy"><strong>{goal.title}</strong><small>{done ? "DONE" : `${goalFrequency(goal)} · ${progress}/${goal.targetCount}`}</small></span>
+                  <b>{done ? "✓" : "できた"}</b>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <button className="editorial-care-manage" onClick={() => navigateOwnerView("goals")}>目標とお知らせを編集する →</button>
+      </section>
+
+      <section className="editorial-log-block" aria-labelledby="quick-log-title">
+        <div className="editorial-log-heading">
+          <div>
+            <span className="editorial-index">03</span>
+            <p>QUICK LOG</p>
+            <h2 id="quick-log-title">今日のできごとを残す</h2>
+          </div>
+          <strong>{eventStatus === "ready" ? todayEvents.length : "—"}<small> LOG</small></strong>
+        </div>
+        <p>気づいた瞬間に、短く残す。それだけで十分です。</p>
+        <button className="editorial-log-cta" onClick={() => openNewRecord()} disabled={connection !== "online" || !profile.id}>＋ 今日のできごとを残す</button>
+        {eventStatus === "unavailable" && <p className="observation-error" role="alert">できごとを読み込めませんでした。画面を開き直してください。</p>}
+        <details className="editorial-log-details">
+          <summary>テーマから直接記録する <span>＋</span></summary>
+          <div>
+            <ObservationEventHub selectedThemes={eventThemesSelected} events={todayEvents} onSelect={startEvent} onEdit={editEvent}
+              compact disabled={connection !== "online" || !profile.id || eventStatus !== "ready"} />
+          </div>
+        </details>
+      </section>
+
+      <section className="editorial-week-strip" aria-label="直近7日間">
+        <div>
+          <p>THIS WEEK</p>
+          <strong>{recentDays.filter((day) => day.entries.length > 0).length}<small>/7</small></strong>
+          <span>記録した日</span>
+        </div>
+        <div className="editorial-week-dots" aria-hidden="true">
+          {recentDays.map((day) => <i key={day.value} className={day.entries.length ? "is-filled" : ""}></i>)}
+        </div>
+        <button onClick={() => navigateOwnerView("report")}>変化を見る →</button>
+      </section>
     </div>
   );
 
