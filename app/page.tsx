@@ -14,6 +14,7 @@ import RecentObservationTrends from "@/components/insights/RecentObservationTren
 import CoachAssignedDogStats from "@/components/insights/CoachAssignedDogStats";
 import CoachObservationSummary from "@/components/insights/CoachObservationSummary";
 import OwnerDashboardIllustration from "@/components/owner/OwnerDashboardIllustration";
+import OwnerAppBackdrop from "@/components/owner/OwnerAppBackdrop";
 import { deviceLocalDate, deviceLocalTime, loadDailyCheck } from "@/lib/observations/dailyCheck";
 import { loadEventThemes, loadEvents } from "@/lib/observations/observationEvent";
 import type { EventTheme, ObservationEvent } from "@/lib/observations/observationEvent";
@@ -5034,6 +5035,7 @@ export default function Home() {
   return (
     <div className="app-stage">
       {pullRefreshIndicator}
+      <OwnerAppBackdrop />
       <div className="app-shell">
         <header className="app-header">
           <button className="wordmark" onClick={returnToOwnerHome} aria-label="Wan Tone ホームへ">
