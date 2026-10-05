@@ -4737,3 +4737,85 @@ body { font-size: 16px; }
     transform: none;
   }
 }
+
+
+/* ===== Supplied lifestyle scene images ===== */
+.app-stage .owner-scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: none !important;
+}
+.app-stage .owner-scene-panel--home,
+.app-stage .owner-scene-panel--record,
+.app-stage .owner-scene-panel--report {
+  overflow: hidden;
+  border-radius: 20px;
+  background: #f7f3ed;
+}
+.app-stage .owner-scene-panel--home .owner-scene,
+.app-stage .owner-scene-panel--record .owner-scene,
+.app-stage .owner-scene-panel--report .owner-scene {
+  transform: none !important;
+}
+.app-stage .owner-scene-panel--record::after,
+.app-stage .owner-scene-panel--report::after {
+  display: none;
+}
+.app-stage .owner-scene-panel--home {
+  height: 220px;
+  max-height: none;
+}
+.app-stage .owner-scene-panel--home .owner-scene {
+  object-position: center 53%;
+}
+.app-stage .owner-scene-panel--record {
+  height: 176px;
+  max-height: none;
+}
+.app-stage .owner-scene-panel--record .owner-scene {
+  object-position: center 52%;
+}
+.app-stage .owner-scene-panel--report {
+  height: 176px;
+  max-height: none;
+}
+.app-stage .owner-scene-panel--report .owner-scene {
+  object-position: center 53%;
+}
+
+@media (max-width: 430px) {
+  .app-stage .owner-scene-panel--home {
+    height: 174px;
+    max-height: none;
+    border-radius: 18px;
+  }
+  .app-stage .owner-scene-panel--record,
+  .app-stage .owner-scene-panel--report {
+    height: 150px;
+    max-height: none;
+    border-radius: 18px;
+  }
+}
+
+@media (max-width: 375px) {
+  .app-stage .owner-scene-panel--home {
+    height: 160px;
+  }
+  .app-stage .owner-scene-panel--record,
+  .app-stage .owner-scene-panel--report {
+    height: 142px;
+  }
+}
+
+@media (min-width: 760px) {
+  .app-stage .owner-scene-panel--home {
+    height: 236px;
+    min-height: 0;
+  }
+  .app-stage .owner-scene-panel--record,
+  .app-stage .owner-scene-panel--report {
+    height: 210px;
+  }
+}
