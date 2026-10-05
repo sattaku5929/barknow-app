@@ -4655,3 +4655,85 @@ body { font-size: 16px; }
     display: none;
   }
 }
+
+
+/* ===== Lifestyle scene alignment ===== */
+.app-stage .owner-scene-panel--home {
+  min-width: 0;
+  max-height: 222px;
+  margin: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 22px;
+  background: transparent;
+  box-shadow: none;
+}
+.app-stage .owner-scene-panel--home .owner-scene {
+  display: block;
+  width: 100%;
+  height: auto;
+  transform: translateY(-3px);
+}
+.app-stage .owner-home-hero__art.owner-scene-panel--home::after {
+  display: none;
+}
+.app-stage .owner-scene--home,
+.app-stage .owner-scene--record,
+.app-stage .owner-scene--report {
+  filter: saturate(.88) contrast(.98);
+}
+.app-stage .owner-scene-panel--record,
+.app-stage .owner-scene-panel--report {
+  position: relative;
+}
+.app-stage .owner-scene-panel--record::after,
+.app-stage .owner-scene-panel--report::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 34%;
+  background: linear-gradient(180deg, transparent, rgba(248,246,241,.82));
+  content: "";
+  pointer-events: none;
+}
+.app-stage .owner-view-record .topic-screen > .owner-scene-panel {
+  margin-top: 8px;
+}
+.app-stage .owner-view-report .report-screen > .owner-scene-panel {
+  margin-top: 8px;
+}
+.app-stage .owner-view-report .report-screen > .owner-scene-panel + .recent-observation-trends {
+  margin-top: 0;
+}
+
+@media (max-width: 430px) {
+  .app-stage .owner-scene-panel--home {
+    max-height: 176px;
+    border-radius: 18px;
+  }
+  .app-stage .owner-scene-panel--home .owner-scene {
+    transform: translateY(-13px);
+  }
+}
+
+@media (max-width: 375px) {
+  .app-stage .owner-scene-panel--home {
+    max-height: 162px;
+  }
+  .app-stage .owner-scene-panel--home .owner-scene {
+    transform: translateY(-17px);
+  }
+}
+
+@media (min-width: 760px) {
+  .app-stage .owner-scene-panel--home {
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    max-height: none;
+    min-height: 220px;
+  }
+  .app-stage .owner-scene-panel--home .owner-scene {
+    width: 100%;
+    transform: none;
+  }
+}
