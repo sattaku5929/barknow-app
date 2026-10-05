@@ -3133,45 +3133,68 @@ export default function Home() {
       const userId = await getUserId();
       if (!userId) throw new Error("No session");
       const completedAt = profile.profileCompletedAt || new Date().toISOString();
-      const { data, error } = await supabase
-        .from("wt_dogs")
-        .upsert(
-          {
-            owner_id: userId,
-            avatar_url: profile.avatarUrl || null,
-            name: normalized.name,
-            breed: normalized.breed,
-            birthday: normalized.birthday,
-            birth_date: normalized.birthday,
-            is_first_time_owner: normalized.isFirstTimeOwner === "yes",
-            gender: normalized.gender,
-            training_experience: normalized.trainingExperience,
-            daycare_frequency: normalized.daycareFrequency,
-            walk_frequency: normalized.walkFrequency,
-            concerns: normalized.concerns,
-            profile_completed_at: completedAt,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "owner_id" },
-        )
-        .select("id,avatar_url,name,breed,birthday,birth_date,is_first_time_owner,gender,training_experience,daycare_frequency,walk_frequency,concerns,profile_completed_at")
-        .single();
-      if (error) throw error;
-
-      const nextProfile: DogProfile = {
-        id: data.id,
-        avatarUrl: data.avatar_url ?? "",
-        name: data.name,
-        breed: data.breed ?? "",
-        birthday: data.birth_date ?? data.birthday ?? "",
-        isFirstTimeOwner: data.is_first_time_owner === true ? "yes" : data.is_first_time_owner === false ? "no" : "",
-        gender: normalizeDogGender(data.gender),
-        trainingExperience: (data.training_experience ?? "") as DogProfile["trainingExperience"],
-        daycareFrequency: data.daycare_frequency ?? "",
-        walkFrequency: data.walk_frequency ?? "",
-        concerns: data.concerns ?? "",
-        profileCompletedAt: data.profile_completed_at ?? completedAt,
+      const payload = {
+        owner_id: userId,
+        avatar_url: profile.avatarUrl || null,
+        name: normalized.name,
+        breed: normalized.breed,
+        birthday: normalized.birthday,
+        birth_date: normalized.birthday,
+        is_first_time_owner: normalized.isFirstTimeOwner === "yes",
+        gender: normalized.gender,
+        training_experience: normalized.trainingExperience,
+        daycare_frequency: normalized.daycareFrequency,
+        walk_frequency: normalized.walkFrequency,
+        concerns: normalized.concerns,
+        profile_completed_at: completedAt,
+        updated_at: new Date().toISOString(),
       };
+
+      const { error: saveError } = await supabase
+        .from("wt_dogs")
+        .upsert(payload, { onConflict: "owner_id" });
+      if (saveError) throw saveError;
+
+      const optimisticProfile: DogProfile = {
+        ...profile,
+        avatarUrl: profile.avatarUrl,
+        name: normalized.name,
+        breed: normalized.breed,
+        birthday: normalized.birthday,
+        isFirstTimeOwner: normalized.isFirstTimeOwner,
+        gender: normalized.gender,
+        trainingExperience: normalized.trainingExperience,
+        daycareFrequency: normalized.daycareFrequency,
+        walkFrequency: normalized.walkFrequency,
+        concerns: normalized.concerns,
+        profileCompletedAt: completedAt,
+      };
+
+      const { data: refreshed, error: refreshError } = await supabase
+        .from("wt_dogs")
+        .select("id,avatar_url,name,breed,birthday,birth_date,is_first_time_owner,gender,training_experience,daycare_frequency,walk_frequency,concerns,profile_completed_at")
+        .eq("owner_id", userId)
+        .maybeSingle();
+
+      if (refreshError) {
+        console.warn("[Dog profile] saved but refresh failed", { error: refreshError });
+      }
+
+      const nextProfile: DogProfile = refreshed ? {
+        id: refreshed.id,
+        avatarUrl: refreshed.avatar_url ?? "",
+        name: refreshed.name,
+        breed: refreshed.breed ?? "",
+        birthday: refreshed.birth_date ?? refreshed.birthday ?? "",
+        isFirstTimeOwner: refreshed.is_first_time_owner === true ? "yes" : refreshed.is_first_time_owner === false ? "no" : "",
+        gender: normalizeDogGender(refreshed.gender),
+        trainingExperience: (refreshed.training_experience ?? "") as DogProfile["trainingExperience"],
+        daycareFrequency: refreshed.daycare_frequency ?? "",
+        walkFrequency: refreshed.walk_frequency ?? "",
+        concerns: refreshed.concerns ?? "",
+        profileCompletedAt: refreshed.profile_completed_at ?? completedAt,
+      } : optimisticProfile;
+
       setProfile(nextProfile);
       writeLocal(PROFILE_KEY, nextProfile);
       setDogProfileErrors({});
