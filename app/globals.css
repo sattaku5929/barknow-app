@@ -3614,3 +3614,619 @@ body { font-size: 16px; }
     width: 100%;
   }
 }
+
+
+/* ===== WanTone Living App Refresh ===== */
+:root {
+  --wt-living-bg: #F7F4EE;
+  --wt-living-bg-soft: #FBF9F5;
+  --wt-living-paper: rgba(255,255,255,.86);
+  --wt-living-paper-solid: #FFFEFC;
+  --wt-living-sand: #EEE4D5;
+  --wt-living-blue: #DCE7EC;
+  --wt-living-sage: #DDE9E2;
+  --wt-living-ink: #20342D;
+  --wt-living-muted: #77847E;
+  --wt-living-line: rgba(32,52,45,.09);
+  --wt-living-line-strong: rgba(32,52,45,.14);
+  --wt-living-shadow: 0 10px 34px rgba(59,75,68,.045);
+}
+
+.app-stage {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 10% 4%, rgba(220,231,236,.5), transparent 26%),
+    radial-gradient(circle at 88% 22%, rgba(238,228,213,.58), transparent 25%),
+    linear-gradient(180deg, #F8F6F1 0%, var(--wt-living-bg) 48%, #F6F5F0 100%);
+  color: var(--wt-living-ink);
+}
+.app-stage::before {
+  position: fixed;
+  z-index: -3;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(0,134,97,.035) 0 1px, transparent 1.4px),
+    radial-gradient(circle at 82% 68%, rgba(32,52,45,.025) 0 1px, transparent 1.4px);
+  background-size: 38px 38px, 52px 52px;
+  content: "";
+  pointer-events: none;
+}
+.owner-app-backdrop {
+  position: fixed;
+  z-index: -2;
+  top: 0;
+  left: 50%;
+  width: min(920px, 120vw);
+  height: 100dvh;
+  min-height: 760px;
+  transform: translateX(-50%);
+  color: #8DA59B;
+  opacity: .18;
+  pointer-events: none;
+}
+.owner-app-backdrop__city { opacity: .42; }
+.owner-app-backdrop__life { opacity: .52; }
+.owner-app-backdrop__park { opacity: .38; }
+.owner-app-backdrop__details { opacity: .4; }
+
+.app-stage .app-shell {
+  position: relative;
+  background: transparent;
+}
+.app-stage .app-header {
+  top: 0;
+  min-height: 66px;
+  border-bottom: 1px solid rgba(32,52,45,.06);
+  background: rgba(248,246,241,.84);
+  box-shadow: 0 8px 24px rgba(59,75,68,.025);
+  -webkit-backdrop-filter: blur(22px) saturate(1.05);
+  backdrop-filter: blur(22px) saturate(1.05);
+}
+.app-stage .wordmark strong {
+  color: var(--wt-brand);
+  font-size: 21px;
+  letter-spacing: -.025em;
+}
+.app-stage .wordmark span {
+  color: #87958E;
+  letter-spacing: .16em;
+}
+.app-stage .owner-admin-switch {
+  border-color: rgba(0,134,97,.12);
+  background: rgba(255,255,255,.72);
+}
+
+.app-stage .app-main {
+  position: relative;
+  background: transparent;
+}
+.app-stage .app-main.home-flat { background: transparent; }
+.app-stage .app-main > * {
+  position: relative;
+}
+.app-stage .section-title > span,
+.app-stage .card-label,
+.app-stage .eyebrow {
+  color: #4D8170;
+  font-size: 10px;
+  letter-spacing: .13em;
+}
+.app-stage .section-title h2,
+.app-stage .home-hero h1,
+.app-stage .settings-screen > header h1 {
+  color: var(--wt-living-ink);
+  font-weight: 600;
+}
+.app-stage .lead,
+.app-stage .welcome-copy,
+.app-stage .home-section-copy {
+  color: var(--wt-living-muted);
+}
+
+/* Home: less dashboard, more daily life */
+.app-stage .home-dashboard {
+  display: grid;
+  gap: 16px;
+}
+.app-stage .home-hero {
+  gap: 18px;
+  margin-bottom: 2px;
+  padding: 22px;
+  border: 1px solid rgba(32,52,45,.075);
+  border-radius: 26px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.94), rgba(250,247,240,.90)),
+    var(--wt-living-paper-solid);
+  box-shadow: var(--wt-living-shadow);
+}
+.app-stage .home-hero::before {
+  position: absolute;
+  top: -34px;
+  right: -34px;
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  background: rgba(220,231,236,.5);
+  content: "";
+  pointer-events: none;
+}
+.app-stage .home-hero .avatar {
+  width: 48px;
+  height: 48px;
+  border-color: rgba(255,255,255,.9);
+  box-shadow: 0 0 0 1px rgba(32,52,45,.08);
+}
+.app-stage .home-hero h1 {
+  max-width: 430px;
+  font-size: clamp(25px, 7vw, 32px);
+  line-height: 1.38;
+}
+.app-stage .home-hero-actions {
+  grid-template-columns: minmax(0,1.2fr) minmax(0,.8fr);
+  gap: 8px;
+}
+.app-stage .home-primary-action {
+  min-height: 48px;
+  border-radius: 14px;
+}
+.app-stage .home-secondary-action {
+  min-height: 48px;
+  border-color: rgba(32,52,45,.09);
+  background: rgba(255,255,255,.72);
+  color: #496058;
+}
+.app-stage .owner-home-hero__art {
+  border: 0;
+  border-radius: 20px;
+  background: transparent;
+}
+.app-stage .owner-home-hero__art::after { display: none; }
+.app-stage .owner-dashboard-illustration {
+  filter: saturate(.82) contrast(.97);
+}
+
+.app-stage .home-daily-check {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+  gap: 14px;
+  margin-top: 0;
+  padding: 17px 18px;
+  border: 1px solid rgba(0,134,97,.10);
+  border-radius: 20px;
+  background: rgba(239,247,242,.78);
+}
+.app-stage .home-daily-check h2 {
+  font-size: 18px;
+}
+.app-stage .home-daily-check button {
+  min-height: 42px;
+  padding-inline: 14px;
+  border-radius: 13px;
+}
+
+.app-stage .home-summary {
+  gap: 8px;
+  margin-top: 0;
+}
+.app-stage .home-summary > button {
+  min-height: 84px;
+  padding: 13px;
+  border: 0;
+  border-radius: 18px;
+  background: rgba(255,255,255,.67);
+  box-shadow: inset 0 0 0 1px rgba(32,52,45,.055);
+}
+.app-stage .home-summary > button:nth-child(2) { background: rgba(247,242,232,.80); }
+.app-stage .home-summary > button:nth-child(3) { background: rgba(237,244,247,.80); }
+.app-stage .home-summary > button strong {
+  font-size: 22px;
+}
+.app-stage .home-summary-icon {
+  opacity: .82;
+}
+
+.app-stage .home-action-grid {
+  gap: 12px;
+  margin-top: 0;
+}
+.app-stage .home-dashboard .today-mission,
+.app-stage .home-dashboard .quick-log {
+  padding: 18px;
+  border: 0;
+  border-radius: 22px;
+  background: rgba(255,255,255,.72);
+  box-shadow: inset 0 0 0 1px rgba(32,52,45,.06);
+}
+.app-stage .home-dashboard .today-mission {
+  background: rgba(245,248,244,.82);
+}
+.app-stage .home-dashboard .quick-log {
+  background: rgba(255,253,249,.84);
+}
+.app-stage .home-dashboard .quick-log-grid > button,
+.app-stage .event-theme-chips button {
+  border-color: rgba(32,52,45,.075);
+  background: rgba(255,255,255,.68);
+}
+.app-stage .mission-list > button,
+.app-stage .event-today-list button {
+  background: rgba(255,255,255,.62);
+}
+
+/* Shared tactile controls */
+.app-stage .primary-button,
+.app-stage .home-primary-action,
+.app-stage .auth-submit,
+.app-stage .onboarding-next {
+  border-radius: 14px;
+  background: #008661;
+  box-shadow: none;
+}
+.app-stage .primary-button:hover,
+.app-stage .home-primary-action:hover {
+  background: #007456;
+}
+.app-stage .text-button,
+.app-stage .topic-back,
+.app-stage .settings-back {
+  color: #3E7563;
+}
+.app-stage :is(input, select, textarea) {
+  background: rgba(255,255,255,.82);
+}
+.app-stage .field-label :is(input, select, textarea),
+.app-stage .event-select,
+.app-stage .screen-form input,
+.app-stage .screen-form select,
+.app-stage .screen-form textarea,
+.app-stage .household-manager input,
+.app-stage .household-manager select {
+  border-color: rgba(32,52,45,.12);
+  background: rgba(255,255,255,.84);
+}
+
+/* Record: make logging feel lightweight */
+.app-stage .owner-view-record .topic-screen,
+.app-stage .owner-view-record .screen-form,
+.app-stage .owner-view-record .daily-check-form,
+.app-stage .owner-view-record .observation-event-form {
+  position: relative;
+}
+.app-stage .owner-view-record .topic-screen::before {
+  display: block;
+  width: 76px;
+  height: 5px;
+  margin: 4px 0 22px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #008661 0 42%, #C8D9D1 42% 68%, #E7DED1 68%);
+  content: "";
+}
+.app-stage .owner-view-record .observation-event-hub {
+  gap: 14px;
+}
+.app-stage .owner-view-record .event-theme-chips {
+  gap: 8px;
+}
+.app-stage .owner-view-record .event-theme-chips button {
+  min-height: 44px;
+  padding-inline: 14px;
+  border-color: rgba(32,52,45,.08);
+  background: rgba(255,255,255,.72);
+}
+.app-stage .owner-view-record .event-theme-chips button:hover {
+  background: rgba(239,247,242,.86);
+}
+.app-stage .owner-view-record .event-today-list,
+.app-stage .owner-view-record .selected-topic,
+.app-stage .owner-view-record .behavior-picker,
+.app-stage .owner-view-record .mood-field,
+.app-stage .owner-view-record .walk-duration,
+.app-stage .owner-view-record .daily-check-score,
+.app-stage .owner-view-record .event-intensity {
+  border-color: rgba(32,52,45,.075);
+  background: rgba(255,255,255,.74);
+  box-shadow: none;
+}
+.app-stage .owner-view-record .selected-topic {
+  background: rgba(239,247,242,.82);
+}
+.app-stage .owner-view-record .segmented,
+.app-stage .owner-view-record .daily-check-score-steps,
+.app-stage .owner-view-record .event-intensity-scale {
+  background: rgba(231,236,232,.68);
+}
+
+/* Care routine: rhythm instead of task manager */
+.app-stage .goals-screen {
+  display: grid;
+  gap: 18px;
+}
+.app-stage .goal-overview {
+  border: 0;
+  border-radius: 22px;
+  background: rgba(246,242,233,.80);
+  box-shadow: inset 0 0 0 1px rgba(32,52,45,.055);
+}
+.app-stage .active-goal,
+.app-stage .goal-template-grid > button,
+.app-stage .custom-goal-form {
+  border-color: rgba(32,52,45,.075);
+  background: rgba(255,255,255,.72);
+  box-shadow: none;
+}
+.app-stage .active-goal {
+  border-radius: 19px;
+}
+.app-stage .goal-template-grid > button {
+  border-radius: 17px;
+}
+.app-stage .goal-progress {
+  background: #E8ECE8;
+}
+.app-stage .goal-progress i {
+  background: #70A48F;
+}
+
+/* Insights: editorial, not analytics dashboard */
+.app-stage .owner-view-report .report-screen {
+  display: grid;
+  gap: 18px;
+}
+.app-stage .owner-view-report .recent-observation-trends {
+  margin-top: 4px;
+}
+.app-stage .owner-view-report .insight-intro,
+.app-stage .owner-view-report .insight-weekly-hero,
+.app-stage .owner-view-report .insight-trend-chart,
+.app-stage .owner-view-report .insight-comparison-grid article,
+.app-stage .owner-view-report .insight-theme-card,
+.app-stage .owner-view-report .insight-card,
+.app-stage .owner-view-report .insight-daily-card,
+.app-stage .owner-view-report .insight-handler-card,
+.app-stage .owner-view-report .report-condition,
+.app-stage .owner-view-report .wellbeing-analysis,
+.app-stage .owner-view-report .report-calendar,
+.app-stage .owner-view-report .trend-card,
+.app-stage .owner-view-report .report-detail {
+  border-color: rgba(32,52,45,.07);
+  background: rgba(255,255,255,.72);
+  box-shadow: none;
+}
+.app-stage .owner-view-report .insight-intro {
+  background: rgba(239,247,242,.72);
+}
+.app-stage .owner-view-report .insight-weekly-hero {
+  background: rgba(245,241,232,.82);
+}
+.app-stage .owner-view-report .wellbeing-analysis {
+  background: rgba(255,253,249,.78);
+}
+.app-stage .owner-view-report .wellbeing-metric {
+  border: 0;
+  background: rgba(247,248,245,.86);
+}
+.app-stage .owner-view-report .insight-metric-tabs button,
+.app-stage .owner-view-report .report-filter button {
+  border-color: rgba(32,52,45,.075);
+  background: rgba(255,255,255,.68);
+}
+.app-stage .owner-view-report .insight-metric-tabs button.is-selected,
+.app-stage .owner-view-report .report-filter button.is-selected {
+  border-color: rgba(0,134,97,.18);
+  background: rgba(226,241,234,.88);
+  color: #286A55;
+}
+.app-stage .owner-view-report .insight-chart-grid {
+  stroke: rgba(32,52,45,.065);
+}
+.app-stage .owner-view-report .insight-chart-line {
+  stroke: #4E8A73;
+}
+.app-stage .owner-view-report .behavior-chart i {
+  background: #659985;
+}
+
+/* Chat: conversational, calm */
+.app-stage .owner-view-coach .coach-screen {
+  display: grid;
+  gap: 16px;
+}
+.app-stage .owner-view-coach .owner-coach-tabs {
+  padding: 4px;
+  border-radius: 16px;
+  background: rgba(230,235,231,.72);
+}
+.app-stage .owner-view-coach .owner-coach-panel,
+.app-stage .owner-view-coach .free-coaching-preview,
+.app-stage .owner-view-coach .coach-assigned-card {
+  border-color: rgba(32,52,45,.07);
+  background: rgba(255,255,255,.73);
+}
+.app-stage .owner-view-coach .owner-chat-panel {
+  padding: 10px;
+  border-radius: 22px;
+}
+.app-stage .owner-view-coach .message-list {
+  background:
+    linear-gradient(rgba(244,246,242,.93), rgba(244,246,242,.93)),
+    radial-gradient(circle at 20% 20%, rgba(0,134,97,.06), transparent 30%);
+}
+.app-stage .owner-view-coach .message.coach {
+  border-color: rgba(32,52,45,.07);
+  background: rgba(255,255,255,.94);
+}
+.app-stage .owner-view-coach .message.owner {
+  background: #198A69;
+}
+.app-stage .owner-view-coach .media-chat-input {
+  border-color: rgba(32,52,45,.065);
+  background: rgba(255,255,255,.88);
+  box-shadow: 0 10px 28px rgba(59,75,68,.04);
+}
+
+/* My page: simple household notebook */
+.app-stage .owner-view-profile .settings-screen,
+.app-stage .owner-view-profile .settings-profile-editor {
+  position: relative;
+}
+.app-stage .owner-view-profile .settings-user-summary {
+  border: 0;
+  background: rgba(239,247,242,.76);
+  box-shadow: inset 0 0 0 1px rgba(32,52,45,.055);
+}
+.app-stage .owner-view-profile .settings-group {
+  margin-bottom: 18px;
+}
+.app-stage .owner-view-profile .settings-list {
+  border-color: rgba(32,52,45,.065);
+  background: rgba(255,255,255,.72);
+}
+.app-stage .owner-view-profile .settings-list > button,
+.app-stage .owner-view-profile .settings-list > a,
+.app-stage .owner-view-profile .settings-notification-row {
+  border-bottom-color: rgba(32,52,45,.065);
+  background: transparent;
+}
+.app-stage .owner-view-profile .settings-row-icon {
+  background: rgba(231,239,234,.78);
+}
+.app-stage .owner-view-profile .profile-form-section,
+.app-stage .owner-view-profile .household-manager {
+  border-color: rgba(32,52,45,.075);
+  background: rgba(255,255,255,.72);
+}
+
+/* Empty states should feel like breathing room */
+.app-stage .empty-card,
+.app-stage .report-empty,
+.app-stage .coach-empty,
+.app-stage .insight-empty-state {
+  border-color: rgba(32,52,45,.10);
+  background: rgba(255,255,255,.48);
+  color: var(--wt-living-muted);
+}
+.app-stage .empty-card::before,
+.app-stage .report-empty::before,
+.app-stage .coach-empty::before,
+.app-stage .insight-empty-state::before {
+  display: block;
+  width: 34px;
+  height: 3px;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #008661, #D5E3DD);
+  content: "";
+}
+
+/* Bottom navigation: compact app chrome */
+.app-stage .bottom-nav {
+  width: min(100%, 760px);
+  padding-top: 6px;
+  padding-bottom: calc(6px + env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(32,52,45,.07);
+  background: rgba(255,254,251,.91);
+  box-shadow: 0 -8px 24px rgba(59,75,68,.03);
+}
+.app-stage .bottom-nav button {
+  min-height: 58px;
+  color: #8C9691;
+}
+.app-stage .bottom-nav .nav-icon,
+.app-stage .bottom-nav button:nth-child(3) .nav-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+}
+.app-stage .bottom-nav button.active {
+  color: #08785B;
+}
+.app-stage .bottom-nav button.active .nav-icon,
+.app-stage .bottom-nav button:nth-child(3).active .nav-icon {
+  background: rgba(0,134,97,.09);
+}
+
+/* Dialogs */
+.app-stage .notification-prompt-card,
+.app-stage .account-delete-dialog,
+.app-stage .celebration-card,
+.app-stage .media-gallery {
+  border-color: rgba(32,52,45,.07);
+  background: rgba(255,254,251,.97);
+  box-shadow: 0 24px 70px rgba(40,54,48,.12);
+}
+
+@media (max-width: 430px) {
+  .owner-app-backdrop {
+    width: 122vw;
+    opacity: .14;
+  }
+  .app-stage .home-dashboard { gap: 13px; }
+  .app-stage .home-hero {
+    padding: 18px;
+    border-radius: 23px;
+  }
+  .app-stage .home-hero-actions {
+    grid-template-columns: 1fr;
+  }
+  .app-stage .home-daily-check {
+    grid-template-columns: 1fr auto;
+    padding: 15px 16px;
+    border-radius: 18px;
+  }
+  .app-stage .home-summary > button {
+    min-height: 80px;
+    padding: 11px 7px;
+  }
+  .app-stage .home-dashboard .today-mission,
+  .app-stage .home-dashboard .quick-log {
+    padding: 16px;
+    border-radius: 20px;
+  }
+  .app-stage .owner-view-report .report-screen,
+  .app-stage .owner-view-coach .coach-screen,
+  .app-stage .goals-screen {
+    gap: 14px;
+  }
+}
+
+@media (max-width: 375px) {
+  .app-stage .app-main {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+  .app-stage .home-hero {
+    padding: 17px;
+  }
+  .app-stage .home-summary {
+    gap: 6px;
+  }
+  .app-stage .home-summary > button {
+    min-height: 76px;
+    border-radius: 16px;
+  }
+  .app-stage .home-summary > button strong {
+    font-size: 20px;
+  }
+  .app-stage .home-daily-check {
+    gap: 8px;
+  }
+  .app-stage .home-daily-check button {
+    padding-inline: 11px;
+    font-size: 12px;
+  }
+}
+
+@media (min-width: 760px) {
+  .owner-app-backdrop {
+    opacity: .15;
+  }
+  .app-stage .home-hero {
+    grid-template-columns: minmax(0,1.08fr) minmax(245px,.92fr);
+    padding: 28px;
+  }
+  .app-stage .home-action-grid {
+    grid-template-columns: minmax(0,.95fr) minmax(0,1.05fr);
+  }
+}
