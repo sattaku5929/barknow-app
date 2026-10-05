@@ -5482,3 +5482,19 @@ body { font-size: 16px; }
     grid-template-columns: 24px minmax(0,1fr) auto;
   }
 }
+
+
+/* Fix notification switch sizing inside settings grid */
+.app-stage .settings-notification-row {
+  grid-template-columns: 40px minmax(0,1fr) auto;
+}
+.app-stage .settings-notification-row .settings-toggle {
+  flex: 0 0 auto;
+  width: 52px;
+  min-width: 52px;
+  height: 31px;
+  min-height: 31px;
+  padding: 0;
+  justify-self: end;
+  overflow: visible;
+}
