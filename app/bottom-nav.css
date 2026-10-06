@@ -1,6 +1,11 @@
-/* Bottom navigation only: compact bar with a half-embedded Record action. */
+/*
+ * Bottom navigation only.
+ * This file is the authoritative visual layer for the owner bottom navigation.
+ * It intentionally uses the rendered app/nav DOM as scope so older historical
+ * .bottom-nav rules in globals.css cannot override the current navigation UI.
+ */
 
-.bottom-nav {
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] {
   min-height: calc(64px + env(safe-area-inset-bottom));
   padding: 0 8px env(safe-area-inset-bottom);
   align-items: center;
@@ -10,156 +15,187 @@
   box-shadow: 0 -2px 10px rgba(15, 23, 42, 0.035);
 }
 
-.bottom-nav button {
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button {
   position: relative;
   min-width: 0;
   min-height: 64px;
   padding: 0;
   justify-content: center;
   gap: 3px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-.bottom-nav .nav-icon {
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) .nav-icon {
   width: 40px;
   height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #7c8882;
+  box-shadow: none;
 }
 
-.bottom-nav .nav-icon .flat-icon-svg,
-.bottom-nav .nav-icon svg {
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) .nav-icon .flat-icon-svg,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) .nav-icon svg {
   width: 26px;
   height: 26px;
 }
 
-/* Keep the Record tab itself in the same grid; only the circular icon overlaps upward. */
-.bottom-nav .bottom-nav-record {
+/* Current-page state is deliberately quieter than the persistent Record action. */
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record).active {
+  background: transparent;
+  color: #00684b;
+}
+
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record).active .nav-icon {
+  background: rgba(0, 134, 97, 0.07);
+  color: #008661;
+  box-shadow: none;
+}
+
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record).active > span:last-child {
+  color: #00684b;
+}
+
+/*
+ * Record remains one normal grid item. Only the circular icon overlaps upward.
+ * At 60px with top:-25px, 25px (41.7%) sits above the bar and 35px remains inside.
+ */
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record {
   min-height: 64px;
   padding: 0;
   overflow: visible;
   transform: none;
   border: 0;
-  border-radius: 14px;
+  border-radius: 0;
   background: transparent;
   box-shadow: none;
 }
 
-.bottom-nav .bottom-nav-record .nav-icon {
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon {
   position: absolute;
-  z-index: 2;
-  top: -27px;
+  z-index: 3;
+  top: -25px;
   left: 50%;
   display: grid;
   width: 60px;
   height: 60px;
   place-items: center;
   transform: translateX(-50%);
-  border: 1px solid rgba(0, 107, 77, 0.12);
+  border: 0;
   border-radius: 50%;
-  background: #006b4d;
+  background-color: #00684b;
   color: #fff;
-  box-shadow: 0 3px 10px rgba(0, 107, 77, 0.10);
+  box-shadow: 0 3px 9px rgba(0, 104, 75, 0.10);
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
-.bottom-nav .bottom-nav-record .nav-icon .flat-icon-svg,
-.bottom-nav .bottom-nav-record .nav-icon svg {
+/*
+ * The global icon system uses !important fill/stroke rules, so the Record glyph
+ * must explicitly own its SVG paint here. This is the only intentional !important.
+ */
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon .flat-icon-svg,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon svg {
   width: 28px;
   height: 28px;
   fill: none !important;
-  stroke: currentColor !important;
+  stroke: #fff !important;
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.bottom-nav .bottom-nav-record .nav-icon .flat-icon-svg > *,
-.bottom-nav .bottom-nav-record .nav-icon .record-square-pen {
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon .flat-icon-svg > *,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon .record-square-pen {
   fill: none !important;
-  stroke: currentColor !important;
+  stroke: #fff !important;
 }
 
-.bottom-nav .bottom-nav-record > span:last-child {
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record > span:last-child {
   position: absolute;
   right: 0;
   bottom: 7px;
   left: 0;
   margin: 0;
-  color: #006b4d;
+  color: #00684b;
   font-size: 10px;
   font-weight: 800;
   line-height: 1;
   text-align: center;
 }
 
-/* Record remains the persistent primary action regardless of current page. */
-.bottom-nav .bottom-nav-record.active,
-.bottom-nav .bottom-nav-record:not(.active) {
-  background: transparent;
+/* Main-action styling is independent from the current-page active state. */
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record.active,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record:not(.active) {
   border: 0;
+  background: transparent;
   box-shadow: none;
 }
 
-.bottom-nav .bottom-nav-record.active .nav-icon,
-.bottom-nav .bottom-nav-record:not(.active) .nav-icon {
-  background: #006b4d;
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record.active .nav-icon,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record:not(.active) .nav-icon {
+  border: 0;
+  background-color: #00684b;
   color: #fff;
-  border-color: rgba(0, 107, 77, 0.12);
-  box-shadow: 0 3px 10px rgba(0, 107, 77, 0.10);
+  box-shadow: 0 3px 9px rgba(0, 104, 75, 0.10);
 }
 
-.bottom-nav .bottom-nav-record:active {
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record:active {
   transform: none;
 }
 
-.bottom-nav .bottom-nav-record:active .nav-icon {
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record:active .nav-icon {
   transform: translateX(-50%) scale(0.96);
-  box-shadow: 0 2px 7px rgba(0, 107, 77, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 104, 75, 0.08);
 }
 
 /* 375px */
 @media (max-width: 375px) {
-  .bottom-nav {
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] {
     min-height: calc(62px + env(safe-area-inset-bottom));
     padding-right: 6px;
     padding-left: 6px;
   }
 
-  .bottom-nav button,
-  .bottom-nav .bottom-nav-record {
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button,
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record {
     min-height: 62px;
   }
 
-  .bottom-nav .nav-icon {
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) .nav-icon {
     width: 38px;
     height: 38px;
   }
 
-  .bottom-nav .nav-icon .flat-icon-svg,
-  .bottom-nav .nav-icon svg {
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) .nav-icon .flat-icon-svg,
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) .nav-icon svg {
     width: 25px;
     height: 25px;
   }
 
-  .bottom-nav .bottom-nav-record .nav-icon {
-    top: -26px;
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon {
+    top: -24px;
     width: 58px;
     height: 58px;
   }
 
-  .bottom-nav .bottom-nav-record .nav-icon .flat-icon-svg,
-  .bottom-nav .bottom-nav-record .nav-icon svg {
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon .flat-icon-svg,
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon svg {
     width: 27px;
     height: 27px;
   }
 
-  .bottom-nav .bottom-nav-record > span:last-child {
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record > span:last-child {
     bottom: 6px;
   }
 }
 
 /* 390px */
 @media (min-width: 376px) and (max-width: 400px) {
-  .bottom-nav .bottom-nav-record .nav-icon {
-    top: -27px;
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon {
+    top: -25px;
     width: 60px;
     height: 60px;
   }
@@ -167,8 +203,8 @@
 
 /* 430px */
 @media (min-width: 401px) and (max-width: 430px) {
-  .bottom-nav .bottom-nav-record .nav-icon {
-    top: -27px;
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon {
+    top: -25px;
     width: 60px;
     height: 60px;
   }
