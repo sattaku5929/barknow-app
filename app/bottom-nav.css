@@ -78,7 +78,7 @@
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon {
   position: absolute;
   z-index: 3;
-  top: -11px;
+  top: -1px;
   left: 50%;
   display: grid;
   width: 60px;
@@ -177,7 +177,7 @@
   }
 
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon {
-    top: -10px;
+    top: 0;
     width: 58px;
     height: 58px;
   }
@@ -196,7 +196,7 @@
 /* 390px */
 @media (min-width: 376px) and (max-width: 400px) {
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon {
-    top: -11px;
+    top: -1px;
     width: 60px;
     height: 60px;
   }
@@ -205,7 +205,7 @@
 /* 430px */
 @media (min-width: 401px) and (max-width: 430px) {
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon {
-    top: -11px;
+    top: -1px;
     width: 60px;
     height: 60px;
   }
