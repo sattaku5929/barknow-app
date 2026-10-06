@@ -1897,34 +1897,142 @@ body { font-size: 16px; }
 }
 .birthday-celebration-avatar {
   position:relative;
-  z-index:1;
+  z-index:2;
   display:grid;
   width:78px;
   height:78px;
   margin:0 auto 15px;
-  overflow:hidden;
+  overflow:visible;
   place-items:center;
-  border:4px solid #fff;
+  border:3px solid #fff;
   border-radius:50%;
   background:var(--green);
   color:#fff;
-  box-shadow:0 0 0 8px rgba(0,134,97,.08);
+  box-shadow:
+    0 0 0 3px rgba(215,181,109,.28),
+    0 0 0 8px rgba(0,134,97,.06);
   font-size:25px;
   font-weight:850;
 }
-.birthday-celebration-avatar img {
+.birthday-celebration-avatar::after {
+  position:absolute;
+  inset:0;
+  border:1px solid rgba(0,104,75,.16);
+  border-radius:50%;
+  content:"";
+  pointer-events:none;
+}
+.birthday-celebration-avatar > img {
   width:100%;
   height:100%;
+  overflow:hidden;
+  border-radius:50%;
   object-fit:cover;
 }
+.birthday-celebration-avatar > span:not(.birthday-celebration-avatar-stars) {
+  display:grid;
+  width:100%;
+  height:100%;
+  place-items:center;
+  border-radius:50%;
+}
+.birthday-celebration-avatar-stars {
+  position:absolute;
+  inset:-12px;
+  pointer-events:none;
+}
+.birthday-celebration-avatar-stars i {
+  position:absolute;
+  display:block;
+  width:5px;
+  height:5px;
+  background:#d7b56d;
+  clip-path:polygon(50% 0,61% 38%,100% 50%,61% 62%,50% 100%,39% 62%,0 50%,39% 38%);
+  opacity:.82;
+}
+.birthday-celebration-avatar-stars i:nth-child(1) { top:4px; left:5px; }
+.birthday-celebration-avatar-stars i:nth-child(2) { top:11px; right:1px; width:7px; height:7px; background:#008661; }
+.birthday-celebration-avatar-stars i:nth-child(3) { right:9px; bottom:1px; width:4px; height:4px; background:#c98f7c; }
+
+.birthday-celebration-confetti {
+  position:absolute;
+  z-index:1;
+  inset:0;
+  pointer-events:none;
+}
+.birthday-celebration-confetti i {
+  position:absolute;
+  display:block;
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:#d7b56d;
+  opacity:.58;
+  animation:wt-confetti-drift 5.4s ease-in-out infinite;
+}
+.birthday-celebration-confetti i:nth-child(1) { top:18px; left:28px; }
+.birthday-celebration-confetti i:nth-child(2) { top:32px; left:58px; width:3px; height:9px; border-radius:999px; background:#008661; transform:rotate(22deg); animation-delay:.5s; }
+.birthday-celebration-confetti i:nth-child(3) { top:19px; right:42px; width:8px; height:2px; border-radius:999px; background:#c98f7c; transform:rotate(-26deg); animation-delay:1s; }
+.birthday-celebration-confetti i:nth-child(4) { top:48px; right:23px; width:4px; height:4px; background:#9db8a9; animation-delay:1.5s; }
+.birthday-celebration-confetti i:nth-child(5) { top:91px; left:18px; width:3px; height:8px; border-radius:999px; background:#b78f67; transform:rotate(-18deg); animation-delay:2s; }
+.birthday-celebration-confetti i:nth-child(6) { top:104px; right:20px; width:7px; height:2px; border-radius:999px; background:#d7b56d; transform:rotate(28deg); animation-delay:2.5s; }
+.birthday-celebration-confetti i:nth-child(7) { bottom:84px; left:30px; width:4px; height:4px; background:#008661; animation-delay:3s; }
+.birthday-celebration-confetti i:nth-child(8) { bottom:62px; right:34px; width:3px; height:7px; border-radius:999px; background:#c98f7c; transform:rotate(-22deg); animation-delay:3.5s; }
+.birthday-celebration-confetti i:nth-child(9) { bottom:28px; left:56px; width:6px; height:2px; border-radius:999px; background:#d7b56d; transform:rotate(14deg); animation-delay:4s; }
+.birthday-celebration-confetti i:nth-child(10) { bottom:31px; right:63px; width:3px; height:3px; background:#7fa08f; animation-delay:4.5s; }
+
+.birthday-celebration-popper {
+  position:absolute;
+  z-index:1;
+  top:48px;
+  width:30px;
+  height:34px;
+  opacity:.78;
+  pointer-events:none;
+}
+.birthday-celebration-popper--left { left:21px; }
+.birthday-celebration-popper--right { right:21px; transform:scaleX(-1); }
+.birthday-celebration-popper::before {
+  position:absolute;
+  bottom:1px;
+  left:5px;
+  width:13px;
+  height:18px;
+  border:1px solid rgba(0,104,75,.18);
+  border-radius:4px 4px 8px 8px;
+  background:#f1e5c5;
+  content:"";
+  transform:rotate(-28deg);
+}
+.birthday-celebration-popper i {
+  position:absolute;
+  width:9px;
+  height:2px;
+  border-radius:999px;
+  background:#008661;
+  transform-origin:left center;
+}
+.birthday-celebration-popper i:nth-child(1) { top:5px; left:15px; transform:rotate(-48deg); }
+.birthday-celebration-popper i:nth-child(2) { top:10px; left:19px; background:#d7b56d; transform:rotate(-12deg); }
+.birthday-celebration-popper i:nth-child(3) { top:3px; left:10px; background:#c98f7c; transform:rotate(-75deg); }
 .birthday-celebration-card > p {
   position:relative;
-  z-index:1;
+  z-index:2;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
   margin:0;
   color:var(--green);
   font-size:9px;
   font-weight:850;
-  letter-spacing:.18em;
+  letter-spacing:.22em;
+}
+.birthday-celebration-card > p::before,
+.birthday-celebration-card > p::after {
+  width:18px;
+  height:1px;
+  background:rgba(0,134,97,.24);
+  content:"";
 }
 .birthday-celebration-card h2 {
   position:relative;
@@ -2228,6 +2336,11 @@ body { font-size: 16px; }
 
 @media (prefers-reduced-motion:reduce) {
   .home-dashboard button { transition:none; }
+  .settings-birthday-candles i::before,
+  .settings-birthday-confetti i,
+  .birthday-celebration-confetti i {
+    animation:none !important;
+  }
 }
 
 /* Owner settings */
@@ -2305,8 +2418,109 @@ body { font-size: 16px; }
   background:linear-gradient(135deg,#fffdf7,#edf8f2);
 }
 .settings-birthday-card.is-birthday .settings-birthday-date {
+  position:relative;
+  overflow:visible;
   background:var(--green);
   color:#fff;
+}
+.settings-birthday-card.is-birthday {
+  position:relative;
+  overflow:hidden;
+}
+.settings-birthday-candles {
+  position:absolute;
+  top:-17px;
+  left:50%;
+  display:flex;
+  gap:5px;
+  transform:translateX(-50%);
+  pointer-events:none;
+}
+.settings-birthday-candles i {
+  position:relative;
+  display:block;
+  width:3px;
+  height:12px;
+  border-radius:999px;
+  background:#ead7a2;
+}
+.settings-birthday-candles i:nth-child(2) { height:14px; background:#f1e4bd; }
+.settings-birthday-candles i::before {
+  position:absolute;
+  top:-5px;
+  left:50%;
+  width:5px;
+  height:7px;
+  border-radius:60% 60% 50% 50%;
+  background:#d9a85f;
+  content:"";
+  transform:translateX(-50%) rotate(6deg);
+  transform-origin:50% 100%;
+  animation:wt-candle-flicker 2.8s ease-in-out infinite;
+}
+.settings-birthday-candles i:nth-child(2)::before { animation-delay:.35s; }
+.settings-birthday-candles i:nth-child(3)::before { animation-delay:.7s; }
+.settings-birthday-confetti {
+  position:absolute;
+  inset:-12px -18px -10px;
+  pointer-events:none;
+}
+.settings-birthday-confetti i {
+  position:absolute;
+  width:4px;
+  height:4px;
+  border-radius:50%;
+  background:#d7b56d;
+  opacity:.75;
+  animation:wt-confetti-drift 4.8s ease-in-out infinite;
+}
+.settings-birthday-confetti i:nth-child(1) { top:6px; left:2px; }
+.settings-birthday-confetti i:nth-child(2) { top:2px; right:8px; width:3px; height:8px; border-radius:999px; background:#008661; transform:rotate(26deg); animation-delay:.4s; }
+.settings-birthday-confetti i:nth-child(3) { top:18px; left:-2px; width:7px; height:2px; border-radius:999px; background:#c98f7c; transform:rotate(-32deg); animation-delay:.8s; }
+.settings-birthday-confetti i:nth-child(4) { top:22px; right:-2px; background:#d7b56d; animation-delay:1.2s; }
+.settings-birthday-confetti i:nth-child(5) { bottom:5px; left:3px; width:3px; height:7px; border-radius:999px; background:#9bb8a8; transform:rotate(18deg); animation-delay:1.6s; }
+.settings-birthday-confetti i:nth-child(6) { bottom:1px; right:6px; width:6px; height:2px; border-radius:999px; background:#d2aa72; transform:rotate(-24deg); animation-delay:2s; }
+.settings-birthday-confetti i:nth-child(7) { top:10px; left:12px; width:3px; height:3px; background:#b88f67; animation-delay:2.4s; }
+.settings-birthday-confetti i:nth-child(8) { bottom:12px; right:12px; width:3px; height:3px; background:#008661; animation-delay:2.8s; }
+.settings-birthday-popper {
+  position:absolute;
+  left:-16px;
+  bottom:-4px;
+  width:22px;
+  height:22px;
+  pointer-events:none;
+}
+.settings-birthday-popper::before {
+  position:absolute;
+  left:5px;
+  bottom:2px;
+  width:10px;
+  height:14px;
+  border:1px solid rgba(0,104,75,.18);
+  border-radius:3px 3px 7px 7px;
+  background:#f3e8c9;
+  content:"";
+  transform:rotate(-28deg);
+}
+.settings-birthday-popper i {
+  position:absolute;
+  width:6px;
+  height:1.5px;
+  border-radius:999px;
+  background:#008661;
+  transform-origin:left center;
+}
+.settings-birthday-popper i:nth-child(1) { top:2px; left:13px; transform:rotate(-52deg); }
+.settings-birthday-popper i:nth-child(2) { top:7px; left:16px; background:#d7b56d; transform:rotate(-18deg); }
+.settings-birthday-popper i:nth-child(3) { top:1px; left:8px; background:#c98f7c; transform:rotate(-78deg); }
+
+@keyframes wt-candle-flicker {
+  0%,100% { transform:translateX(-50%) rotate(5deg) scaleY(1); }
+  50% { transform:translateX(-50%) rotate(-4deg) scaleY(.94); }
+}
+@keyframes wt-confetti-drift {
+  0%,100% { translate:0 0; }
+  50% { translate:0 2px; }
 }
 
 .settings-list { border-top:1px solid #dfe4e1; border-bottom:1px solid #dfe4e1; background:#fff; }
@@ -6545,5 +6759,81 @@ body { font-size: 16px; }
     top: -20px;
     width: 60px;
     height: 60px;
+  }
+}
+
+
+@media (max-width:430px) {
+  .settings-birthday-card {
+    gap:12px;
+  }
+  .settings-birthday-card.is-birthday {
+    padding-right:14px;
+  }
+  .settings-birthday-date {
+    width:56px;
+    height:56px;
+  }
+  .settings-birthday-candles {
+    top:-16px;
+  }
+  .birthday-celebration-card {
+    width:min(100%,356px);
+    padding:28px 22px 22px;
+  }
+  .birthday-celebration-popper--left { left:18px; }
+  .birthday-celebration-popper--right { right:18px; }
+}
+
+@media (max-width:390px) {
+  .settings-birthday-copy > strong {
+    font-size:15px;
+  }
+  .settings-birthday-copy > p {
+    font-size:8.5px;
+  }
+  .settings-birthday-date {
+    width:54px;
+    height:54px;
+  }
+  .settings-birthday-date b {
+    font-size:13px;
+  }
+  .birthday-celebration-card {
+    width:min(100%,344px);
+    padding:27px 20px 21px;
+  }
+  .birthday-celebration-card h2 {
+    font-size:22px;
+  }
+  .birthday-celebration-popper {
+    top:45px;
+  }
+  .birthday-celebration-popper--left { left:15px; }
+  .birthday-celebration-popper--right { right:15px; }
+}
+
+@media (max-width:375px) {
+  .settings-birthday-card {
+    margin-right:14px;
+    margin-left:14px;
+    padding:16px 14px;
+  }
+  .settings-birthday-copy > strong {
+    font-size:14px;
+  }
+  .settings-birthday-date {
+    width:52px;
+    height:52px;
+  }
+  .settings-birthday-candles {
+    top:-15px;
+    gap:4px;
+  }
+  .birthday-celebration-card {
+    width:min(100%,332px);
+  }
+  .birthday-celebration-popper {
+    opacity:.62;
   }
 }
