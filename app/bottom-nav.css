@@ -25,7 +25,7 @@
   border: 0;
   background: transparent;
   box-shadow: none;
-  transform: translateY(-9px);
+  transform: translateY(-17px);
 }
 
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) .nav-icon {
@@ -51,7 +51,7 @@
 }
 
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record).active .nav-icon {
-  background: rgba(0, 134, 97, 0.07);
+  background: radial-gradient(circle 16px at 50% calc(50% + 4px), rgba(0, 134, 97, 0.07) 99%, transparent 100%);
   color: #008661;
   box-shadow: none;
 }
@@ -68,7 +68,7 @@
   min-height: 74px;
   padding: 0;
   overflow: visible;
-  transform: translateY(-9px);
+  transform: translateY(-17px);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -144,7 +144,7 @@
 }
 
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record:active {
-  transform: translateY(-9px);
+  transform: translateY(-17px);
 }
 
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record:active .nav-icon {
