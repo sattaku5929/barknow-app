@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
+import "./bottom-nav.css";
 
 const notoSansJP = Noto_Sans_JP({
   subsets: ["latin"],
