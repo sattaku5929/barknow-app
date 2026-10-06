@@ -6036,3 +6036,73 @@ body { font-size: 16px; }
     margin-left: 12px;
   }
 }
+
+
+/* ===== Subtle emphasis for the centered Record tab ===== */
+.bottom-nav .bottom-nav-record {
+  min-height: 68px;
+  transform: translateY(-3px);
+  background: transparent;
+}
+.bottom-nav .bottom-nav-record .nav-icon {
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(0,107,77,.12);
+  border-radius: 50%;
+  background: rgba(0,107,77,.09);
+  color: #006B4D;
+  box-shadow: 0 2px 8px rgba(0,107,77,.06);
+}
+.bottom-nav .bottom-nav-record .nav-icon .flat-icon-svg,
+.bottom-nav .bottom-nav-record .nav-icon svg {
+  width: 30px;
+  height: 30px;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.bottom-nav .bottom-nav-record .nav-icon .flat-icon-svg > *,
+.bottom-nav .bottom-nav-record .nav-icon .record-square-pen {
+  fill: none !important;
+  stroke: currentColor !important;
+}
+.bottom-nav .bottom-nav-record > span:last-child {
+  margin-top: 0;
+  color: #006B4D;
+  font-size: 10px;
+  font-weight: 800;
+}
+.bottom-nav .bottom-nav-record.active {
+  background: transparent;
+}
+.bottom-nav .bottom-nav-record.active .nav-icon {
+  border-color: rgba(0,107,77,.18);
+  background: rgba(0,107,77,.12);
+  color: #006B4D;
+  box-shadow: 0 2px 8px rgba(0,107,77,.07);
+}
+.bottom-nav .bottom-nav-record:active {
+  transform: translateY(-3px);
+}
+.bottom-nav .bottom-nav-record:active .nav-icon {
+  transform: scale(.96);
+  box-shadow: 0 1px 5px rgba(0,107,77,.06);
+}
+
+@media (max-width: 390px) {
+  .bottom-nav .bottom-nav-record {
+    min-height: 66px;
+    transform: translateY(-3px);
+  }
+  .bottom-nav .bottom-nav-record .nav-icon {
+    width: 47px;
+    height: 47px;
+  }
+  .bottom-nav .bottom-nav-record .nav-icon .flat-icon-svg,
+  .bottom-nav .bottom-nav-record .nav-icon svg {
+    width: 29px;
+    height: 29px;
+  }
+}
