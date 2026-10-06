@@ -62,7 +62,7 @@
 
 /*
  * Record remains one normal grid item. Only the circular icon overlaps upward.
- * At 60px with top:-25px, 25px (41.7%) sits above the bar and 35px remains inside.
+ * At 60px, the icon is positioned so roughly one third of the circle sits above the bar.
  */
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record {
   min-height: 84px;
@@ -78,7 +78,7 @@
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon {
   position: absolute;
   z-index: 3;
-  top: -25px;
+  top: -11px;
   left: 50%;
   display: grid;
   width: 60px;
@@ -117,7 +117,7 @@
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record > span:last-child {
   position: absolute;
   right: 0;
-  bottom: 28px;
+  bottom: 14px;
   left: 0;
   margin: 0;
   color: #00684b;
@@ -177,7 +177,7 @@
   }
 
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon {
-    top: -24px;
+    top: -10px;
     width: 58px;
     height: 58px;
   }
@@ -189,14 +189,14 @@
   }
 
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record > span:last-child {
-    bottom: 27px;
+    bottom: 13px;
   }
 }
 
 /* 390px */
 @media (min-width: 376px) and (max-width: 400px) {
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon {
-    top: -25px;
+    top: -11px;
     width: 60px;
     height: 60px;
   }
@@ -205,7 +205,7 @@
 /* 430px */
 @media (min-width: 401px) and (max-width: 430px) {
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon {
-    top: -25px;
+    top: -11px;
     width: 60px;
     height: 60px;
   }
