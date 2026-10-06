@@ -4837,6 +4837,11 @@ export default function Home() {
 
       {dogBirthday && profile.name && (
         <section className={`settings-birthday-card ${dogBirthday.isBirthday ? "is-birthday" : ""}`} aria-label="愛犬の誕生日">
+          {dogBirthday.isBirthday && (
+            <span className="settings-birthday-confetti" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </span>
+          )}
           <div className="settings-birthday-copy">
             <span>{dogBirthday.isBirthday ? "HAPPY BIRTHDAY" : "BIRTHDAY MEMORY"}</span>
             <strong>{dogBirthday.isBirthday ? `${profile.name}ちゃん、${dogBirthday.ageYears}歳おめでとう！` : `生まれてから ${dogBirthday.daysAlive.toLocaleString("ja-JP")}日目`}</strong>
@@ -4845,17 +4850,6 @@ export default function Home() {
               : `${ageLabel(profile.birthday)} ・ 次の${dogBirthday.nextBirthdayAge}歳のお誕生日まであと${dogBirthday.daysUntilBirthday}日`}</p>
           </div>
           <div className="settings-birthday-date">
-            {dogBirthday.isBirthday && (
-              <>
-                <span className="settings-birthday-candles" aria-hidden="true">
-                  <i></i><i></i><i></i>
-                </span>
-                <span className="settings-birthday-confetti" aria-hidden="true">
-                  <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
-                </span>
-                <span className="settings-birthday-popper" aria-hidden="true"><i></i><i></i><i></i></span>
-              </>
-            )}
             <small>BIRTHDAY</small>
             <b>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric" }).format(new Date(`${profile.birthday}T00:00:00+09:00`))}</b>
           </div>
@@ -5348,10 +5342,7 @@ export default function Home() {
               <div className="birthday-celebration-confetti" aria-hidden="true">
                 <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
               </div>
-              <div className="birthday-celebration-popper birthday-celebration-popper--left" aria-hidden="true"><i></i><i></i><i></i></div>
-              <div className="birthday-celebration-popper birthday-celebration-popper--right" aria-hidden="true"><i></i><i></i><i></i></div>
               <div className={`birthday-celebration-avatar ${profile.avatarUrl ? "has-image" : ""}`}>
-                <span className="birthday-celebration-avatar-stars" aria-hidden="true"><i></i><i></i><i></i></span>
                 {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : <span>{profile.name.slice(0, 1)}</span>}
               </div>
               <p>HAPPY BIRTHDAY</p>
