@@ -1,0 +1,175 @@
+/* Bottom navigation only: compact bar with a half-embedded Record action. */
+
+.bottom-nav {
+  min-height: calc(64px + env(safe-area-inset-bottom));
+  padding: 0 8px env(safe-area-inset-bottom);
+  align-items: center;
+  overflow: visible;
+  background: #fff;
+  border-top: 1px solid rgba(229, 231, 235, 0.8);
+  box-shadow: 0 -2px 10px rgba(15, 23, 42, 0.035);
+}
+
+.bottom-nav button {
+  position: relative;
+  min-width: 0;
+  min-height: 64px;
+  padding: 0;
+  justify-content: center;
+  gap: 3px;
+}
+
+.bottom-nav .nav-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.bottom-nav .nav-icon .flat-icon-svg,
+.bottom-nav .nav-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+/* Keep the Record tab itself in the same grid; only the circular icon overlaps upward. */
+.bottom-nav .bottom-nav-record {
+  min-height: 64px;
+  padding: 0;
+  overflow: visible;
+  transform: none;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.bottom-nav .bottom-nav-record .nav-icon {
+  position: absolute;
+  z-index: 2;
+  top: -27px;
+  left: 50%;
+  display: grid;
+  width: 60px;
+  height: 60px;
+  place-items: center;
+  transform: translateX(-50%);
+  border: 1px solid rgba(0, 107, 77, 0.12);
+  border-radius: 50%;
+  background: #006b4d;
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(0, 107, 77, 0.10);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.bottom-nav .bottom-nav-record .nav-icon .flat-icon-svg,
+.bottom-nav .bottom-nav-record .nav-icon svg {
+  width: 28px;
+  height: 28px;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bottom-nav .bottom-nav-record .nav-icon .flat-icon-svg > *,
+.bottom-nav .bottom-nav-record .nav-icon .record-square-pen {
+  fill: none !important;
+  stroke: currentColor !important;
+}
+
+.bottom-nav .bottom-nav-record > span:last-child {
+  position: absolute;
+  right: 0;
+  bottom: 7px;
+  left: 0;
+  margin: 0;
+  color: #006b4d;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+
+/* Record remains the persistent primary action regardless of current page. */
+.bottom-nav .bottom-nav-record.active,
+.bottom-nav .bottom-nav-record:not(.active) {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.bottom-nav .bottom-nav-record.active .nav-icon,
+.bottom-nav .bottom-nav-record:not(.active) .nav-icon {
+  background: #006b4d;
+  color: #fff;
+  border-color: rgba(0, 107, 77, 0.12);
+  box-shadow: 0 3px 10px rgba(0, 107, 77, 0.10);
+}
+
+.bottom-nav .bottom-nav-record:active {
+  transform: none;
+}
+
+.bottom-nav .bottom-nav-record:active .nav-icon {
+  transform: translateX(-50%) scale(0.96);
+  box-shadow: 0 2px 7px rgba(0, 107, 77, 0.08);
+}
+
+/* 375px */
+@media (max-width: 375px) {
+  .bottom-nav {
+    min-height: calc(62px + env(safe-area-inset-bottom));
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+
+  .bottom-nav button,
+  .bottom-nav .bottom-nav-record {
+    min-height: 62px;
+  }
+
+  .bottom-nav .nav-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .bottom-nav .nav-icon .flat-icon-svg,
+  .bottom-nav .nav-icon svg {
+    width: 25px;
+    height: 25px;
+  }
+
+  .bottom-nav .bottom-nav-record .nav-icon {
+    top: -26px;
+    width: 58px;
+    height: 58px;
+  }
+
+  .bottom-nav .bottom-nav-record .nav-icon .flat-icon-svg,
+  .bottom-nav .bottom-nav-record .nav-icon svg {
+    width: 27px;
+    height: 27px;
+  }
+
+  .bottom-nav .bottom-nav-record > span:last-child {
+    bottom: 6px;
+  }
+}
+
+/* 390px */
+@media (min-width: 376px) and (max-width: 400px) {
+  .bottom-nav .bottom-nav-record .nav-icon {
+    top: -27px;
+    width: 60px;
+    height: 60px;
+  }
+}
+
+/* 430px */
+@media (min-width: 401px) and (max-width: 430px) {
+  .bottom-nav .bottom-nav-record .nav-icon {
+    top: -27px;
+    width: 60px;
+    height: 60px;
+  }
+}
