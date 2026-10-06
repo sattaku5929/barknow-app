@@ -6,7 +6,7 @@
  */
 
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] {
-  min-height: calc(64px + env(safe-area-inset-bottom));
+  min-height: calc(74px + env(safe-area-inset-bottom));
   padding: 0 8px env(safe-area-inset-bottom);
   align-items: center;
   overflow: visible;
@@ -18,7 +18,7 @@
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button {
   position: relative;
   min-width: 0;
-  min-height: 64px;
+  min-height: 74px;
   padding: 0;
   justify-content: center;
   gap: 3px;
@@ -64,7 +64,7 @@
  * At 60px with top:-25px, 25px (41.7%) sits above the bar and 35px remains inside.
  */
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record {
-  min-height: 64px;
+  min-height: 74px;
   padding: 0;
   overflow: visible;
   transform: none;
@@ -116,7 +116,7 @@
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record > span:last-child {
   position: absolute;
   right: 0;
-  bottom: 7px;
+  bottom: 12px;
   left: 0;
   margin: 0;
   color: #00684b;
@@ -154,14 +154,14 @@
 /* 375px */
 @media (max-width: 375px) {
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] {
-    min-height: calc(62px + env(safe-area-inset-bottom));
+    min-height: calc(72px + env(safe-area-inset-bottom));
     padding-right: 6px;
     padding-left: 6px;
   }
 
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button,
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record {
-    min-height: 62px;
+    min-height: 72px;
   }
 
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) .nav-icon {
@@ -188,7 +188,7 @@
   }
 
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record > span:last-child {
-    bottom: 6px;
+    bottom: 11px;
   }
 }
 
