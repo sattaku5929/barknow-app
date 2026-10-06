@@ -13,6 +13,7 @@ import ObservationEventHub from "@/components/observations/ObservationEventHub";
 import RecentObservationTrends from "@/components/insights/RecentObservationTrends";
 import CoachAssignedDogStats from "@/components/insights/CoachAssignedDogStats";
 import CoachObservationSummary from "@/components/insights/CoachObservationSummary";
+import OwnerHomeLifestyle from "@/components/owner/OwnerHomeLifestyle";
 import OwnerAppBackdrop from "@/components/owner/OwnerAppBackdrop";
 import OwnerHomeScene from "@/components/owner/illustrations/OwnerHomeScene";
 import OwnerRecordScene from "@/components/owner/illustrations/OwnerRecordScene";
@@ -4122,7 +4123,7 @@ export default function Home() {
           <i aria-hidden="true"></i>
         </div>
         <div className="home-v3-lifestyle-art" aria-hidden="true">
-          <LifeSceneIllustration scene="park" />
+          <OwnerHomeLifestyle />
         </div>
         <button className={`home-v3-profile ${profile.avatarUrl ? "has-image" : ""}`} onClick={() => navigateOwnerView("profile")} aria-label="愛犬プロフィールを開く">
           {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : <span>{profile.name ? profile.name.slice(0, 1) : "＋"}</span>}
