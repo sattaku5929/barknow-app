@@ -4007,7 +4007,6 @@ export default function Home() {
           <p>愛犬との暮らしを、記録から少しずつ知っていく。</p>
           <div className="editorial-home-hero__actions">
             <button className="editorial-primary" onClick={() => openNewRecord()}>＋ 今日を記録する</button>
-            <button className="editorial-text-action" onClick={() => navigateOwnerView("goals")}>お世話を確認 →</button>
           </div>
         </div>
         <div className="editorial-home-visual" aria-hidden="true"><OwnerHomeScene /></div>
