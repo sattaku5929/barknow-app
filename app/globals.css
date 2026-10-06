@@ -5778,3 +5778,65 @@ body { font-size: 16px; }
     height: 56px;
   }
 }
+
+
+/* ===== Bottom navigation icon scale + record ring ===== */
+.bottom-nav .nav-icon {
+  width: 46px;
+  height: 46px;
+}
+.bottom-nav .nav-icon .flat-icon-svg,
+.bottom-nav .nav-icon svg {
+  width: 28px;
+  height: 28px;
+}
+.bottom-nav .bottom-nav-record {
+  transform: translateY(-8px);
+}
+.bottom-nav .bottom-nav-record .nav-icon {
+  width: 62px;
+  height: 62px;
+  border: 4px solid var(--green);
+  background: #eef8f4;
+  color: var(--green);
+  box-shadow: 0 10px 24px rgba(0,134,97,.18);
+}
+.bottom-nav .bottom-nav-record .nav-icon svg {
+  width: 34px;
+  height: 34px;
+}
+.bottom-nav .bottom-nav-record .nav-icon .icon-negative {
+  stroke: var(--green) !important;
+}
+.bottom-nav .bottom-nav-record.active .nav-icon {
+  border-color: var(--green-dark);
+  background: var(--green);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(0,104,75,.22);
+}
+.bottom-nav .bottom-nav-record.active .nav-icon .icon-negative {
+  stroke: #ffffff !important;
+}
+.bottom-nav .bottom-nav-record:active .nav-icon {
+  transform: scale(.95);
+}
+
+@media (max-width: 390px) {
+  .bottom-nav .nav-icon {
+    width: 44px;
+    height: 44px;
+  }
+  .bottom-nav .nav-icon .flat-icon-svg,
+  .bottom-nav .nav-icon svg {
+    width: 27px;
+    height: 27px;
+  }
+  .bottom-nav .bottom-nav-record .nav-icon {
+    width: 60px;
+    height: 60px;
+  }
+  .bottom-nav .bottom-nav-record .nav-icon svg {
+    width: 33px;
+    height: 33px;
+  }
+}
