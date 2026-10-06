@@ -5635,3 +5635,71 @@ body { font-size: 16px; }
     border-radius: 18px;
   }
 }
+
+
+/* ===== Bottom navigation: centered primary record action ===== */
+.bottom-nav {
+  padding: 11px 10px calc(12px + env(safe-area-inset-bottom));
+  min-height: calc(82px + env(safe-area-inset-bottom));
+  align-items: end;
+}
+.bottom-nav button {
+  min-height: 62px;
+  gap: 4px;
+  font-size: 10px;
+}
+.bottom-nav .nav-icon {
+  width: 38px;
+  height: 38px;
+}
+.bottom-nav .bottom-nav-record {
+  min-height: 68px;
+  transform: translateY(-4px);
+}
+.bottom-nav .bottom-nav-record .nav-icon {
+  width: 52px;
+  height: 52px;
+  background: var(--green);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(0,134,97,.2);
+  transform: none;
+}
+.bottom-nav .bottom-nav-record .nav-icon svg {
+  width: 29px;
+  height: 29px;
+  fill: currentColor;
+  stroke: none;
+}
+.bottom-nav .bottom-nav-record > span:last-child {
+  margin-top: -1px;
+  color: var(--green-dark);
+  font-weight: 800;
+}
+.bottom-nav .bottom-nav-record:active {
+  transform: translateY(-2px) scale(.98);
+}
+.bottom-nav .bottom-nav-record:active .nav-icon {
+  box-shadow: 0 4px 12px rgba(0,134,97,.18);
+  transform: scale(.94);
+}
+.bottom-nav .bottom-nav-record.active {
+  background: transparent;
+}
+.bottom-nav .bottom-nav-record.active .nav-icon {
+  background: var(--green-dark);
+}
+
+@media (max-width: 390px) {
+  .bottom-nav {
+    padding-right: 7px;
+    padding-left: 7px;
+  }
+  .bottom-nav button {
+    min-width: 0;
+    font-size: 9px;
+  }
+  .bottom-nav .bottom-nav-record .nav-icon {
+    width: 50px;
+    height: 50px;
+  }
+}

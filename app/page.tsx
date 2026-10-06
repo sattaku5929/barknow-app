@@ -5166,8 +5166,8 @@ export default function Home() {
         </main>
         <nav className="bottom-nav" aria-label="メインメニュー">
           <button className={view === "home" ? "active" : ""} aria-current={view === "home" ? "page" : undefined} onClick={returnToOwnerHome}><Icon><NavGlyph name="home" /></Icon><span>ホーム</span></button>
-          <button className={view === "record" ? "active" : ""} aria-current={view === "record" ? "page" : undefined} onClick={() => openNewRecord()}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>
           <button className={view === "report" ? "active" : ""} aria-current={view === "report" ? "page" : undefined} onClick={() => navigateOwnerView("report")}><Icon><NavGlyph name="report" /></Icon><span>変化</span></button>
+          <button className={`bottom-nav-record ${view === "record" ? "active" : ""}`} aria-current={view === "record" ? "page" : undefined} onClick={() => openNewRecord()}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>
           <button className={view === "coach" ? "active" : ""} aria-current={view === "coach" ? "page" : undefined} onClick={() => navigateOwnerView("coach")}><Icon><NavGlyph name="coach" /></Icon><span>チャット</span></button>
           <button className={view === "profile" ? "active" : ""} aria-current={view === "profile" ? "page" : undefined} onClick={openSettingsMenu}><Icon><NavGlyph name="profile" /></Icon><span>マイページ</span></button>
         </nav>
