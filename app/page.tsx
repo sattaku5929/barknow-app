@@ -884,7 +884,7 @@ function NavGlyph({ name }: { name: "home" | "goals" | "report" | "record" | "co
     home: <path d="M3.3 11.1 12 3.8l8.7 7.3-1.7 2-1.2-1v7.2H6.2v-7.2l-1.2 1-1.7-2Zm5.7-.4v6.1h2v-3.9h2v3.9h2v-6.1L12 8.2l-3 2.5Z" />,
     goals: <><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><path className="icon-negative" d="m7.8 10.9 2.2 2.2 5-5M8 16.2h8" /></>,
     report: <><rect x="3.5" y="12" width="4" height="8" rx="2" /><rect x="10" y="5" width="4" height="15" rx="2" /><rect x="16.5" y="8.5" width="4" height="11.5" rx="2" /></>,
-    record: <><circle cx="12" cy="12" r="9" /><path className="icon-negative" d="M12 7.8v8.4M7.8 12h8.4" /></>,
+    record: <><path d="M5 3.8h9.7L19 8.1v12.1H5V3.8Z" /><path className="icon-negative" d="M14.6 4.2V8h3.9M8 11.4h5.8M8 15.1h4.2M14.9 16.9l3.2-3.2 1.5 1.5-3.2 3.2-2.1.6.6-2.1Z" /></>,
     coach: <><path d="M4.2 4.5h15.6c1.2 0 2.2 1 2.2 2.2v8.1c0 1.2-1 2.2-2.2 2.2h-8.1L6 21v-4H4.2A2.2 2.2 0 0 1 2 14.8V6.7c0-1.2 1-2.2 2.2-2.2Z" /><circle className="flat-icon-detail" cx="8" cy="10.8" r="1.2" /><circle className="flat-icon-detail" cx="12" cy="10.8" r="1.2" /><circle className="flat-icon-detail" cx="16" cy="10.8" r="1.2" /></>,
     profile: <><circle cx="12" cy="8" r="4" /><path d="M4.2 20.2c.7-4.7 3.4-7.1 7.8-7.1s7.1 2.4 7.8 7.1H4.2Z" /></>,
   };
