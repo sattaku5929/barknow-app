@@ -6106,3 +6106,78 @@ body { font-size: 16px; }
     height: 29px;
   }
 }
+
+
+/* ===== Raised but integrated Record tab ===== */
+.bottom-nav {
+  overflow: visible;
+}
+.bottom-nav .bottom-nav-record {
+  min-height: 68px;
+  padding: 5px 7px 4px;
+  transform: translateY(-10px);
+  border: 1px solid rgba(0,107,77,.10);
+  border-radius: 22px;
+  background: #eef7f3;
+  box-shadow: 0 3px 10px rgba(0,107,77,.05);
+}
+.bottom-nav .bottom-nav-record .nav-icon {
+  width: 49px;
+  height: 49px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #006B4D;
+  box-shadow: none;
+}
+.bottom-nav .bottom-nav-record .nav-icon .flat-icon-svg,
+.bottom-nav .bottom-nav-record .nav-icon svg {
+  width: 31px;
+  height: 31px;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.bottom-nav .bottom-nav-record > span:last-child {
+  margin-top: 0;
+  color: #006B4D;
+  font-size: 10px;
+  font-weight: 800;
+}
+.bottom-nav .bottom-nav-record.active {
+  border-color: rgba(0,107,77,.14);
+  background: #e6f2ed;
+  box-shadow: 0 3px 10px rgba(0,107,77,.055);
+}
+.bottom-nav .bottom-nav-record.active .nav-icon {
+  background: transparent;
+  color: #006B4D;
+  box-shadow: none;
+}
+.bottom-nav .bottom-nav-record:active {
+  transform: translateY(-10px) scale(.98);
+}
+.bottom-nav .bottom-nav-record:active .nav-icon {
+  transform: none;
+  box-shadow: none;
+}
+
+@media (max-width: 390px) {
+  .bottom-nav .bottom-nav-record {
+    min-height: 66px;
+    padding: 5px 6px 4px;
+    transform: translateY(-9px);
+    border-radius: 21px;
+  }
+  .bottom-nav .bottom-nav-record .nav-icon {
+    width: 48px;
+    height: 48px;
+  }
+  .bottom-nav .bottom-nav-record .nav-icon .flat-icon-svg,
+  .bottom-nav .bottom-nav-record .nav-icon svg {
+    width: 30px;
+    height: 30px;
+  }
+}
