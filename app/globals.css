@@ -6026,6 +6026,70 @@ body { font-size: 16px; }
   }
 }
 
+/* Home visit rhythm */
+.editorial-visit-rhythm {
+  display: grid;
+  grid-template-columns: .86fr 1.14fr;
+  margin: 0 14px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 104, 75, .08);
+  border-radius: 18px;
+  background: #f7faf8;
+}
+.editorial-visit-rhythm > div {
+  min-width: 0;
+  padding: 14px 15px;
+}
+.editorial-visit-days {
+  border-right: 1px solid rgba(0, 104, 75, .08);
+}
+.editorial-visit-rhythm span {
+  display: block;
+  color: #6f7d77;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+.editorial-visit-rhythm strong {
+  display: block;
+  margin-top: 5px;
+  color: #00684b;
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: -.04em;
+}
+.editorial-visit-rhythm strong small {
+  margin-left: 3px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+.editorial-visit-rhythm p {
+  margin: 7px 0 0;
+  color: #738079;
+  font-size: 9px;
+  line-height: 1.55;
+}
+.editorial-visit-streak {
+  background: rgba(0, 134, 97, .045);
+}
+
+@media (max-width: 390px) {
+  .editorial-visit-rhythm {
+    margin-right: 12px;
+    margin-left: 12px;
+  }
+  .editorial-visit-rhythm > div {
+    padding: 13px 12px;
+  }
+  .editorial-visit-rhythm strong {
+    font-size: 26px;
+  }
+  .editorial-visit-rhythm p {
+    font-size: 8px;
+  }
+}
+
 
 /* ===== Subtle emphasis for the centered Record tab ===== */
 .bottom-nav .bottom-nav-record {
