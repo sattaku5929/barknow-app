@@ -1100,6 +1100,7 @@ export default function Home() {
   const [adminDetailLoading, setAdminDetailLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState("");
   const [view, setView] = useState<View>("home");
+  const [appVisitStats, setAppVisitStats] = useState<{ totalDays: number; currentStreak: number } | null>(null);
   const [connection, setConnection] = useState<Connection>("checking");
   const [profile, setProfile] = useState<DogProfile>(initialProfile);
   const [dogProfileErrors, setDogProfileErrors] = useState<DogProfileErrors>({});
@@ -1427,6 +1428,30 @@ export default function Home() {
   useEffect(() => {
     if (authenticated) void refreshSubscriptionStatus();
   }, [authenticated, refreshSubscriptionStatus]);
+
+  useEffect(() => {
+    if (!authReady || !authenticated || anonymousUser || userRole !== "owner" || onboardingRequired) return;
+    let cancelled = false;
+
+    void (async () => {
+      const { data, error } = await supabase.rpc("wt_mark_app_visit");
+      if (error) {
+        console.warn("[App visit] failed to mark daily visit", { error });
+        return;
+      }
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!cancelled && row) {
+        setAppVisitStats({
+          totalDays: Number(row.total_days ?? 0),
+          currentStreak: Number(row.current_streak ?? 0),
+        });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, authenticated, anonymousUser, userRole, onboardingRequired]);
 
   useEffect(() => {
     if (!authReady || !authenticated || anonymousUser || userRole !== "owner" || onboardingRequired) return;
@@ -3804,6 +3829,21 @@ export default function Home() {
         </button>
       </section>
 
+      {appVisitStats && (
+        <section className="editorial-visit-rhythm" aria-label="WanToneの利用記録">
+          <div className="editorial-visit-days">
+            <span>WITH WAN TONE</span>
+            <strong>{appVisitStats.totalDays}<small>日</small></strong>
+            <p>WanToneを開いた日</p>
+          </div>
+          <div className="editorial-visit-streak">
+            <span>CONTINUE</span>
+            <strong>{appVisitStats.currentStreak}<small>日連続</small></strong>
+            <p>{appVisitMessage}</p>
+          </div>
+        </section>
+      )}
+
       {!profile.name && (
         <button className="profile-nudge" onClick={() => navigateOwnerView("profile")}>
           <span className="profile-nudge-mark">01</span>
@@ -4020,6 +4060,20 @@ export default function Home() {
       </section>
     </>
   );
+
+  const appVisitMessage = !appVisitStats
+    ? ""
+    : appVisitStats.currentStreak >= 30
+      ? "30日を越えました。積み重ねが、ちゃんと残っています。"
+      : appVisitStats.currentStreak >= 14
+        ? "2週間を越えました。暮らしを見る習慣になってきました。"
+        : appVisitStats.currentStreak >= 7
+          ? "1週間を越えました。とてもいいペースです。"
+          : appVisitStats.currentStreak >= 3
+            ? "いいペースです。この調子で少しずつ。"
+            : appVisitStats.currentStreak >= 2
+              ? "2日連続。いいスタートです。"
+              : "今日も来てくれてありがとう。";
 
   const focusedHomeView = (
     <div className="home-editorial">
