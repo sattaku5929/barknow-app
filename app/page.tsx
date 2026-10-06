@@ -1179,6 +1179,7 @@ export default function Home() {
   const appHistoryDepthRef = useRef(0);
   const appHistoryLayersRef = useRef<Array<{ depth: number; layer: AppHistoryLayer }>>([]);
   const appHistoryTransitioningRef = useRef(false);
+  const bottomNavScrollTargetRef = useRef<View | null>(null);
 
   const pushAppHistory = useCallback((layer: AppHistoryLayer) => {
     appHistoryTransitioningRef.current = false;
@@ -1234,6 +1235,25 @@ export default function Home() {
     setView("home");
   }, []);
 
+  const scrollOwnerPageToTop = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      });
+    });
+  }, []);
+
+  function runBottomNavAction(targetView: View, action: () => void) {
+    bottomNavScrollTargetRef.current = targetView;
+    if (targetView === view) {
+      bottomNavScrollTargetRef.current = null;
+      action();
+      scrollOwnerPageToTop();
+      return;
+    }
+    action();
+  }
+
   function navigateOwnerView(nextView: View) {
     if (nextView === view) return;
     if (nextView === "home") {
@@ -1243,6 +1263,12 @@ export default function Home() {
     pushAppHistory({ kind: "owner-view", nextView, previousView: view });
     setView(nextView);
   }
+
+  useEffect(() => {
+    if (bottomNavScrollTargetRef.current !== view) return;
+    bottomNavScrollTargetRef.current = null;
+    scrollOwnerPageToTop();
+  }, [view, scrollOwnerPageToTop]);
 
   function navigateSettingsPanel(nextPanel: SettingsPanel) {
     if (nextPanel === settingsPanel) return;
@@ -5164,11 +5190,11 @@ export default function Home() {
           {view === "profile" && profileView}
         </main>
         <nav className="bottom-nav" aria-label="メインメニュー">
-          <button className={view === "home" ? "active" : ""} aria-current={view === "home" ? "page" : undefined} onClick={returnToOwnerHome}><Icon><NavGlyph name="home" /></Icon><span>ホーム</span></button>
-          <button className={view === "report" ? "active" : ""} aria-current={view === "report" ? "page" : undefined} onClick={() => navigateOwnerView("report")}><Icon><NavGlyph name="report" /></Icon><span>変化</span></button>
-          <button className={`bottom-nav-record ${view === "record" ? "active" : ""}`} aria-current={view === "record" ? "page" : undefined} onClick={() => openNewRecord()}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>
-          <button className={view === "coach" ? "active" : ""} aria-current={view === "coach" ? "page" : undefined} onClick={() => navigateOwnerView("coach")}><Icon><NavGlyph name="coach" /></Icon><span>チャット</span></button>
-          <button className={view === "profile" ? "active" : ""} aria-current={view === "profile" ? "page" : undefined} onClick={openSettingsMenu}><Icon><NavGlyph name="profile" /></Icon><span>マイページ</span></button>
+          <button className={view === "home" ? "active" : ""} aria-current={view === "home" ? "page" : undefined} onClick={() => runBottomNavAction("home", returnToOwnerHome)}><Icon><NavGlyph name="home" /></Icon><span>ホーム</span></button>
+          <button className={view === "report" ? "active" : ""} aria-current={view === "report" ? "page" : undefined} onClick={() => runBottomNavAction("report", () => navigateOwnerView("report"))}><Icon><NavGlyph name="report" /></Icon><span>変化</span></button>
+          <button className={`bottom-nav-record ${view === "record" ? "active" : ""}`} aria-current={view === "record" ? "page" : undefined} onClick={() => runBottomNavAction("record", () => openNewRecord())}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>
+          <button className={view === "coach" ? "active" : ""} aria-current={view === "coach" ? "page" : undefined} onClick={() => runBottomNavAction("coach", () => navigateOwnerView("coach"))}><Icon><NavGlyph name="coach" /></Icon><span>チャット</span></button>
+          <button className={view === "profile" ? "active" : ""} aria-current={view === "profile" ? "page" : undefined} onClick={() => runBottomNavAction("profile", openSettingsMenu)}><Icon><NavGlyph name="profile" /></Icon><span>マイページ</span></button>
         </nav>
         {celebration && (
           <div className="celebration-backdrop" role="dialog" aria-modal="true" aria-labelledby="celebration-title" onClick={closeCelebration}>
