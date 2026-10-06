@@ -1853,6 +1853,114 @@ body { font-size: 16px; }
 .celebration-card h2 { margin:7px 0 9px; font-size:24px; }
 .celebration-card > span:not(.celebration-paw) { color:var(--muted); font-size:13px; line-height:1.75; }
 .celebration-card > button { width:100%; min-height:50px; margin-top:22px; border:0; border-radius:15px; background:var(--green-dark); color:#fff; font-size:13px; font-weight:800; }
+.birthday-celebration-backdrop {
+  position:fixed;
+  z-index:110;
+  inset:0;
+  display:grid;
+  place-items:center;
+  padding:24px;
+  background:rgba(18,35,29,.58);
+  backdrop-filter:blur(8px);
+}
+.birthday-celebration-card {
+  position:relative;
+  overflow:hidden;
+  width:min(100%,370px);
+  padding:30px 24px 23px;
+  border-radius:30px;
+  background:linear-gradient(150deg,#fffdf7,#eaf7f0);
+  text-align:center;
+  box-shadow:0 30px 80px rgba(8,44,32,.28);
+  animation:celebrate-in .35s ease-out;
+}
+.birthday-celebration-card::before,
+.birthday-celebration-card::after {
+  position:absolute;
+  content:"";
+  border-radius:50%;
+  pointer-events:none;
+}
+.birthday-celebration-card::before {
+  top:-48px;
+  right:-42px;
+  width:128px;
+  height:128px;
+  background:rgba(0,134,97,.07);
+}
+.birthday-celebration-card::after {
+  bottom:-58px;
+  left:-52px;
+  width:150px;
+  height:150px;
+  background:rgba(226,181,94,.10);
+}
+.birthday-celebration-avatar {
+  position:relative;
+  z-index:1;
+  display:grid;
+  width:78px;
+  height:78px;
+  margin:0 auto 15px;
+  overflow:hidden;
+  place-items:center;
+  border:4px solid #fff;
+  border-radius:50%;
+  background:var(--green);
+  color:#fff;
+  box-shadow:0 0 0 8px rgba(0,134,97,.08);
+  font-size:25px;
+  font-weight:850;
+}
+.birthday-celebration-avatar img {
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+.birthday-celebration-card > p {
+  position:relative;
+  z-index:1;
+  margin:0;
+  color:var(--green);
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.18em;
+}
+.birthday-celebration-card h2 {
+  position:relative;
+  z-index:1;
+  margin:8px 0 10px;
+  color:#24362f;
+  font-size:24px;
+  line-height:1.45;
+}
+.birthday-celebration-card > span {
+  position:relative;
+  z-index:1;
+  display:block;
+  color:#6f7c76;
+  font-size:12px;
+  line-height:1.8;
+}
+.birthday-celebration-card > span b {
+  color:var(--green-dark);
+  font-size:14px;
+}
+.birthday-celebration-card > button {
+  position:relative;
+  z-index:1;
+  width:100%;
+  min-height:49px;
+  margin-top:21px;
+  border:0;
+  border-radius:14px;
+  background:var(--green-dark);
+  color:#fff;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:850;
+}
+
 .notification-prompt-backdrop { position:fixed; z-index:90; inset:0; display:grid; place-items:center; padding:24px; background:rgba(18,35,29,.56); backdrop-filter:blur(8px); }
 .notification-prompt-card { width:min(100%,370px); padding:30px 24px 22px; border-radius:28px; background:#fff; text-align:center; box-shadow:0 30px 80px rgba(8,44,32,.28); }
 .notification-prompt-icon { display:grid; width:64px; height:64px; margin:0 auto 14px; place-items:center; border-radius:50%; background:#e8f5ee; font-size:27px; }
@@ -2138,6 +2246,69 @@ body { font-size: 16px; }
 .settings-user-summary strong,.settings-user-summary small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .settings-user-summary strong { font-size:14px; }
 .settings-user-summary small { margin-top:4px; color:#708078; font-size:9px; }
+
+.settings-birthday-card {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:14px;
+  margin:0 16px 14px;
+  padding:17px 16px;
+  border:1px solid rgba(0,134,97,.10);
+  border-radius:18px;
+  background:#fff;
+}
+.settings-birthday-copy { min-width:0; }
+.settings-birthday-copy > span {
+  display:block;
+  color:var(--green);
+  font-size:8px;
+  font-weight:850;
+  letter-spacing:.14em;
+}
+.settings-birthday-copy > strong {
+  display:block;
+  margin-top:6px;
+  color:#25362f;
+  font-size:16px;
+  line-height:1.45;
+}
+.settings-birthday-copy > p {
+  margin:5px 0 0;
+  color:#7b8882;
+  font-size:9px;
+  line-height:1.6;
+}
+.settings-birthday-date {
+  display:grid;
+  width:58px;
+  height:58px;
+  place-items:center;
+  align-content:center;
+  border-radius:50%;
+  background:#edf6f1;
+  color:var(--green-dark);
+  text-align:center;
+}
+.settings-birthday-date small {
+  font-size:6px;
+  font-weight:850;
+  letter-spacing:.08em;
+}
+.settings-birthday-date b {
+  margin-top:2px;
+  font-size:14px;
+  line-height:1;
+}
+.settings-birthday-card.is-birthday {
+  border-color:rgba(0,134,97,.16);
+  background:linear-gradient(135deg,#fffdf7,#edf8f2);
+}
+.settings-birthday-card.is-birthday .settings-birthday-date {
+  background:var(--green);
+  color:#fff;
+}
+
 .settings-list { border-top:1px solid #dfe4e1; border-bottom:1px solid #dfe4e1; background:#fff; }
 .settings-list > button,.settings-list > a,.settings-notification-row { display:grid; width:100%; min-height:72px; grid-template-columns:38px minmax(0,1fr) 24px; align-items:center; gap:12px; padding:12px 18px; border:0; border-bottom:1px solid #e3e7e5; background:#fff; color:#303733; text-align:left; text-decoration:none; }
 .settings-list > button,.settings-list > a { cursor:pointer; }

@@ -560,6 +560,7 @@ const RECORDS_KEY = "wan-tone-records-v1";
 const MESSAGES_KEY = "wan-tone-messages-v1";
 const PWA_INSTALL_DISMISSED_KEY = "wan-tone-pwa-install-dismissed-v1";
 const PUSH_PROMPT_SESSION_KEY = "wan-tone-push-prompt-shown-v1";
+const DOG_BIRTHDAY_POPUP_KEY = "wan-tone-dog-birthday-popup-v1";
 const CUSTOM_BEHAVIORS_KEY = "wan-tone-custom-behaviors-v1";
 const CARE_GOALS_KEY = "wan-tone-care-goals-v1";
 const GOAL_COMPLETIONS_KEY = "wan-tone-goal-completions-v1";
@@ -806,6 +807,44 @@ function ageLabel(birthDate: string) {
   let months = (year - birthYear) * 12 + month - birthMonth;
   if (day < birthDay) months -= 1;
   return `現在 ${Math.floor(months / 12)}歳${months % 12}か月`;
+}
+
+function birthdayDateForYear(year: number, month: number, day: number) {
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const safeDay = Math.min(day, lastDay);
+  return `${year}-${String(month).padStart(2, "0")}-${String(safeDay).padStart(2, "0")}`;
+}
+
+function dogBirthdayStats(birthDate: string) {
+  if (!birthDate || birthDate > today()) return null;
+  const [birthYear, birthMonth, birthDay] = birthDate.split("-").map(Number);
+  const [year] = today().split("-").map(Number);
+  if (!birthYear || !birthMonth || !birthDay || !year) return null;
+
+  const todayKey = today();
+  const born = dateKeyValue(birthDate);
+  const now = dateKeyValue(todayKey);
+  const daysAlive = Math.floor((now.getTime() - born.getTime()) / 86_400_000) + 1;
+
+  const thisBirthday = birthdayDateForYear(year, birthMonth, birthDay);
+  const nextBirthday = todayKey <= thisBirthday
+    ? thisBirthday
+    : birthdayDateForYear(year + 1, birthMonth, birthDay);
+  const daysUntilBirthday = Math.max(
+    0,
+    Math.round((dateKeyValue(nextBirthday).getTime() - now.getTime()) / 86_400_000),
+  );
+
+  let ageYears = year - birthYear;
+  if (todayKey < thisBirthday) ageYears -= 1;
+
+  return {
+    daysAlive,
+    ageYears: Math.max(0, ageYears),
+    isBirthday: todayKey === thisBirthday,
+    daysUntilBirthday,
+    nextBirthdayAge: todayKey === thisBirthday ? Math.max(0, ageYears) : Math.max(0, ageYears + 1),
+  };
 }
 
 async function resizeAvatar(file: File) {
@@ -1062,6 +1101,7 @@ export default function Home() {
   const { subscribeUser, permissionStatus, subscriptionStatus, isSubscribed, refreshSubscriptionStatus } = usePushNotification();
   const [pushBusy, setPushBusy] = useState(false);
   const [showPushPrompt, setShowPushPrompt] = useState(false);
+  const [showBirthdayCelebration, setShowBirthdayCelebration] = useState(false);
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
   const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
   const [deleteAccountError, setDeleteAccountError] = useState("");
@@ -1103,6 +1143,7 @@ export default function Home() {
   const [appVisitStats, setAppVisitStats] = useState<{ totalDays: number; currentStreak: number } | null>(null);
   const [connection, setConnection] = useState<Connection>("checking");
   const [profile, setProfile] = useState<DogProfile>(initialProfile);
+  const dogBirthday = useMemo(() => dogBirthdayStats(profile.birthday), [profile.birthday]);
   const [dogProfileErrors, setDogProfileErrors] = useState<DogProfileErrors>({});
   const [ownerProfile, setOwnerProfile] = useState<OwnerProfile>(initialOwnerProfile);
   const [onboardingRequired, setOnboardingRequired] = useState(false);
@@ -1452,6 +1493,18 @@ export default function Home() {
       cancelled = true;
     };
   }, [authReady, authenticated, anonymousUser, userRole, onboardingRequired]);
+
+  useEffect(() => {
+    if (!authReady || !authenticated || anonymousUser || userRole !== "owner" || onboardingRequired) return;
+    if (!dogBirthday?.isBirthday || !profile.name) return;
+
+    const birthdayKey = `${DOG_BIRTHDAY_POPUP_KEY}:${profile.id ?? profile.name}:${today()}`;
+    if (window.localStorage.getItem(birthdayKey) === "1") return;
+    window.localStorage.setItem(birthdayKey, "1");
+
+    const frame = window.requestAnimationFrame(() => setShowBirthdayCelebration(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [authReady, authenticated, anonymousUser, userRole, onboardingRequired, dogBirthday, profile.id, profile.name]);
 
   useEffect(() => {
     if (!authReady || !authenticated || anonymousUser || userRole !== "owner" || onboardingRequired) return;
@@ -4782,6 +4835,22 @@ export default function Home() {
         <div><strong>{profile.name ? `${profile.name}ちゃん` : "愛犬を登録してください"}</strong><small>{userEmail}</small></div>
       </div>
 
+      {dogBirthday && profile.name && (
+        <section className={`settings-birthday-card ${dogBirthday.isBirthday ? "is-birthday" : ""}`} aria-label="愛犬の誕生日">
+          <div className="settings-birthday-copy">
+            <span>{dogBirthday.isBirthday ? "HAPPY BIRTHDAY" : "BIRTHDAY MEMORY"}</span>
+            <strong>{dogBirthday.isBirthday ? `${profile.name}ちゃん、${dogBirthday.ageYears}歳おめでとう！` : `生まれてから ${dogBirthday.daysAlive.toLocaleString("ja-JP")}日目`}</strong>
+            <p>{dogBirthday.isBirthday
+              ? `今日は大切な記念日。生まれてから${dogBirthday.daysAlive.toLocaleString("ja-JP")}日目になりました。`
+              : `${ageLabel(profile.birthday)} ・ 次の${dogBirthday.nextBirthdayAge}歳のお誕生日まであと${dogBirthday.daysUntilBirthday}日`}</p>
+          </div>
+          <div className="settings-birthday-date">
+            <small>BIRTHDAY</small>
+            <b>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric" }).format(new Date(`${profile.birthday}T00:00:00+09:00`))}</b>
+          </div>
+        </section>
+      )}
+
       <section className="settings-group" aria-labelledby="settings-family-title">
         <p className="settings-group-label" id="settings-family-title">プロフィールと暮らし</p>
         <div className="settings-list">
@@ -5260,6 +5329,19 @@ export default function Home() {
               <span>{celebration.message}</span>
               <button onClick={closeCelebration}>今日のできたを喜ぶ</button>
             </div>
+          </div>
+        )}
+        {showBirthdayCelebration && dogBirthday && profile.name && (
+          <div className="birthday-celebration-backdrop" role="dialog" aria-modal="true" aria-labelledby="birthday-celebration-title" onClick={() => setShowBirthdayCelebration(false)}>
+            <section className="birthday-celebration-card" onClick={(event) => event.stopPropagation()}>
+              <div className={`birthday-celebration-avatar ${profile.avatarUrl ? "has-image" : ""}`}>
+                {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : <span>{profile.name.slice(0, 1)}</span>}
+              </div>
+              <p>HAPPY BIRTHDAY</p>
+              <h2 id="birthday-celebration-title">{profile.name}ちゃん、<br />{dogBirthday.ageYears}歳おめでとう！</h2>
+              <span>今日は大切な記念日。<br />生まれてから <b>{dogBirthday.daysAlive.toLocaleString("ja-JP")}日目</b> になりました。</span>
+              <button type="button" onClick={() => setShowBirthdayCelebration(false)}>今日も一緒に楽しもう</button>
+            </section>
           </div>
         )}
         {showPushPrompt && (
