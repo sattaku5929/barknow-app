@@ -3829,21 +3829,6 @@ export default function Home() {
         </button>
       </section>
 
-      {appVisitStats && (
-        <section className="editorial-visit-rhythm" aria-label="WanToneの利用記録">
-          <div className="editorial-visit-days">
-            <span>WITH WAN TONE</span>
-            <strong>{appVisitStats.totalDays}<small>日</small></strong>
-            <p>WanToneを開いた日</p>
-          </div>
-          <div className="editorial-visit-streak">
-            <span>CONTINUE</span>
-            <strong>{appVisitStats.currentStreak}<small>日連続</small></strong>
-            <p>{appVisitMessage}</p>
-          </div>
-        </section>
-      )}
-
       {!profile.name && (
         <button className="profile-nudge" onClick={() => navigateOwnerView("profile")}>
           <span className="profile-nudge-mark">01</span>
@@ -4094,6 +4079,21 @@ export default function Home() {
           {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : <span>{profile.name ? profile.name.slice(0, 1) : "＋"}</span>}
         </button>
       </section>
+
+      {appVisitStats && (
+        <section className="editorial-visit-rhythm" aria-label="WanToneの利用記録">
+          <div className="editorial-visit-days">
+            <span>WITH WAN TONE</span>
+            <strong>{appVisitStats.totalDays}<small>日</small></strong>
+            <p>WanToneを開いた日</p>
+          </div>
+          <div className="editorial-visit-streak">
+            <span>CONTINUE</span>
+            <strong>{appVisitStats.currentStreak}<small>日連続</small></strong>
+            <p>{appVisitMessage}</p>
+          </div>
+        </section>
+      )}
 
       {!profile.name && (
         <button className="profile-nudge editorial-profile-nudge" onClick={() => navigateOwnerView("profile")}>
