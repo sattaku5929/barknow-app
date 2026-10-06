@@ -25,6 +25,7 @@
   border: 0;
   background: transparent;
   box-shadow: none;
+  transform: translateY(-9px);
 }
 
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) .nav-icon {
@@ -67,7 +68,7 @@
   min-height: 74px;
   padding: 0;
   overflow: visible;
-  transform: none;
+  transform: translateY(-9px);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -143,7 +144,7 @@
 }
 
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record:active {
-  transform: none;
+  transform: translateY(-9px);
 }
 
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record:active .nav-icon {
