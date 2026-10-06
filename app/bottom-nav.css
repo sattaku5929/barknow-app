@@ -6,7 +6,7 @@
  */
 
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] {
-  min-height: calc(74px + env(safe-area-inset-bottom));
+  min-height: calc(84px + env(safe-area-inset-bottom));
   padding: 0 8px env(safe-area-inset-bottom);
   align-items: center;
   overflow: visible;
@@ -18,14 +18,14 @@
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button {
   position: relative;
   min-width: 0;
-  min-height: 74px;
+  min-height: 84px;
   padding: 0;
   justify-content: center;
-  gap: 3px;
+  gap: 1px;
   border: 0;
   background: transparent;
   box-shadow: none;
-  transform: translateY(-17px);
+  transform: translateY(-9px);
 }
 
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) .nav-icon {
@@ -65,10 +65,10 @@
  * At 60px with top:-25px, 25px (41.7%) sits above the bar and 35px remains inside.
  */
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record {
-  min-height: 74px;
+  min-height: 84px;
   padding: 0;
   overflow: visible;
-  transform: translateY(-17px);
+  transform: translateY(-9px);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -117,7 +117,7 @@
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record > span:last-child {
   position: absolute;
   right: 0;
-  bottom: 12px;
+  bottom: 16px;
   left: 0;
   margin: 0;
   color: #00684b;
@@ -144,7 +144,7 @@
 }
 
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record:active {
-  transform: translateY(-17px);
+  transform: translateY(-9px);
 }
 
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record:active .nav-icon {
@@ -155,14 +155,14 @@
 /* 375px */
 @media (max-width: 375px) {
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] {
-    min-height: calc(72px + env(safe-area-inset-bottom));
+    min-height: calc(82px + env(safe-area-inset-bottom));
     padding-right: 6px;
     padding-left: 6px;
   }
 
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button,
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record {
-    min-height: 72px;
+    min-height: 82px;
   }
 
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) .nav-icon {
@@ -189,7 +189,7 @@
   }
 
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record > span:last-child {
-    bottom: 11px;
+    bottom: 15px;
   }
 }
 
