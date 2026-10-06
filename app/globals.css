@@ -5958,3 +5958,81 @@ body { font-size: 16px; }
     height: 56px;
   }
 }
+
+
+/* ===== Home illustration as a framed visual block ===== */
+.editorial-home-hero {
+  min-height: 0;
+  overflow: visible;
+  padding-bottom: 18px;
+}
+.editorial-home-visual {
+  position: relative;
+  inset: auto;
+  width: auto;
+  height: auto;
+  margin: 22px 18px 0;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(0,107,77,.10);
+  border-radius: 24px;
+  background: #f7faf8;
+  box-shadow: 0 10px 26px rgba(27,52,43,.05);
+}
+.editorial-home-visual::before {
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(0,107,77,.06);
+  border-radius: 18px;
+  content: "";
+  pointer-events: none;
+}
+.editorial-home-visual::after {
+  display: none;
+}
+.editorial-home-visual .owner-scene {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 16px;
+  background: #fffdf9;
+  filter: none;
+}
+.editorial-home-metrics {
+  margin-top: 8px;
+}
+
+@media (max-width: 430px) {
+  .editorial-home-hero {
+    min-height: 0;
+    padding-bottom: 16px;
+  }
+  .editorial-home-visual {
+    margin: 18px 14px 0;
+    padding: 8px;
+    border-radius: 20px;
+  }
+  .editorial-home-visual::before {
+    inset: 7px;
+    border-radius: 15px;
+  }
+  .editorial-home-visual .owner-scene {
+    aspect-ratio: 16 / 10;
+    border-radius: 14px;
+  }
+  .editorial-home-metrics {
+    margin-top: 6px;
+  }
+}
+
+@media (max-width: 375px) {
+  .editorial-home-visual {
+    margin-right: 12px;
+    margin-left: 12px;
+  }
+}
