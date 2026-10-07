@@ -1,0 +1,181 @@
+/* Report presentation only. All rules are scoped to the owner report view. */
+.app-stage .owner-view-report {
+  --wt-living-ink: #263930;
+  --wt-living-muted: #65736b;
+  --wt-brand: #008661;
+  background: #fbfaf6;
+  color: #263930;
+  padding-top: 16px;
+}
+.app-stage:has(.owner-view-report) .owner-app-backdrop { display: none; }
+.app-stage:has(.owner-view-report) .app-header {
+  background: rgba(251,250,246,.97);
+  border-bottom: 0;
+  min-height: 72px;
+  box-shadow: none;
+}
+.app-stage:has(.owner-view-report) .wordmark strong { font-size: 28px; color: #008661; }
+.app-stage:has(.owner-view-report) .wordmark span { font-size: 9px; text-transform: uppercase; letter-spacing: .22em; }
+.app-stage:has(.owner-view-report) .owner-admin-switch { min-height: 44px; border: 1px solid #e4e9e5; }
+.app-stage .owner-view-report .report-screen { display: grid; gap: 12px; max-width: 760px; margin: 0 auto; }
+.app-stage .owner-view-report .report-screen > .section-title { margin: 0; }
+.app-stage .owner-view-report .report-screen > .section-title h1,
+.app-stage .owner-view-report .report-screen > .section-title h2 { font-size: 24px; line-height: 1.4; overflow-wrap: anywhere; }
+.app-stage .owner-view-report .card-label { color: #65736b; font-size: 10px; letter-spacing: .1em; }
+.app-stage .owner-view-report .report-screen > .lead { margin: 0; font-size: 12px; line-height: 1.7; color: #65736b; }
+.app-stage .owner-view-report .report-screen > .owner-scene-panel { display: none; }
+.app-stage .owner-view-report .recent-observation-trends { margin: 0; padding: 0; gap: 12px; border: 0; background: transparent; }
+.app-stage .owner-view-report .recent-observation-trends .insight-intro { margin: 0; padding: 4px 0 0; background: transparent; border: 0; }
+.app-stage .owner-view-report .recent-observation-trends .insight-intro h2 { margin: 4px 0; font-size: 18px; }
+.app-stage .owner-view-report .recent-observation-trends .insight-intro p { font-size: 12px; color: #65736b; line-height: 1.65; }
+.app-stage .owner-view-report .insight-at-a-glance { display: grid; gap: 12px; }
+.app-stage .owner-view-report .insight-today-card {
+  grid-template-columns: minmax(0,1fr) auto;
+  min-height: 104px;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #e5eee7;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: none;
+}
+.app-stage .owner-view-report .insight-today-card h3 { margin: 4px 0; font-size: 18px; }
+.app-stage .owner-view-report .insight-today-card p { font-size: 12px; line-height: 1.65; color: #65736b; }
+.app-stage .owner-view-report .insight-today-score { min-width: 90px; }
+.app-stage .owner-view-report .insight-today-score strong { font-size: 38px; color: #008661; font-variant-numeric: tabular-nums; }
+.app-stage .owner-view-report .insight-today-score span { margin-top: 7px; font-size: 11px; background: #edf5f0; color: #007253; }
+.app-stage .owner-view-report .recent-observation-trends .insight-weekly-hero {
+  min-height: 0;
+  padding: 16px 18px;
+  border: 1px solid #e5eee7;
+  border-left: 3px solid #008661;
+  border-radius: 18px;
+  background: #f2f7f3;
+  box-shadow: none;
+}
+.app-stage .owner-view-report .recent-observation-trends .insight-weekly-hero h3 { margin: 4px 0 6px; font-size: 13px; color: #65736b; }
+.app-stage .owner-view-report .recent-observation-trends .insight-weekly-hero > strong { max-width: none; font-size: 17px; line-height: 1.6; color: #263930; }
+.app-stage .owner-view-report .insight-section-heading { margin: 0 0 10px; gap: 10px; }
+.app-stage .owner-view-report .insight-section-heading h3 { margin: 4px 0 0; font-size: 17px; }
+.app-stage .owner-view-report .insight-week-summary { padding: 2px 0 0; }
+.app-stage .owner-view-report .insight-week-summary-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+.app-stage .owner-view-report .insight-week-summary-grid article {
+  min-height: 108px;
+  padding: 14px 16px;
+  border: 1px solid #edf0eb;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: none;
+}
+.app-stage .owner-view-report .insight-week-summary-grid small { font-size: 11px; color: #65736b; }
+.app-stage .owner-view-report .insight-week-summary-grid strong { margin-top: 6px; font-size: 30px; line-height: 1.1; color: #263930; font-variant-numeric: tabular-nums; }
+.app-stage .owner-view-report .insight-week-summary-grid strong em { font-size: 11px; color: #65736b; }
+.app-stage .owner-view-report .insight-week-summary-grid article > span:not(.insight-mini-progress) { margin-top: 6px; font-size: 11px; color: #65736b; line-height: 1.5; }
+.app-stage .owner-view-report .insight-mini-progress { height: 6px; margin-top: 10px; background: #e9efec; }
+.app-stage .owner-view-report .insight-mini-progress i { background: #008661; }
+.app-stage .owner-view-report .insight-discovery-overview .insight-card-stack { grid-template-columns: 1fr; gap: 8px; }
+.app-stage .owner-view-report .insight-discovery-overview .insight-card {
+  padding: 16px;
+  border: 1px solid #edf0eb;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: none;
+}
+.app-stage .owner-view-report .insight-card-kicker { margin-bottom: 6px; color: #007253; font-size: 10px; }
+.app-stage .owner-view-report .insight-discovery-overview .insight-card h4 { margin: 0 0 6px; font-size: 15px; }
+.app-stage .owner-view-report .insight-discovery-overview .insight-card p {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  margin: 0;
+  color: #263930;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.7;
+}
+.app-stage .owner-view-report .insight-discovery-overview .insight-card small { display: block; margin-top: 8px; color: #65736b; font-size: 11px; line-height: 1.6; }
+.app-stage .owner-view-report .insight-discovery-overview .insight-card button { min-height: 44px; margin-top: 8px; padding: 8px 0; color: #007253; font-size: 12px; }
+.app-stage .owner-view-report .insight-record-entry--compact {
+  grid-template-columns: minmax(0,1fr) auto;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid #edf0eb;
+  border-radius: 18px;
+  background: #fff;
+}
+.app-stage .owner-view-report .insight-record-entry--compact h3 { font-size: 16px; }
+.app-stage .owner-view-report .insight-record-entry--compact p { display: block; font-size: 11px; line-height: 1.6; color: #65736b; }
+.app-stage .owner-view-report .insight-record-entry--compact button { min-height: 44px; padding: 8px 12px; background: #edf5f0; color: #007253; font-size: 12px; }
+.app-stage .owner-view-report .insight-deep-dive,
+.app-stage .owner-view-report .report-deep-dive { margin: 0; border: 1px solid #edf0eb; border-radius: 18px; background: #fff; }
+.app-stage .owner-view-report .insight-deep-dive > summary,
+.app-stage .owner-view-report .report-deep-dive > summary { min-height: 64px; padding: 14px 16px; }
+.app-stage .owner-view-report .insight-deep-dive > summary strong,
+.app-stage .owner-view-report .report-deep-dive > summary strong { font-size: 14px; }
+.app-stage .owner-view-report .insight-deep-dive > summary small,
+.app-stage .owner-view-report .report-deep-dive > summary small { font-size: 11px; color: #65736b; line-height: 1.5; }
+.app-stage .owner-view-report .insight-deep-dive-body,
+.app-stage .owner-view-report .report-deep-dive-body { gap: 12px; padding: 0 12px 12px; }
+.app-stage .owner-view-report .insight-trend-chart,
+.app-stage .owner-view-report .insight-theme-card,
+.app-stage .owner-view-report .insight-daily-card,
+.app-stage .owner-view-report .insight-handler-card,
+.app-stage .owner-view-report .insight-empty-state,
+.app-stage .owner-view-report .insight-record-list,
+.app-stage .owner-view-report .insight-detail-disclosure,
+.app-stage .owner-view-report .report-condition,
+.app-stage .owner-view-report .wellbeing-analysis,
+.app-stage .owner-view-report .report-calendar,
+.app-stage .owner-view-report .trend-card,
+.app-stage .owner-view-report .report-detail {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #edf0eb;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: none;
+}
+.app-stage .owner-view-report .insight-section-intro,
+.app-stage .owner-view-report .insight-empty-state p { color: #65736b; font-size: 12px; line-height: 1.7; }
+.app-stage .owner-view-report .insight-metric-tabs { gap: 6px; flex-wrap: wrap; }
+.app-stage .owner-view-report .insight-metric-tabs button,
+.app-stage .owner-view-report .report-filter button { min-height: 44px; padding: 8px 12px; border: 1px solid #e4e9e5; border-radius: 999px; background: #fff; color: #65736b; font-size: 12px; }
+.app-stage .owner-view-report .insight-metric-tabs button.is-selected,
+.app-stage .owner-view-report .report-filter button.is-selected { border-color: #008661; background: #edf5f0; color: #007253; }
+.app-stage .owner-view-report .insight-chart-average strong { font-size: 28px; color: #008661; }
+.app-stage .owner-view-report .insight-chart-grid { stroke: #e9efec; }
+.app-stage .owner-view-report .insight-chart-line { stroke: #008661; }
+.app-stage .owner-view-report .insight-chart-point { fill: #008661; }
+.app-stage .owner-view-report .insight-theme-breakdown { gap: 8px; }
+.app-stage .owner-view-report .insight-theme-breakdown span { min-width: 0; font-size: 11px; line-height: 1.6; }
+.app-stage .owner-view-report .insight-theme-breakdown b { font-size: 18px; }
+.app-stage .owner-view-report .insight-coach-cta { margin: 0; padding: 16px; border: 1px solid #e5eee7; border-radius: 18px; background: #f2f7f3; }
+.app-stage .owner-view-report .recent-observation-trends .insight-coach-cta h3 { font-size: 16px; }
+.app-stage .owner-view-report .recent-observation-trends .insight-coach-cta p { font-size: 12px; line-height: 1.65; color: #65736b; }
+.app-stage .owner-view-report .insight-coach-cta button { min-height: 44px; border-radius: 999px; background: #008661; color: #fff; font-size: 13px; }
+.app-stage .owner-view-report .insight-coach-cta > small { display: block; margin-top: 8px; font-size: 11px; line-height: 1.6; color: #65736b; }
+.app-stage .owner-view-report .recent-observation-trends > p[role] { margin: 0; padding: 18px; border: 1px solid #edf0eb; border-radius: 18px; background: #fff; font-size: 13px; line-height: 1.7; }
+.app-stage .owner-view-report .recent-observation-trends > p[role="alert"] { border-color: #c2a890; }
+.app-stage .owner-view-report .wellbeing-metric { padding: 14px; border: 1px solid #edf0eb; border-radius: 16px; background: #fbfaf6; }
+.app-stage .owner-view-report .wellbeing-metric-score strong { font-size: 30px; }
+.app-stage .owner-view-report .report-note { margin: 0; color: #65736b; font-size: 11px; line-height: 1.7; }
+.app-stage .owner-view-report button:focus-visible,
+.app-stage .owner-view-report summary:focus-visible { outline: 2px solid #008661; outline-offset: 3px; }
+@media (max-width: 430px) {
+  .app-stage .owner-view-report { padding-right: 16px; padding-left: 16px; }
+}
+@media (max-width: 375px) {
+  .app-stage .owner-view-report { padding-right: 12px; padding-left: 12px; }
+  .app-stage .owner-view-report .insight-today-card { padding: 16px; }
+  .app-stage .owner-view-report .insight-week-summary-grid article { padding: 12px 14px; }
+}
+@media (max-width: 340px) {
+  .app-stage .owner-view-report .insight-record-entry--compact { grid-template-columns: 1fr; }
+  .app-stage .owner-view-report .insight-today-card { gap: 8px; }
+  .app-stage .owner-view-report .insight-today-score { min-width: 75px; }
+  .app-stage .owner-view-report .insight-theme-breakdown { grid-template-columns: 1fr; }
+}
+@media (min-width: 700px) {
+  .app-stage .owner-view-report .insight-week-summary-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  .app-stage .owner-view-report .insight-discovery-overview .insight-card-stack { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
