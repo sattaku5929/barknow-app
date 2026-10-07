@@ -7,6 +7,7 @@
     "build": "next build",
     "test:insights": "node --experimental-strip-types --test tests/insightRules.test.mjs && node tests/observationTrends.sql.test.mjs && node tests/observationEventIntensity.sql.test.mjs",
     "test:observations": "node tests/observationSoftDelete.sql.test.mjs && node --test tests/observationSoftDeleteAlignment.sql.test.mjs",
+    "test:calendar": "node --experimental-strip-types --test tests/calendarModel.test.mjs && node tests/calendarEvents.sql.test.mjs && node tests/calendarUI.test.cjs",
     "start": "next start",
     "lint": "eslint"
   },

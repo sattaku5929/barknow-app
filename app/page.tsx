@@ -14,6 +14,9 @@ import RecentObservationTrends from "@/components/insights/RecentObservationTren
 import CoachAssignedDogStats from "@/components/insights/CoachAssignedDogStats";
 import CoachObservationSummary from "@/components/insights/CoachObservationSummary";
 import OwnerHomeLifestyle from "@/components/owner/OwnerHomeLifestyle";
+import HomeCalendar from "@/components/owner/HomeCalendar";
+import HomeCareGroups, { carePeriods } from "@/components/owner/HomeCareGroups";
+import { periodStart } from "@/lib/calendar/model";
 import OwnerAppBackdrop from "@/components/owner/OwnerAppBackdrop";
 import OwnerHomeScene from "@/components/owner/illustrations/OwnerHomeScene";
 import OwnerRecordScene from "@/components/owner/illustrations/OwnerRecordScene";
@@ -721,14 +724,7 @@ function goalFrequency(goal: Pick<CareGoal, "targetCount" | "period">) {
 }
 
 function goalPeriodStart(period: GoalPeriod) {
-  const value = new Date(`${today()}T00:00:00+09:00`);
-  if (period === "week") {
-    const day = value.getDay();
-    value.setDate(value.getDate() - (day === 0 ? 6 : day - 1));
-  } else if (period === "month") {
-    value.setDate(1);
-  }
-  return value.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+  return periodStart(period, today());
 }
 
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
@@ -1171,6 +1167,7 @@ export default function Home() {
   const [todayEvents, setTodayEvents] = useState<ObservationEvent[]>([]);
   const [eventStatus, setEventStatus] = useState<"loading" | "ready" | "unavailable">("loading");
   const [eventRefresh, setEventRefresh] = useState(0);
+  const [calendarRefresh, setCalendarRefresh] = useState(0);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [durationMinutes, setDurationMinutes] = useState(20);
   const [behaviorTypes, setBehaviorTypes] = useState<BehaviorType[]>(["barking"]);
@@ -1673,9 +1670,11 @@ export default function Home() {
   const todaysRecord = records.find((record) => record.recordedOn === today());
   const dogName = profile.name || "愛犬";
   const goalProgress = (goal: CareGoal) => goalCompletions.filter(
-    (completion) => completion.goalId === goal.id && completion.completedOn >= goalPeriodStart(goal.period),
+    (completion) => completion.goalId === goal.id && completion.completedOn >= goalPeriodStart(goal.period) && completion.completedOn <= today(),
   ).length;
   const completedGoalCount = careGoals.filter((goal) => goalProgress(goal) >= goal.targetCount).length;
+  const dailyGoals = careGoals.filter((goal) => goal.period === "day");
+  const completedDailyGoalCount = dailyGoals.filter((goal) => goalProgress(goal) >= goal.targetCount).length;
   const nextCareGoals = careGoals.filter((goal) => goalProgress(goal) < goal.targetCount);
   const recentDays = useMemo(() => {
     const base = new Date(`${today()}T00:00:00+09:00`);
@@ -4146,7 +4145,7 @@ export default function Home() {
         </button>
         <button onClick={() => navigateOwnerView("goals")}>
           <span className="home-v3-summary-icon is-care"><NavGlyph name="goals" /></span>
-          <span><small>今日のお世話</small><strong>{completedGoalCount}<em>/{careGoals.length || "–"}</em></strong></span>
+          <span><small>今日のお世話</small><strong>{completedDailyGoalCount}<em>/{dailyGoals.length || "–"}</em></strong></span>
           <b aria-hidden="true">›</b>
         </button>
         <button onClick={() => navigateOwnerView("report")}>
@@ -4168,41 +4167,8 @@ export default function Home() {
         <span className="home-v3-daily-icon" aria-hidden="true"><TopicIcon name="daily" /></span>
       </section>
 
-      <section className="home-v3-care" aria-labelledby="home-v3-care-title">
-        <header>
-          <div className="home-v3-care-title">
-            <span className="home-v3-care-mark"><CareIcon name="paws" /></span>
-            <div><small>TODAY&apos;S CARE</small><h2 id="home-v3-care-title">今日のお世話</h2></div>
-          </div>
-          <div className="home-v3-care-progress">
-            <strong>{completedGoalCount}<small> / {careGoals.length || "–"} 完了</small></strong>
-            <span><i style={{ width: careGoals.length ? `${Math.min(100, (completedGoalCount / careGoals.length) * 100)}%` : "0%" }}></i></span>
-          </div>
-        </header>
-
-        {careGoals.length === 0 ? (
-          <button className="home-v3-care-empty" onClick={() => navigateOwnerView("goals")}>
-            <span><strong>お世話の目標を決める</strong><small>歯磨きやブラッシングなどから始められます。</small></span>
-            <b aria-hidden="true">→</b>
-          </button>
-        ) : (
-          <div className="home-v3-care-grid">
-            {careGoals.slice(0, 4).map((goal) => {
-              const progress = goalProgress(goal);
-              const done = progress >= goal.targetCount;
-              return (
-                <article className={done ? "is-done" : ""} key={goal.id}>
-                  <span className="home-v3-care-icon"><CareIcon name={goal.goalType} /></span>
-                  <strong>{goal.title}</strong>
-                  <small>{goalFrequency(goal)} · {Math.min(progress, goal.targetCount)}/{goal.targetCount}</small>
-                  <button type="button" onClick={() => void completeCareGoal(goal)} disabled={done}>{done ? "✓ 完了" : "○ できた"}</button>
-                </article>
-              );
-            })}
-          </div>
-        )}
-        <button className="home-v3-care-manage" onClick={() => navigateOwnerView("goals")}>目標とお知らせを編集する <span aria-hidden="true">→</span></button>
-      </section>
+      <HomeCareGroups goals={careGoals} progress={goalProgress} onComplete={async (goal) => { await completeCareGoal(goal); setCalendarRefresh(value => value + 1); }} onManage={() => navigateOwnerView("goals")} icon={(goal) => <CareIcon name={goal.goalType} />} />
+      <HomeCalendar key={profile.id ?? "no-dog"} dogId={profile.id} dogName={dogName} birthday={profile.birthday} online={connection === "online"} today={today()} refreshToken={`${eventRefresh}:${checkRefresh}:${calendarRefresh}:${records.length}`} onRecord={(date, kind, note) => { openNewRecord(kind); setRecordDate(date); if (kind === "win") setGoodMoment(note ?? ""); }} />
 
       <section className="home-v3-shortcuts" aria-label="ショートカット">
         <button onClick={() => openNewRecord()} disabled={connection !== "online" || !profile.id}>
@@ -4350,8 +4316,10 @@ export default function Home() {
       {careGoals.length > 0 && (
         <section className="active-goals">
           <div className="goal-section-head"><div><p className="card-label">MY ROUTINE</p><h2>決めた習慣</h2></div></div>
+          {carePeriods.filter((group) => careGoals.some((goal) => goal.period === group.key)).map((group) => <section className="managed-care-period" key={group.key}>
+          <h3>{group.title}</h3><p>{group.hint}</p>
           <div className="active-goal-list">
-            {careGoals.map((goal) => {
+            {careGoals.filter((goal) => goal.period === group.key).map((goal) => {
               const progress = goalProgress(goal);
               const done = progress >= goal.targetCount;
               const percent = Math.min(100, (progress / goal.targetCount) * 100);
@@ -4376,6 +4344,7 @@ export default function Home() {
               );
             })}
           </div>
+          </section>)}
         </section>
       )}
 
