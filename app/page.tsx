@@ -18,6 +18,7 @@ import HomeCalendar from "@/components/owner/HomeCalendar";
 import HomeCareGroups, { carePeriods } from "@/components/owner/HomeCareGroups";
 import { careDate, careProgress, subscribeCareDate } from "@/lib/care/clock";
 import type { CareGoal as EditableCareGoal, CareTemplate, CareGoalType } from "@/lib/care/model";
+import { useScrollNavigation } from "@/lib/ui/useScrollNavigation";
 import { archiveCareGoal, changeCareCount, changeCareIcon, createCareGoal } from "@/lib/care/mutations";
 import OwnerAppBackdrop from "@/components/owner/OwnerAppBackdrop";
 import OwnerHomeScene from "@/components/owner/illustrations/OwnerHomeScene";
@@ -1292,6 +1293,8 @@ export default function Home() {
     }
     setView("home");
   }, []);
+
+  const bottomNavigation = useScrollNavigation(view);
 
   const scrollOwnerPageToTop = useCallback(() => {
     window.requestAnimationFrame(() => {
@@ -5329,7 +5332,7 @@ export default function Home() {
           {view === "coach" && coachView}
           {view === "profile" && profileView}
         </main>
-        <nav className="bottom-nav" aria-label="メインメニュー">
+        <nav ref={bottomNavigation.navRef} className={`bottom-nav ${bottomNavigation.hidden ? "bottom-nav-hidden" : ""}`} aria-label="メインメニュー" inert={bottomNavigation.hidden} onFocusCapture={bottomNavigation.show}>
           <button className={view === "home" ? "active" : ""} aria-current={view === "home" ? "page" : undefined} onClick={() => runBottomNavAction("home", returnToOwnerHome)}><Icon><NavGlyph name="home" /></Icon><span>ホーム</span></button>
           <button className={view === "report" ? "active" : ""} aria-current={view === "report" ? "page" : undefined} onClick={() => runBottomNavAction("report", () => navigateOwnerView("report"))}><Icon><NavGlyph name="report" /></Icon><span>変化</span></button>
           <button className={`bottom-nav-record ${view === "record" ? "active" : ""}`} aria-current={view === "record" ? "page" : undefined} onClick={() => runBottomNavAction("record", () => openNewRecord())}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>

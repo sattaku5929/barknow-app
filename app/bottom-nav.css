@@ -117,7 +117,7 @@
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record > span:last-child {
   position: absolute;
   right: 0;
-  bottom: 14px;
+  bottom: 6px;
   left: 0;
   margin: 0;
   color: #00684b;
@@ -189,7 +189,7 @@
   }
 
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record > span:last-child {
-    bottom: 13px;
+    bottom: 5px;
   }
 }
 
@@ -208,5 +208,22 @@
     top: -1px;
     width: 60px;
     height: 60px;
+  }
+}
+
+/* Hide the whole bar, including the raised Record circle, without moving content. */
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] {
+  transition: transform .2s ease, opacity .2s ease, visibility 0s;
+}
+.app-stage .app-shell nav.bottom-nav.bottom-nav-hidden[aria-label="メインメニュー"] {
+  transform: translateY(calc(100% + 28px));
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform .2s ease, opacity .2s ease, visibility 0s .2s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] {
+    transition: none;
   }
 }
