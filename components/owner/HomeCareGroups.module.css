@@ -75,3 +75,5 @@
 .iconDetails summary { display:flex; align-items:center; gap:9px; min-height:48px; padding:8px 10px; border:1px solid #dce6d5; border-radius:11px; font-size:12px; cursor:pointer; }
 .iconDetails summary small { display:block; margin-top:3px; font-size:10px; color:#008661; }
 .iconDetails summary:focus-visible { outline:3px solid #008661; outline-offset:3px; }
+.iconOption .icon { grid-area:auto; }
+.iconOption > span:last-child { text-align:center; overflow-wrap:anywhere; }
