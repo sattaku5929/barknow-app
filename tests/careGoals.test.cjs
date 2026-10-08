@@ -25,6 +25,9 @@ const client=createClient("https://test.invalid","publishable-test-key",{auth:{p
   const result=await createCareGoal(client,scope,goal);assert.equal(result.reminderTime,"19:00");
   const create=calls.pop();assert.equal(create.method,"POST");assert.equal(create.body.id,"goal");assert.equal(create.body.title,"歯磨き");assert.equal(create.url.searchParams.get("on_conflict"),"id");
   await changeCareCount(client,scope,"goal",3);const change=calls.pop();assert.equal(change.method,"PATCH");assert.deepEqual(change.body,{target_count:3});
+  await changeCareCount(client,scope,"goal",3,"08:30");assert.deepEqual(calls.pop().body,{target_count:3,reminder_time:"08:30"});
+  await changeCareCount(client,scope,"goal",3,null);assert.deepEqual(calls.pop().body,{target_count:3,reminder_time:null});
+  const beforeInvalidTime=calls.length;await assert.rejects(changeCareCount(client,scope,"goal",3,"25:90"),/時間/);assert.equal(calls.length,beforeInvalidTime);
   for(const [field,value]of Object.entries({id:"eq.goal",owner_id:"eq.owner",dog_id:"eq.dog",active:"eq.true"}))assert.equal(change.url.searchParams.get(field),value);
   await archiveCareGoal(client,scope,"goal");const archive=calls.pop();assert.equal(archive.method,"PATCH");assert.deepEqual(archive.body,{active:false});assert.ok(!calls.some(c=>c.method==="DELETE"));
   const before=calls.length;await assert.rejects(changeCareCount(client,scope,"goal",1.5),/整数/);assert.equal(calls.length,before);
