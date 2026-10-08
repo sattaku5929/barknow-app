@@ -60,7 +60,11 @@ for(const count of [1,2,3,4,8,9,20,40]) {
   assert.doesNotMatch(html,/もっと見る|保存中|今日のできたを/);
 }
 const Editor=load("components/owner/HomeCareEditor.tsx").default;
-const editorHtml=renderToStaticMarkup(React.createElement(Editor,{period:"day",goals:[{id:"existing",title:"歯磨き",period:"day",targetCount:2}],templates:[{title:"ブラッシング",period:"week",targetCount:3}],editable:true,progress:()=>1,icon:()=>null,onCreate:async()=>true,onCountChange:async()=>{},onRemove:async()=>{},onClose:()=>{}}));
+const editorHtml=renderToStaticMarkup(React.createElement(Editor,{period:"day",goals:[{id:"existing",title:"歯磨き",goalType:"teeth",period:"day",targetCount:2}],templates:[{title:"ブラッシング",period:"week",targetCount:3}],editable:true,progress:()=>1,icon:()=>null,onCreate:async()=>true,onCountChange:async()=>{},onRemove:async()=>{},onClose:()=>{}}));
+assert.match(editorHtml,/追加する項目のアイコン/);assert.match(editorHtml,/歯磨きのアイコン/);
+assert.equal((editorHtml.match(/type="radio"/g)||[]).length,64);
+for(const label of ["散歩","ノーズワーク","予防接種","保育園","誕生日"])assert.match(editorHtml,new RegExp(label));
+assert.match(editorHtml,/checked="" value="teeth"/);
 assert.match(editorHtml,/毎日やることの設定/);assert.match(editorHtml,/歯磨きの目標回数/);assert.match(editorHtml,/min="1" max="31" step="1"/);assert.match(editorHtml,/やることを追加/);assert.match(editorHtml,/歯磨きを一覧から外す/);assert.match(editorHtml,/歯磨きのお知らせ時間/);
 const calendarHtml = renderToStaticMarkup(React.createElement(Calendar,{dogId:"dog",dogName:"はな",birthday:"2020-10-07",online:false,today:"2026-10-07",refreshToken:"0",onRecord:()=>{throw new Error("Unexpected navigation");}}));
 assert.match(calendarHtml,/愛犬とのカレンダー/); assert.match(calendarHtml,/はなちゃんの誕生日/);

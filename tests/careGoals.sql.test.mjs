@@ -6,7 +6,13 @@ const owner="00000000-0000-0000-0000-000000000001",other="00000000-0000-0000-000
 await db.exec(`create schema auth;create role authenticated;create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;create table public.wt_dogs(id uuid primary key);insert into auth.users values('${owner}'),('${other}');insert into wt_dogs values('${dog}');`);
 await db.exec(await readFile(new URL("../supabase/legacy_migrations/007_care_goals.sql",import.meta.url),"utf8"));
 await db.exec(`grant select,insert,update on wt_care_goals,wt_care_goal_completions to authenticated;insert into wt_care_goals(id,owner_id,dog_id,title,goal_type,target_count,period,reminder_time) values('${goal}','${owner}','${dog}','歯磨き','teeth',2,'day','19:00');insert into wt_care_goal_completions(goal_id,owner_id,dog_id,completed_on) values('${goal}','${owner}','${dog}','2026-10-08');set role authenticated;select set_config('request.jwt.claim.sub','${owner}',false);`);
+await db.exec("reset role");
+await db.exec(await readFile(new URL("../supabase/migrations/20261008151920_care_icon_choices.sql",import.meta.url),"utf8"));
+await db.exec("set role authenticated");
 const before=(await db.query("select * from wt_care_goal_completions")).rows;
+for(const icon of ["brush", "teeth", "paws", "bath", "nails", "ears", "training", "custom", "walk", "meal", "water", "toilet", "sleep", "home", "ball", "toy", "nose", "book", "star", "people", "hospital", "medicine", "vaccine", "weight", "temperature", "shield", "car", "travel", "school", "park", "birthday", "camera"])await db.exec(`update wt_care_goals set goal_type='${icon}'`);
+await assert.rejects(db.exec("update wt_care_goals set goal_type='unknown'"),/check constraint/);
+assert.deepEqual((await db.query("select * from wt_care_goal_completions")).rows,before);
 await db.exec("update wt_care_goals set target_count=3");
 assert.deepEqual((await db.query("select target_count,period,reminder_time from wt_care_goals")).rows,[{target_count:3,period:"day",reminder_time:"19:00:00"}]);
 for(const value of [0,32])await assert.rejects(db.exec(`update wt_care_goals set target_count=${value}`),/check constraint/);
@@ -14,6 +20,6 @@ await db.exec("update wt_care_goals set target_count=1;update wt_care_goals set 
 assert.deepEqual((await db.query("select * from wt_care_goal_completions")).rows,before);
 assert.equal((await db.query("select g.title from wt_care_goal_completions c join wt_care_goals g on g.id=c.goal_id")).rows[0].title,"歯磨き");
 await db.exec(`select set_config('request.jwt.claim.sub','${other}',false);`);
-assert.equal((await db.query("update wt_care_goals set target_count=5 returning id")).rows.length,0);
+assert.equal((await db.query("update wt_care_goals set target_count=5,goal_type='walk' returning id")).rows.length,0);
 assert.equal((await db.query("select * from wt_care_goal_completions")).rows.length,0);
 await db.close();console.log("Existing care schema: count edits, constraints, calendar history after archive and owner isolation passed.");

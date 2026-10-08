@@ -6,7 +6,7 @@ function load(file) {
   const code=ts.transpileModule(fs.readFileSync(require("node:path").join(__dirname,"../lib/care/",file),"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
   const module={exports:{}};new Function("require","module","exports",code)(name=>name==="./model"?load("model.ts"):require(name),module,module.exports);return module.exports;
 }
-const {careLayout,careState,validTargetCount,careGoalError}=load("model.ts");
+const {careLayout,careState,validTargetCount,careGoalError,careIconOptions}=load("model.ts");
 const {createCareGoal,changeCareCount,archiveCareGoal}=load("mutations.ts");
 const row={id:"goal",title:"歯磨き",goal_type:"teeth",target_count:2,period:"day",reminder_time:"19:00:00",created_at:"2026-10-01T00:00:00Z"};
 const scope={ownerId:"owner",dogId:"dog"};
@@ -22,6 +22,15 @@ const client=createClient("https://test.invalid","publishable-test-key",{auth:{p
   assert.equal(careState("day",2,2),"完了");assert.equal(careState("week",2,2),"達成");assert.equal(careState("day",1,3),"1/3");
   const goal={id:"goal",title:" 歯磨き ",goalType:"teeth",targetCount:2,period:"day",reminderTime:"19:00",createdAt:row.created_at};
   assert.equal(careGoalError(goal),null);assert.ok(careGoalError({...goal,title:" "}));assert.ok(careGoalError({...goal,targetCount:1.5}));
+  assert.equal(careIconOptions.length,32);
+  for(const option of careIconOptions){
+    const chosen={...goal,goalType:option.value};
+    assert.equal(careGoalError(chosen),null);
+    await createCareGoal(client,scope,chosen);assert.equal(calls.pop().body.goal_type,option.value);
+    await changeCareCount(client,scope,"goal",2,"19:00",option.value);
+    assert.deepEqual(calls.pop().body,{target_count:2,reminder_time:"19:00",goal_type:option.value});
+  }
+  const beforeInvalidIcon=calls.length;await assert.rejects(changeCareCount(client,scope,"goal",2,null,"unknown"),/アイコン/);assert.equal(calls.length,beforeInvalidIcon);
   const result=await createCareGoal(client,scope,goal);assert.equal(result.reminderTime,"19:00");
   const create=calls.pop();assert.equal(create.method,"POST");assert.equal(create.body.id,"goal");assert.equal(create.body.title,"歯磨き");assert.equal(create.url.searchParams.get("on_conflict"),"id");
   await changeCareCount(client,scope,"goal",3);const change=calls.pop();assert.equal(change.method,"PATCH");assert.deepEqual(change.body,{target_count:3});
