@@ -2,18 +2,23 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// Ignore small touch jitter and clamp iOS overscroll to the document bounds.
+// Follow scroll distance rather than toggling visibility at a direction threshold.
+const FADE_DISTANCE = 160;
+
 export function useScrollNavigation(view: string) {
-  const [state, setState] = useState({ view, hidden: false });
-  if (state.view !== view) setState({ view, hidden: false });
+  const [state, setState] = useState({ view, progress: 0 });
+  if (state.view !== view) setState({ view, progress: 0 });
+  const progressRef = useRef(0);
   const navRef = useRef<HTMLElement>(null);
-  const show = useCallback(() => setState({ view, hidden: false }), [view]);
+  const show = useCallback(() => {
+    progressRef.current = 0;
+    setState({ view, progress: 0 });
+  }, [view]);
 
   useEffect(() => {
+    progressRef.current = 0;
     let previous = position();
-    let distance = 0;
     let frame = 0;
-    let hidden = false;
     function position() {
       const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
       return Math.min(max, Math.max(0, window.scrollY));
@@ -23,15 +28,11 @@ export function useScrollNavigation(view: string) {
       const current = position();
       const delta = current - previous;
       previous = current;
-      if (current <= 12 || navRef.current?.querySelector(":focus-visible")) {
-        distance = 0;
-        hidden = false;
-      } else if (delta !== 0) {
-        distance = Math.sign(delta) === Math.sign(distance) ? distance + delta : delta;
-        if (distance >= 12) hidden = true;
-        if (distance <= -8) hidden = false;
-      }
-      setState(old => old.view === view && old.hidden === hidden ? old : { view, hidden });
+      const progress = current <= 12 || navRef.current?.querySelector(":focus-visible")
+        ? 0
+        : Math.min(1, Math.max(0, progressRef.current + delta / FADE_DISTANCE));
+      progressRef.current = progress;
+      setState(old => old.view === view && old.progress === progress ? old : { view, progress });
     }
     function scroll() {
       if (!frame) frame = window.requestAnimationFrame(update);
@@ -43,5 +44,6 @@ export function useScrollNavigation(view: string) {
     };
   }, [view]);
 
-  return { hidden: state.view === view && state.hidden, navRef, show };
+  const progress = state.view === view ? state.progress : 0;
+  return { progress, hidden: progress >= 1, navRef, show };
 }
