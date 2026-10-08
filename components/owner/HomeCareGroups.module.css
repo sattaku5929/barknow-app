@@ -1,10 +1,6 @@
-.groups { display:grid; gap:0; min-width:0; border:1px solid #e9eee7; border-radius:22px; background:#fff; overflow:hidden; }
-.periodSwitch { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; padding:5px; margin:14px 14px 0; border-radius:12px; background:#f2f5ef; }
-.groups .periodSwitch button { min-height:44px; border:0; border-radius:9px; background:transparent; color:#6a7b71; font-size:12px; font-weight:600; }
-.groups .periodSwitch button[aria-pressed="true"] { background:#008661; color:#fff; }
+.groups { display:grid; gap:12px; min-width:0; }
 .resetHint { margin:-3px 0 12px; font-size:10px; color:#7c8a7f; }
-.group { padding:14px; border:0; border-bottom:1px solid #e9eee7; background:transparent; color:#263f34; min-width:0; }
-.group:last-of-type { border-bottom:0; }
+.group { padding:14px; border:1px solid #e9eee7; border-radius:22px; background:#fff; color:#263f34; min-width:0; }
 .header { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
 .header > div { display:flex; flex-wrap:wrap; align-items:baseline; gap:5px 10px; min-width:0; }
 .header h2 { font-size:17px; line-height:1.4; margin:0; }
@@ -56,4 +52,11 @@
 .dialog .remove,.dialog .apply,.dialog .presets button { font-size:11px; }
 .dialog .confirm button { font-size:12px; }.dialog .add,.dialog .finish { font-size:13px; font-weight:600; }
 @media(min-width:600px) { .tiles,.dense { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+/* Only the period is a card; its tasks are compact, unframed rows. */
+.groups .items { gap:0 10px; }
+.groups .cards { grid-template-columns:1fr; }
+.groups .items .item { grid-template-columns:24px minmax(0,1fr) auto; grid-template-areas:"icon title state"; align-content:center; justify-items:start; gap:8px; min-height:48px; padding:9px 0; border:0; border-bottom:1px solid #edf1e8; border-radius:0; background:transparent; text-align:left; }
+.groups .items .item strong { grid-area:title; }
+.groups .items .icon { grid-area:icon; width:24px; height:24px; }
+.groups .items .state { grid-area:state; justify-self:end; }
 @media(max-width:360px) { .group { padding:12px; }.header h2 { font-size:16px; }.cards .item { padding:10px 5px; }.dialog { padding:18px 12px; }.dialogHeader h2 { font-size:17px; }.editRow { padding:10px; }.rowCount { gap:5px; }.counter button { min-width:34px; }.apply { padding:0 7px; } }
