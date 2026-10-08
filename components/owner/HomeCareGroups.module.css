@@ -1,4 +1,8 @@
 .groups { display:grid; gap:0; min-width:0; border:1px solid #e9eee7; border-radius:22px; background:#fff; overflow:hidden; }
+.periodSwitch { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; padding:5px; margin:14px 14px 0; border-radius:12px; background:#f2f5ef; }
+.groups .periodSwitch button { min-height:44px; border:0; border-radius:9px; background:transparent; color:#6a7b71; font-size:12px; font-weight:600; }
+.groups .periodSwitch button[aria-pressed="true"] { background:#008661; color:#fff; }
+.resetHint { margin:-3px 0 12px; font-size:10px; color:#7c8a7f; }
 .group { padding:14px; border:0; border-bottom:1px solid #e9eee7; background:transparent; color:#263f34; min-width:0; }
 .group:last-of-type { border-bottom:0; }
 .header { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }

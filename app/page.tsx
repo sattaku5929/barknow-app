@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Fragment, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, Fragment, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import ChatInput, { SentChatMessage } from "@/components/ChatInput";
 import { usePushNotification } from "@/hooks/usePushNotification";
@@ -16,7 +16,7 @@ import CoachObservationSummary from "@/components/insights/CoachObservationSumma
 import OwnerHomeLifestyle from "@/components/owner/OwnerHomeLifestyle";
 import HomeCalendar from "@/components/owner/HomeCalendar";
 import HomeCareGroups, { carePeriods } from "@/components/owner/HomeCareGroups";
-import { periodStart } from "@/lib/calendar/model";
+import { careDate, careProgress, subscribeCareDate } from "@/lib/care/clock";
 import type { CareGoal as EditableCareGoal, CareTemplate } from "@/lib/care/model";
 import { archiveCareGoal, changeCareCount, createCareGoal } from "@/lib/care/mutations";
 import OwnerAppBackdrop from "@/components/owner/OwnerAppBackdrop";
@@ -717,10 +717,6 @@ function goalFrequency(goal: Pick<CareGoal, "targetCount" | "period">) {
   return goal.period === "day" && goal.targetCount === 1 ? unit : `${unit}${goal.targetCount}回`;
 }
 
-function goalPeriodStart(period: GoalPeriod) {
-  return periodStart(period, today());
-}
-
 const today = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
 const dateKeyValue = (value: string) => new Date(`${value}T12:00:00Z`);
 const dateKeyFromValue = (value: Date) => value.toISOString().slice(0, 10);
@@ -1206,6 +1202,7 @@ export default function Home() {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(today());
   const [careGoals, setCareGoals] = useState<CareGoal[]>([]);
   const homeCareMutationRef = useRef(false);
+  const careDay = useSyncExternalStore(subscribeCareDate, careDate, () => "");
   const [goalCompletions, setGoalCompletions] = useState<GoalCompletion[]>([]);
   const [customGoalTitle, setCustomGoalTitle] = useState("");
   const [customGoalCount, setCustomGoalCount] = useState(1);
@@ -1664,9 +1661,7 @@ export default function Home() {
   const streak = useMemo(() => calculateStreak(records), [records]);
   const todaysRecord = records.find((record) => record.recordedOn === today());
   const dogName = profile.name || "愛犬";
-  const goalProgress = (goal: CareGoal) => goalCompletions.filter(
-    (completion) => completion.goalId === goal.id && completion.completedOn >= goalPeriodStart(goal.period) && completion.completedOn <= today(),
-  ).length;
+  const goalProgress = (goal: CareGoal) => careProgress(goal, goalCompletions, careDay || careDate());
   const completedGoalCount = careGoals.filter((goal) => goalProgress(goal) >= goal.targetCount).length;
   const dailyGoals = careGoals.filter((goal) => goal.period === "day");
   const completedDailyGoalCount = dailyGoals.filter((goal) => goalProgress(goal) >= goal.targetCount).length;
@@ -3834,20 +3829,22 @@ export default function Home() {
   }
 
   async function completeCareGoal(goal: CareGoal) {
-    if (goalProgress(goal) >= goal.targetCount) {
+    const completedOn = careDate();
+    const currentCount = careProgress(goal, goalCompletions, completedOn);
+    if (currentCount >= goal.targetCount) {
       showNotice("今の期間の目標は達成済みです");
       return;
     }
     const completion: GoalCompletion = {
       id: crypto.randomUUID(),
       goalId: goal.id,
-      completedOn: today(),
+      completedOn,
       completedAt: new Date().toISOString(),
     };
     const nextCompletions = [completion, ...goalCompletions];
     setGoalCompletions(nextCompletions);
     writeLocal(GOAL_COMPLETIONS_KEY, nextCompletions);
-    const willComplete = goalProgress(goal) + 1 >= goal.targetCount;
+    const willComplete = currentCount + 1 >= goal.targetCount;
     showNotice(willComplete ? `「${goal.title}」目標達成！` : `「${goal.title}」を1回できました`);
     if (willComplete) {
       const nextCelebration = {
