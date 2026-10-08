@@ -1,6 +1,6 @@
 # Owner home: care periods and calendar
 
-- Daily goals count today only; weekly goals run Monday–Sunday; monthly goals remain a separate section. Existing goals/completions are not rewritten.
+- Daily goals count today only; weekly goals run Monday–Sunday; monthly goals count the current calendar month. Existing goals/completions are not rewritten.
 - Calendar defaults to a compact week, with a complete Monday–Sunday month grid available. Dates use date keys, not browser-dependent midnight arithmetic.
 - `wt_calendar_events` stores owner plans only. Travel may span multiple days. Time, place and notes are optional. Editing/deleting requires the same owner and their dog through RLS.
 - Existing active observation entries, legacy daily records and care completions populate the selected date automatically; archived observation entries are excluded. Reads paginate instead of truncating at a server row limit.
@@ -23,10 +23,16 @@ If frontend rollback is needed, restore the previous frontend deployment; retain
 
 Each period has its own Edit button opening a native modal dialog on home. Create from a preset or custom title, adjust that period's target (integer 1–31) with a stepper or numeric input, and archive an item with confirmation. Existing completion history remains intact. Changing a target recalculates completion using the existing goal ID; it does not create or discard completions.
 
-The periods now share one home care card, with one heading per period and an internal Settings button. The standalone goal/notification settings shortcut is removed. Settings include each item's reminder time and clearing it; target and reminder changes save together in one scoped UPDATE so simultaneous edits are retained. No second goal-list page is opened by this button.
+The periods share one home care card. The period switch displays only one heading and one internal Settings button at a time. The standalone goal/notification settings shortcut is removed. Settings include each item's reminder time and clearing it; target and reminder changes save together in one scoped UPDATE so simultaneous edits are retained. No second goal-list page is opened by this button.
 
-All active goals remain visible. 1–3 items use cards (one item uses a horizontal row), 4–8 use short horizontal tiles, and 9+ use a dense two-column list. Larger screens use three columns for tiles/lists. Names wrap in full; there is no hidden overflow or “show more” gate. Home displays the icon, name, and compact state: daily “完了”, weekly/monthly “達成”, or partial count such as 1/3. Each pending tile adds one completion per tap.
+All active goals in the selected period remain visible. 1–3 items use cards (one item uses a horizontal row), 4–8 use short horizontal tiles, and 9+ use a dense two-column list. Larger screens use three columns for tiles/lists. Names wrap in full; there is no hidden overflow or “show more” gate. Home displays the icon, name, and compact state: daily “完了”, weekly/monthly “達成”, or partial count such as 1/3. Each pending tile adds one completion per tap.
 
 Home edit writes reuse `wt_care_goals`; no schema, RLS or migration changes. UPDATE is scoped by owner, dog, ID and active state and requires a returned row before publishing state/cache. Errors retain the editor input. Archive uses `active=false`, never DELETE. Create retries reuse the same UUID. Offline edits are disabled, closing with unsaved input requires confirmation, and the native dialog traps focus; focus returns to the period's Edit button.
 
 `npm run test:care` checks real Supabase client request construction/errors, existing-schema edits and RLS/history in PGlite, adaptive rendering for 1–40 items, and editor controls. These checks do not substitute for visual testing in a browser.
+
+## Single visible care period and automatic rollover
+
+Home now has one care panel. Every day / This week / This month buttons switch its contents; only the selected period is mounted, with one internal Settings button. All items within that selected period remain visible.
+
+Progress uses Japan time: daily at 00:00, weekly Monday at 00:00, monthly on the 1st at 00:00. A midnight subscription updates the page while open and checks again on focus, pageshow and visibility changes after suspension. Only the date range changes; goals, targets, reminders and completion history are retained. Completion clicks use the current date even at a midnight boundary. No database changes.
