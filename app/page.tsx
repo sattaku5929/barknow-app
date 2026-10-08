@@ -18,7 +18,7 @@ import HomeCalendar from "@/components/owner/HomeCalendar";
 import HomeCareGroups, { carePeriods } from "@/components/owner/HomeCareGroups";
 import { careDate, careProgress, subscribeCareDate } from "@/lib/care/clock";
 import type { CareGoal as EditableCareGoal, CareTemplate, CareGoalType } from "@/lib/care/model";
-import { archiveCareGoal, changeCareCount, createCareGoal } from "@/lib/care/mutations";
+import { archiveCareGoal, changeCareCount, changeCareIcon, createCareGoal } from "@/lib/care/mutations";
 import OwnerAppBackdrop from "@/components/owner/OwnerAppBackdrop";
 import OwnerHomeScene from "@/components/owner/illustrations/OwnerHomeScene";
 import OwnerRecordScene from "@/components/owner/illustrations/OwnerRecordScene";
@@ -3814,6 +3814,15 @@ export default function Home() {
     } finally { homeCareMutationRef.current = false; }
   }
 
+  async function changeHomeCareIcon(goal: CareGoal, goalType: CareGoalType) {
+    if (homeCareMutationRef.current) throw new Error("保存中です。少しお待ちください。");
+    homeCareMutationRef.current = true;
+    try {
+      const saved = await changeCareIcon(supabase, await homeCareScope(), goal.id, goalType);
+      publishCareGoals((current) => current.map((item) => item.id === saved.id ? saved : item));
+    } finally { homeCareMutationRef.current = false; }
+  }
+
   async function removeHomeCareGoal(goal: CareGoal) {
     if (homeCareMutationRef.current) throw new Error("保存中です。少しお待ちください。");
     homeCareMutationRef.current = true;
@@ -4229,7 +4238,7 @@ export default function Home() {
         <span className="home-v3-daily-icon" aria-hidden="true"><TopicIcon name="daily" /></span>
       </section>
 
-      <HomeCareGroups key={`home-care:${profile.id ?? "no-dog"}`} goals={careGoals} templates={CARE_GOAL_TEMPLATES} editable={connection === "online" && !!profile.id} progress={goalProgress} onComplete={async (goal) => { await completeCareGoal(goal); setCalendarRefresh(value => value + 1); }} onCreate={createHomeCareGoal} onCountChange={changeHomeCareCount} onRemove={removeHomeCareGoal} icon={(goal) => <CareIcon name={goal.goalType} />} />
+      <HomeCareGroups key={`home-care:${profile.id ?? "no-dog"}`} goals={careGoals} templates={CARE_GOAL_TEMPLATES} editable={connection === "online" && !!profile.id} progress={goalProgress} onComplete={async (goal) => { await completeCareGoal(goal); setCalendarRefresh(value => value + 1); }} onCreate={createHomeCareGoal} onCountChange={changeHomeCareCount} onIconChange={changeHomeCareIcon} onRemove={removeHomeCareGoal} icon={(goal) => <CareIcon name={goal.goalType} />} />
       <HomeCalendar key={`home-calendar:${profile.id ?? "no-dog"}`} dogId={profile.id} dogName={dogName} birthday={profile.birthday} online={connection === "online"} today={today()} refreshToken={`${eventRefresh}:${checkRefresh}:${calendarRefresh}:${records.length}`} onRecord={(date, kind, note) => { openNewRecord(kind); setRecordDate(date); if (kind === "win") setGoodMoment(note ?? ""); }} />
 
       <section className="home-v3-shortcuts" aria-label="ショートカット">

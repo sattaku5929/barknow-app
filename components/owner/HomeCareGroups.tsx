@@ -11,8 +11,8 @@ export const carePeriods = [
   { key: "month", title: "今月中にやること", label: "今月", hint: "月単位の目標はこちら。" },
 ] as const;
 
-type Props={goals:CareGoal[];templates:CareTemplate[];progress:(goal:CareGoal)=>number;onComplete:(goal:CareGoal)=>Promise<void>;onCreate:(goal:CareTemplate,id:string)=>Promise<boolean>;onCountChange:(goal:CareGoal,count:number,reminderTime?:string|null,goalType?:CareGoal["goalType"])=>Promise<void>;onRemove:(goal:CareGoal)=>Promise<void>;icon:(goal:Pick<CareGoal,"goalType">)=>ReactNode;editable:boolean};
-export default function HomeCareGroups({goals,templates,progress,onComplete,onCreate,onCountChange,onRemove,icon,editable}:Props) {
+type Props={goals:CareGoal[];templates:CareTemplate[];progress:(goal:CareGoal)=>number;onComplete:(goal:CareGoal)=>Promise<void>;onCreate:(goal:CareTemplate,id:string)=>Promise<boolean>;onCountChange:(goal:CareGoal,count:number,reminderTime?:string|null,goalType?:CareGoal["goalType"])=>Promise<void>;onIconChange:(goal:CareGoal,goalType:CareGoal["goalType"])=>Promise<void>;onRemove:(goal:CareGoal)=>Promise<void>;icon:(goal:Pick<CareGoal,"goalType">)=>ReactNode;editable:boolean};
+export default function HomeCareGroups({goals,templates,progress,onComplete,onCreate,onCountChange,onIconChange,onRemove,icon,editable}:Props) {
   const lock = useRef(false);
   const returnFocus=useRef<HTMLElement|null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -48,6 +48,6 @@ export default function HomeCareGroups({goals,templates,progress,onComplete,onCr
       </section>;
     })}
     {error && <p role="alert" className={styles.error}>{error}</p>}
-    {editing && <HomeCareEditor key={editing} period={editing} goals={goals} templates={templates} editable={editable} progress={progress} icon={icon} onCreate={onCreate} onCountChange={onCountChange} onRemove={onRemove} onClose={()=>{setEditing(null);returnFocus.current?.focus();}}/>}
+    {editing && <HomeCareEditor key={editing} period={editing} goals={goals} templates={templates} editable={editable} progress={progress} icon={icon} onCreate={onCreate} onCountChange={onCountChange} onIconChange={onIconChange} onRemove={onRemove} onClose={()=>{setEditing(null);returnFocus.current?.focus();}}/>}
   </section>;
 }
