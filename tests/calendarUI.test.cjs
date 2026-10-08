@@ -16,28 +16,21 @@ function load(relative) {
 const Care = load("components/owner/HomeCareGroups.tsx").default;
 const Calendar = load("components/owner/HomeCalendar.tsx").default;
 const careHtml = renderToStaticMarkup(React.createElement(Care,{goals:[{id:"day",period:"day",title:"歯磨き",targetCount:1},{id:"week",period:"week",title:"ブラッシング",targetCount:3}],progress:g=>g.id==="day"?1:2,onComplete:async()=>{},onManage:()=>{},icon:()=>null}));
-assert.match(careHtml,/毎日やること/); assert.doesNotMatch(careHtml,/id="care-week-title"|id="care-month-title"/);
-assert.match(careHtml,/歯磨き：今日1\/1回、完了/);assert.doesNotMatch(careHtml,/ブラッシング：/);
-assert.match(careHtml,/毎日やることの目標・お知らせを設定/);
-assert.equal((careHtml.match(/id="home-care-panel"/g)||[]).length,1);
-assert.equal((careHtml.match(/aria-label="期間ごとのお世話"/g)||[]).length,1);
-assert.equal((careHtml.match(/aria-pressed="(?:true|false)"/g)||[]).length,3);
-assert.equal((careHtml.match(/aria-pressed="true"/g)||[]).length,1);
-assert.equal((careHtml.match(/>設定<\/button>/g)||[]).length,1);
-assert.match(careHtml,/毎日0時に切り替え/);
-assert.doesNotMatch(careHtml,/目標・お知らせの設定|class="manage"/);
+for(const period of ["day","week","month"])assert.equal((careHtml.match(new RegExp(`data-care-period="${period}"`,"g"))||[]).length,1);
+assert.match(careHtml,/歯磨き：今日1\/1回、完了/);assert.match(careHtml,/ブラッシング：今週2\/3回、できたを1回追加/);
+assert.equal((careHtml.match(/>設定<\/button>/g)||[]).length,3);
+assert.doesNotMatch(careHtml,/お世話の期間を選ぶ|home-care-panel|目標・お知らせの設定/);
 const emptyCare=renderToStaticMarkup(React.createElement(Care,{goals:[],progress:()=>0,icon:()=>null}));
-assert.match(emptyCare,/毎日のやることを追加/);assert.equal((emptyCare.match(/>設定<\/button>/g)||[]).length,1);
-// Nine goals across three periods must still render a single period, never nine cards at once.
+assert.equal((emptyCare.match(/>設定<\/button>/g)||[]).length,3);
 const nineGoals=["day","week","month"].flatMap(period=>Array.from({length:3},(_,i)=>({id:`${period}-${i}`,period,title:`${period}項目${i}`,targetCount:1})));
-for(const [period,title,hint] of [["day","毎日やること","毎日0時"],["week","今週中にやること","毎週月曜0時"],["month","今月中にやること","毎月1日0時"]]) {
-  const html=renderToStaticMarkup(React.createElement(Care,{initialPeriod:period,goals:nineGoals,progress:()=>0,icon:()=>null}));
-  assert.match(html,new RegExp(title));assert.match(html,new RegExp(hint));
-  assert.equal((html.match(/id="home-care-panel"/g)||[]).length,1);
-  assert.equal((html.match(/>設定<\/button>/g)||[]).length,1);
-  assert.equal((html.match(/できたを1回追加/g)||[]).length,3);
-  for(const other of ["day","week","month"].filter(p=>p!==period))assert.doesNotMatch(html,new RegExp(`${other}項目`));
+const nineHtml=renderToStaticMarkup(React.createElement(Care,{goals:nineGoals,progress:()=>0,icon:()=>null}));
+for(const period of ["day","week","month"]) {
+  assert.equal((nineHtml.match(new RegExp(`data-care-period="${period}"`,"g"))||[]).length,1,"each period has exactly one card");
+  assert.equal((nineHtml.match(new RegExp(`id="care-${period}-title"`,"g"))||[]).length,1);
 }
+assert.equal((nineHtml.match(/できたを1回追加/g)||[]).length,9,"retain all tasks inside three cards");
+assert.equal((nineHtml.match(/>設定<\/button>/g)||[]).length,3);
+for(const hint of ["毎日0時","毎週月曜0時","毎月1日0時"])assert.match(nineHtml,new RegExp(hint));
 for(const count of [1,2,3,4,8,9,20,40]) {
   const goals=Array.from({length:count},(_,i)=>({id:String(i),title:`項目${i}`,period:"day",targetCount:1}));
   const html=renderToStaticMarkup(React.createElement(Care,{goals,templates:[],editable:true,progress:()=>0,onComplete:async()=>{},onCreate:async()=>true,onCountChange:async()=>{},onRemove:async()=>{},onManage:()=>{},icon:()=>null}));

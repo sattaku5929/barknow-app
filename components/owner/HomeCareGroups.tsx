@@ -11,14 +11,13 @@ export const carePeriods = [
   { key: "month", title: "今月中にやること", label: "今月", hint: "月単位の目標はこちら。" },
 ] as const;
 
-type Props={initialPeriod?:CarePeriod;goals:CareGoal[];templates:CareTemplate[];progress:(goal:CareGoal)=>number;onComplete:(goal:CareGoal)=>Promise<void>;onCreate:(goal:CareTemplate,id:string)=>Promise<boolean>;onCountChange:(goal:CareGoal,count:number,reminderTime?:string|null)=>Promise<void>;onRemove:(goal:CareGoal)=>Promise<void>;icon:(goal:Pick<CareGoal,"goalType">)=>ReactNode;editable:boolean};
-export default function HomeCareGroups({initialPeriod="day",goals,templates,progress,onComplete,onCreate,onCountChange,onRemove,icon,editable}:Props) {
+type Props={goals:CareGoal[];templates:CareTemplate[];progress:(goal:CareGoal)=>number;onComplete:(goal:CareGoal)=>Promise<void>;onCreate:(goal:CareTemplate,id:string)=>Promise<boolean>;onCountChange:(goal:CareGoal,count:number,reminderTime?:string|null)=>Promise<void>;onRemove:(goal:CareGoal)=>Promise<void>;icon:(goal:Pick<CareGoal,"goalType">)=>ReactNode;editable:boolean};
+export default function HomeCareGroups({goals,templates,progress,onComplete,onCreate,onCountChange,onRemove,icon,editable}:Props) {
   const lock = useRef(false);
   const returnFocus=useRef<HTMLElement|null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [editing,setEditing]=useState<CarePeriod|null>(null);
   const [error,setError]=useState("");
-  const [selectedPeriod,setSelectedPeriod]=useState<CarePeriod>(initialPeriod);
   async function complete(goal: CareGoal) {
     if (lock.current) return;
     lock.current = true; setBusy(goal.id);
@@ -27,14 +26,11 @@ export default function HomeCareGroups({initialPeriod="day",goals,templates,prog
   }
   function edit(period:CarePeriod){returnFocus.current=document.activeElement as HTMLElement;setEditing(period);}
   return <section className={styles.groups} aria-label="期間ごとのお世話">
-    <div className={styles.periodSwitch} role="group" aria-label="お世話の期間を選ぶ">
-      {carePeriods.map(period=><button key={period.key} type="button" aria-pressed={selectedPeriod===period.key} aria-controls="home-care-panel" disabled={busy!==null} onClick={()=>setSelectedPeriod(period.key)}>{period.label==="今日"?"毎日":period.label}</button>)}
-    </div>
-    {carePeriods.filter(period=>period.key===selectedPeriod).map((period) => {
+    {carePeriods.map((period) => {
       const items = goals.filter((goal) => goal.period === period.key);
       const doneCount = items.filter((goal) => progress(goal) >= goal.targetCount).length;
       const layout=careLayout(items.length);
-      return <section id="home-care-panel" className={styles.group} key={period.key} aria-labelledby={`care-${period.key}-title`}>
+      return <section id={`home-care-${period.key}`} className={styles.group} key={period.key} data-care-period={period.key} aria-labelledby={`care-${period.key}-title`}>
         <header className={styles.header}><div><h2 id={`care-${period.key}-title`}>{period.title}</h2>{items.length>0 && <span className={styles.total}>{doneCount} / {items.length} {period.key==="day"?"完了":"達成"}</span>}</div>
           <button type="button" className={styles.edit} disabled={busy!==null} aria-label={`${period.title}の目標・お知らせを設定`} onClick={()=>edit(period.key)}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="m15 5 4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15l-1 5Z"/></svg>設定</button>
         </header>

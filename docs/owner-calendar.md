@@ -23,16 +23,16 @@ If frontend rollback is needed, restore the previous frontend deployment; retain
 
 Each period has its own Edit button opening a native modal dialog on home. Create from a preset or custom title, adjust that period's target (integer 1–31) with a stepper or numeric input, and archive an item with confirmation. Existing completion history remains intact. Changing a target recalculates completion using the existing goal ID; it does not create or discard completions.
 
-The periods share one home care card. The period switch displays only one heading and one internal Settings button at a time. The standalone goal/notification settings shortcut is removed. Settings include each item's reminder time and clearing it; target and reminder changes save together in one scoped UPDATE so simultaneous edits are retained. No second goal-list page is opened by this button.
+Each period has one home care card, one heading and one internal Settings button. The standalone goal/notification settings shortcut is removed. Settings include each item's reminder time and clearing it; target and reminder changes save together in one scoped UPDATE so simultaneous edits are retained. No second goal-list page is opened by this button.
 
-All active goals in the selected period remain visible. 1–3 items use cards (one item uses a horizontal row), 4–8 use short horizontal tiles, and 9+ use a dense two-column list. Larger screens use three columns for tiles/lists. Names wrap in full; there is no hidden overflow or “show more” gate. Home displays the icon, name, and compact state: daily “完了”, weekly/monthly “達成”, or partial count such as 1/3. Each pending tile adds one completion per tap.
+All active goals in each period remain visible. 1–3 items use compact rows, 4+ use a two-column list (three columns on larger screens). Task rows have no separate card border or background. Names wrap in full; there is no hidden overflow or “show more” gate. Home displays the icon, name, and compact state: daily “完了”, weekly/monthly “達成”, or partial count such as 1/3. Each pending row adds one completion per tap.
 
 Home edit writes reuse `wt_care_goals`; no schema, RLS or migration changes. UPDATE is scoped by owner, dog, ID and active state and requires a returned row before publishing state/cache. Errors retain the editor input. Archive uses `active=false`, never DELETE. Create retries reuse the same UUID. Offline edits are disabled, closing with unsaved input requires confirmation, and the native dialog traps focus; focus returns to the period's Edit button.
 
 `npm run test:care` checks real Supabase client request construction/errors, existing-schema edits and RLS/history in PGlite, adaptive rendering for 1–40 items, and editor controls. These checks do not substitute for visual testing in a browser.
 
-## Single visible care period and automatic rollover
+## One card per period and automatic rollover
 
-Home now has one care panel. Every day / This week / This month buttons switch its contents; only the selected period is mounted, with one internal Settings button. All items within that selected period remain visible.
+Home displays exactly three care cards: daily, weekly and monthly, each once. There is no period switch. Each card contains its tasks as unframed compact rows and one internal Settings button; empty periods remain available for adding tasks. Goals are not deleted or reduced to one task.
 
-Progress uses Japan time: daily at 00:00, weekly Monday at 00:00, monthly on the 1st at 00:00. A midnight subscription updates the page while open and checks again on focus, pageshow and visibility changes after suspension. Only the date range changes; goals, targets, reminders and completion history are retained. Completion clicks use the current date even at a midnight boundary. No database changes.
+Progress uses Japan time: daily at 00:00, weekly Monday at 00:00, monthly on the 1st at 00:00. The existing midnight subscription and mobile resume checks remain unchanged. Goals, targets, reminders and completion history are retained. No database or persistence changes.
