@@ -17,6 +17,8 @@ import OwnerHomeLifestyle from "@/components/owner/OwnerHomeLifestyle";
 import HomeCalendar from "@/components/owner/HomeCalendar";
 import HomeCareGroups, { carePeriods } from "@/components/owner/HomeCareGroups";
 import { periodStart } from "@/lib/calendar/model";
+import type { CareGoal as EditableCareGoal, CareTemplate } from "@/lib/care/model";
+import { archiveCareGoal, changeCareCount, createCareGoal } from "@/lib/care/mutations";
 import OwnerAppBackdrop from "@/components/owner/OwnerAppBackdrop";
 import OwnerHomeScene from "@/components/owner/illustrations/OwnerHomeScene";
 import OwnerRecordScene from "@/components/owner/illustrations/OwnerRecordScene";
@@ -432,15 +434,7 @@ function LockedCoachingPreview({
   );
 }
 
-type CareGoal = {
-  id: string;
-  title: string;
-  goalType: CareGoalType;
-  targetCount: number;
-  period: GoalPeriod;
-  reminderTime: string | null;
-  createdAt: string;
-};
+type CareGoal = EditableCareGoal;
 
 type GoalCompletion = {
   id: string;
@@ -1211,6 +1205,7 @@ export default function Home() {
   const [calendarMonthOffset, setCalendarMonthOffset] = useState(0);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(today());
   const [careGoals, setCareGoals] = useState<CareGoal[]>([]);
+  const homeCareMutationRef = useRef(false);
   const [goalCompletions, setGoalCompletions] = useState<GoalCompletion[]>([]);
   const [customGoalTitle, setCustomGoalTitle] = useState("");
   const [customGoalCount, setCustomGoalCount] = useState(1);
@@ -3763,6 +3758,50 @@ export default function Home() {
     setAdminDetailMessages((current) => current.some((item) => item.id === message.id) ? current : [...current, message]);
   }
 
+  async function homeCareScope() {
+    if (connection !== "online" || !profile.id) throw new Error("接続と愛犬の登録を確認してください。");
+    const userId = await getUserId();
+    if (!userId) throw new Error("ログインを確認してください。");
+    return { ownerId: userId, dogId: profile.id };
+  }
+
+  function publishCareGoals(change: (current: CareGoal[]) => CareGoal[]) {
+    setCareGoals((current) => {
+      const next = change(current);
+      writeLocal(CARE_GOALS_KEY, next);
+      return next;
+    });
+  }
+
+  async function createHomeCareGoal(template: CareTemplate, id: string) {
+    if (homeCareMutationRef.current) throw new Error("保存中です。少しお待ちください。");
+    if (careGoals.some((goal) => goal.title === template.title.trim())) throw new Error("この項目はすでに追加されています。");
+    homeCareMutationRef.current = true;
+    try {
+      const goal = await createCareGoal(supabase, await homeCareScope(), { ...template, id, createdAt: new Date().toISOString() });
+      publishCareGoals((current) => current.some((item) => item.id === goal.id) ? current.map((item) => item.id === goal.id ? goal : item) : [...current, goal]);
+      return true;
+    } finally { homeCareMutationRef.current = false; }
+  }
+
+  async function changeHomeCareCount(goal: CareGoal, count: number) {
+    if (homeCareMutationRef.current) throw new Error("保存中です。少しお待ちください。");
+    homeCareMutationRef.current = true;
+    try {
+      const saved = await changeCareCount(supabase, await homeCareScope(), goal.id, count);
+      publishCareGoals((current) => current.map((item) => item.id === saved.id ? saved : item));
+    } finally { homeCareMutationRef.current = false; }
+  }
+
+  async function removeHomeCareGoal(goal: CareGoal) {
+    if (homeCareMutationRef.current) throw new Error("保存中です。少しお待ちください。");
+    homeCareMutationRef.current = true;
+    try {
+      await archiveCareGoal(supabase, await homeCareScope(), goal.id);
+      publishCareGoals((current) => current.filter((item) => item.id !== goal.id));
+    } finally { homeCareMutationRef.current = false; }
+  }
+
   async function addCareGoal(template: Omit<CareGoal, "id" | "createdAt">) {
     if (careGoals.some((goal) => goal.title === template.title)) {
       showNotice("この習慣はすでに追加されています");
@@ -4167,7 +4206,7 @@ export default function Home() {
         <span className="home-v3-daily-icon" aria-hidden="true"><TopicIcon name="daily" /></span>
       </section>
 
-      <HomeCareGroups goals={careGoals} progress={goalProgress} onComplete={async (goal) => { await completeCareGoal(goal); setCalendarRefresh(value => value + 1); }} onManage={() => navigateOwnerView("goals")} icon={(goal) => <CareIcon name={goal.goalType} />} />
+      <HomeCareGroups key={profile.id ?? "no-dog-care"} goals={careGoals} templates={CARE_GOAL_TEMPLATES} editable={connection === "online" && !!profile.id} progress={goalProgress} onComplete={async (goal) => { await completeCareGoal(goal); setCalendarRefresh(value => value + 1); }} onCreate={createHomeCareGoal} onCountChange={changeHomeCareCount} onRemove={removeHomeCareGoal} onManage={() => navigateOwnerView("goals")} icon={(goal) => <CareIcon name={goal.goalType} />} />
       <HomeCalendar key={profile.id ?? "no-dog"} dogId={profile.id} dogName={dogName} birthday={profile.birthday} online={connection === "online"} today={today()} refreshToken={`${eventRefresh}:${checkRefresh}:${calendarRefresh}:${records.length}`} onRecord={(date, kind, note) => { openNewRecord(kind); setRecordDate(date); if (kind === "win") setGoodMoment(note ?? ""); }} />
 
       <section className="home-v3-shortcuts" aria-label="ショートカット">
