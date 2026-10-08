@@ -4,6 +4,27 @@ const path = require("node:path");
 const ts = require("typescript");
 const React = require("react");
 const { renderToStaticMarkup } = require("react-dom/server");
+// Inspect the real owner-home composition, not only isolated child rendering.
+// Care and calendar must remount on dog changes but cannot share a sibling key.
+const ownerSource=ts.createSourceFile("page.tsx",fs.readFileSync(path.join(__dirname,"../app/page.tsx"),"utf8"),ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+let home;
+function findHome(node){if(ts.isVariableDeclaration(node)&&node.name.getText(ownerSource)==="focusedHomeView")home=node.initializer;ts.forEachChild(node,findHome);}
+findHome(ownerSource);assert.ok(home,"owner home exists");
+const homeKeys=[];
+function findKeys(node){
+  if(ts.isJsxSelfClosingElement(node)&&["HomeCareGroups","HomeCalendar"].includes(node.tagName.getText(ownerSource))){
+    const key=node.attributes.properties.find(p=>ts.isJsxAttribute(p)&&p.name.getText(ownerSource)==="key");
+    assert.ok(key?.initializer&&ts.isJsxExpression(key.initializer));
+    homeKeys.push({name:node.tagName.getText(ownerSource),key:new Function("profile",`return (${key.initializer.expression.getText(ownerSource)});`)});
+  }
+  ts.forEachChild(node,findKeys);
+}
+findKeys(home);assert.equal(homeKeys.length,2,"one care root and one calendar in owner home");
+for(const id of [undefined,"dog-a","dog-b"]){
+  const keys=homeKeys.map(x=>x.key({id}));
+  assert.equal(new Set(keys).size,keys.length,"home siblings must have distinct keys for every dog");
+}
+for(const component of homeKeys)assert.notEqual(component.key({id:"dog-a"}),component.key({id:"dog-b"}),"changing dogs still resets child state");
 // Render the real components without replacing their UI. SSR must not issue reads/writes.
 function load(relative) {
   const filename = path.join(__dirname,"..",relative);
