@@ -9,7 +9,7 @@ function load(relative) {
   const filename = path.join(__dirname,"..",relative);
   const code = ts.transpileModule(fs.readFileSync(filename,"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText;
   const module = {exports:{}};
-  const localRequire = name => name === "@/lib/calendar/model" ? load("lib/calendar/model.ts") : name === "@/lib/calendar/service" ? new Proxy({}, {get:()=>()=>{throw new Error("Unexpected server-side database access");}}) : require(name);
+  const localRequire = name => name.endsWith(".module.css") ? {__esModule:true,default:new Proxy({}, {get:(_,key)=>String(key)})} : name === "@/lib/care/model" ? load("lib/care/model.ts") : name === "./HomeCareEditor" ? load("components/owner/HomeCareEditor.tsx") : name === "@/lib/calendar/model" ? load("lib/calendar/model.ts") : name === "@/lib/calendar/service" ? new Proxy({}, {get:()=>()=>{throw new Error("Unexpected server-side database access");}}) : require(name);
   new Function("require","module","exports",code)(localRequire,module,module.exports);
   return module.exports;
 }
@@ -17,8 +17,18 @@ const Care = load("components/owner/HomeCareGroups.tsx").default;
 const Calendar = load("components/owner/HomeCalendar.tsx").default;
 const careHtml = renderToStaticMarkup(React.createElement(Care,{goals:[{id:"day",period:"day",title:"歯磨き",targetCount:1},{id:"week",period:"week",title:"ブラッシング",targetCount:3}],progress:g=>g.id==="day"?1:2,onComplete:async()=>{},onManage:()=>{},icon:()=>null}));
 assert.match(careHtml,/毎日やること/); assert.match(careHtml,/今週中にやること/); assert.doesNotMatch(careHtml,/今月中にやること/);
-assert.match(careHtml,/今日 1 \/ 1回/); assert.match(careHtml,/今週 2 \/ 3回/);
-assert.match(careHtml,/歯磨き：目標達成/); assert.match(careHtml,/ブラッシング：できたを1回追加/);
+assert.match(careHtml,/歯磨き：今日1\/1回、完了/); assert.match(careHtml,/ブラッシング：今週2\/3回、できたを1回追加/);
+assert.match(careHtml,/毎日やることを編集/); assert.match(careHtml,/今週中にやることを編集/);
+for(const count of [1,2,3,4,8,9,20,40]) {
+  const goals=Array.from({length:count},(_,i)=>({id:String(i),title:`項目${i}`,period:"day",targetCount:1}));
+  const html=renderToStaticMarkup(React.createElement(Care,{goals,templates:[],editable:true,progress:()=>0,onComplete:async()=>{},onCreate:async()=>true,onCountChange:async()=>{},onRemove:async()=>{},onManage:()=>{},icon:()=>null}));
+  assert.match(html,new RegExp(`data-care-layout="${count<=3?"cards":count<=8?"tiles":"dense"}"`));
+  assert.equal((html.match(/aria-label="項目\d+：/g)||[]).length,count,"all goals must be visible");
+  assert.doesNotMatch(html,/もっと見る|保存中|今日のできたを/);
+}
+const Editor=load("components/owner/HomeCareEditor.tsx").default;
+const editorHtml=renderToStaticMarkup(React.createElement(Editor,{period:"day",goals:[{id:"existing",title:"歯磨き",period:"day",targetCount:2}],templates:[{title:"ブラッシング",period:"week",targetCount:3}],editable:true,progress:()=>1,icon:()=>null,onCreate:async()=>true,onCountChange:async()=>{},onRemove:async()=>{},onClose:()=>{}}));
+assert.match(editorHtml,/毎日やることを編集/);assert.match(editorHtml,/歯磨きの目標回数/);assert.match(editorHtml,/min="1" max="31" step="1"/);assert.match(editorHtml,/やることを追加/);assert.match(editorHtml,/歯磨きを一覧から外す/);
 const calendarHtml = renderToStaticMarkup(React.createElement(Calendar,{dogId:"dog",dogName:"はな",birthday:"2020-10-07",online:false,today:"2026-10-07",refreshToken:"0",onRecord:()=>{throw new Error("Unexpected navigation");}}));
 assert.match(calendarHtml,/愛犬とのカレンダー/); assert.match(calendarHtml,/はなちゃんの誕生日/);
 assert.match(calendarHtml,/接続後に予定と記録を確認できます/);

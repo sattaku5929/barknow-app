@@ -18,3 +18,13 @@
 Migration `20261007152657_owner_calendar_events` is additive and does not update existing records or policies. Preflight/postflight compare counts and full-row MD5 fingerprints for dogs, goals, completions and observation entries. Production preflight: dogs 4, goals 9, completions 29, observations 19. Existing data must remain unchanged immediately after applying the migration.
 
 If frontend rollback is needed, restore the previous frontend deployment; retain the new calendar table so any subsequently saved schedules remain recoverable.
+
+## Home care editing and compact layout
+
+Each period has its own Edit button opening a native modal dialog on home. Create from a preset or custom title, adjust that period's target (integer 1–31) with a stepper or numeric input, and archive an item with confirmation. Existing completion history remains intact. Changing a target recalculates completion using the existing goal ID; it does not create or discard completions.
+
+All active goals remain visible. 1–3 items use cards (one item uses a horizontal row), 4–8 use short horizontal tiles, and 9+ use a dense two-column list. Larger screens use three columns for tiles/lists. Names wrap in full; there is no hidden overflow or “show more” gate. Home displays the icon, name, and compact state: daily “完了”, weekly/monthly “達成”, or partial count such as 1/3. Each pending tile adds one completion per tap.
+
+Home edit writes reuse `wt_care_goals`; no schema, RLS or migration changes. UPDATE is scoped by owner, dog, ID and active state and requires a returned row before publishing state/cache. Errors retain the editor input. Archive uses `active=false`, never DELETE. Create retries reuse the same UUID. Offline edits are disabled, closing with unsaved input requires confirmation, and the native dialog traps focus; focus returns to the period's Edit button.
+
+`npm run test:care` checks real Supabase client request construction/errors, existing-schema edits and RLS/history in PGlite, adaptive rendering for 1–40 items, and editor controls. These checks do not substitute for visual testing in a browser.
