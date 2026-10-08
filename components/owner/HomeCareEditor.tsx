@@ -7,14 +7,15 @@ import styles from "./HomeCareGroups.module.css";
 
 const titles={day:"毎日やること",week:"今週中にやること",month:"今月中にやること"};
 const units={day:"1日",week:"1週間",month:"1か月"};
-type Props={period:CarePeriod;goals:CareGoal[];templates:CareTemplate[];editable:boolean;progress:(goal:CareGoal)=>number;icon:(goal:Pick<CareGoal,"goalType">)=>ReactNode;onCreate:(goal:CareTemplate,id:string)=>Promise<boolean>;onCountChange:(goal:CareGoal,count:number,reminderTime?:string|null,goalType?:CareGoal["goalType"])=>Promise<void>;onRemove:(goal:CareGoal)=>Promise<void>;onClose:()=>void};
+type Props={period:CarePeriod;goals:CareGoal[];templates:CareTemplate[];editable:boolean;progress:(goal:CareGoal)=>number;icon:(goal:Pick<CareGoal,"goalType">)=>ReactNode;onCreate:(goal:CareTemplate,id:string)=>Promise<boolean>;onCountChange:(goal:CareGoal,count:number,reminderTime?:string|null,goalType?:CareGoal["goalType"])=>Promise<void>;onIconChange:(goal:CareGoal,goalType:CareGoal["goalType"])=>Promise<void>;onRemove:(goal:CareGoal)=>Promise<void>;onClose:()=>void};
 
-function IconPicker({value,onChange,icon,label,disabled}:{value:CareGoal["goalType"];onChange:(value:CareGoal["goalType"])=>void;icon:Props["icon"];label:string;disabled:boolean}) {
+function IconPicker({value,onChange,icon,label,disabled}:{value:CareGoal["goalType"];onChange:(value:CareGoal["goalType"])=>void|Promise<boolean>;icon:Props["icon"];label:string;disabled:boolean}) {
+  const details=useRef<HTMLDetailsElement>(null);
   const selected=careIconOptions.find(option=>option.value===value);
-  return <details className={styles.iconDetails}><summary><span className={styles.icon} aria-hidden="true">{icon({goalType:value})}</span><span>{label}<small>{selected?.label ?? "プラス"} · 変更する</small></span></summary><fieldset className={styles.iconPicker} disabled={disabled}><legend>{label}</legend>
+  return <details ref={details} className={styles.iconDetails}><summary><span className={styles.icon} aria-hidden="true">{icon({goalType:value})}</span><span>{label}<small>{selected?.label ?? "プラス"} · 変更する</small></span></summary><fieldset className={styles.iconPicker} disabled={disabled}><legend>{label}</legend>
     {Array.from(new Set(careIconOptions.map(option=>option.category))).map(category=><div className={styles.iconCategory} key={category}><p>{category}</p><div className={styles.iconOptions}>
       {careIconOptions.filter(option=>option.category===category).map(option=><label key={option.value} className={`${styles.iconOption} ${value===option.value?styles.iconSelected:""}`}>
-        <input type="radio" name="care-icon" value={option.value} checked={value===option.value} onChange={()=>onChange(option.value)}/>
+        <input type="radio" name="care-icon" value={option.value} checked={value===option.value} onChange={async()=>{if(await onChange(option.value)!==false && details.current)details.current.open=false;}}/>
         <span className={styles.icon} aria-hidden="true">{icon({goalType:option.value})}</span><span>{option.label}</span>
       </label>)}
     </div></div>)}
@@ -28,25 +29,23 @@ function CountInput({value,onChange,label,disabled}:{value:string;onChange:(valu
     <button type="button" aria-label={`${label}を1回増やす`} disabled={disabled || count>=31 || !validTargetCount(count)} onClick={()=>onChange(String(count+1))}>＋</button>
   </div>;
 }
-function EditRow({goal,period,busy,editable,icon,onSave,onRemove,onDirty}:{goal:CareGoal;period:CarePeriod;busy:boolean;editable:boolean;icon:Props["icon"];onSave:(goal:CareGoal,count:number,reminderTime:string|null,goalType:CareGoal["goalType"])=>Promise<boolean>;onRemove:(goal:CareGoal)=>Promise<boolean>;onDirty:(id:string,dirty:boolean)=>void}) {
+function EditRow({goal,period,busy,editable,icon,onSave,onIconSave,onRemove,onDirty}:{goal:CareGoal;period:CarePeriod;busy:boolean;editable:boolean;icon:Props["icon"];onSave:(goal:CareGoal,count:number,reminderTime:string|null)=>Promise<boolean>;onIconSave:(goal:CareGoal,goalType:CareGoal["goalType"])=>Promise<boolean>;onRemove:(goal:CareGoal)=>Promise<boolean>;onDirty:(id:string,dirty:boolean)=>void}) {
   const [value,setValue]=useState(String(goal.targetCount));
   const [reminder,setReminder]=useState(goal.reminderTime ?? "");
-  const [selectedIcon,setSelectedIcon]=useState(goal.goalType);
   const [confirm,setConfirm]=useState(false);
-  const dirty=Number(value)!==goal.targetCount || reminder!==(goal.reminderTime ?? "") || selectedIcon!==goal.goalType;
-  function change(next:string){setValue(next);onDirty(goal.id,Number(next)!==goal.targetCount || reminder!==(goal.reminderTime ?? "") || selectedIcon!==goal.goalType);}
-  function changeReminder(next:string){setReminder(next);onDirty(goal.id,Number(value)!==goal.targetCount || next!==(goal.reminderTime ?? "") || selectedIcon!==goal.goalType);}
-  function changeIcon(next:CareGoal["goalType"]){setSelectedIcon(next);onDirty(goal.id,Number(value)!==goal.targetCount || reminder!==(goal.reminderTime ?? "") || next!==goal.goalType);}
-  return <form className={styles.editRow} onSubmit={async(e:FormEvent)=>{e.preventDefault();if(await onSave(goal,Number(value),reminder || null,selectedIcon))onDirty(goal.id,false);}}>
-    <div className={styles.rowHeading}><span className={styles.icon} aria-hidden="true">{icon({goalType:selectedIcon})}</span><strong>{goal.title}</strong><button className={styles.remove} type="button" disabled={busy || !editable} onClick={()=>setConfirm(true)} aria-label={`${goal.title}を一覧から外す`}>外す</button></div>
-    <IconPicker value={selectedIcon} onChange={changeIcon} icon={icon} label={`${goal.title}のアイコン`} disabled={busy || !editable}/>
+  const dirty=Number(value)!==goal.targetCount || reminder!==(goal.reminderTime ?? "");
+  function change(next:string){setValue(next);onDirty(goal.id,Number(next)!==goal.targetCount || reminder!==(goal.reminderTime ?? ""));}
+  function changeReminder(next:string){setReminder(next);onDirty(goal.id,Number(value)!==goal.targetCount || next!==(goal.reminderTime ?? ""));}
+  return <form className={styles.editRow} onSubmit={async(e:FormEvent)=>{e.preventDefault();if(await onSave(goal,Number(value),reminder || null))onDirty(goal.id,false);}}>
+    <div className={styles.rowHeading}><span className={styles.icon} aria-hidden="true">{icon(goal)}</span><strong>{goal.title}</strong><button className={styles.remove} type="button" disabled={busy || !editable} onClick={()=>setConfirm(true)} aria-label={`${goal.title}を一覧から外す`}>外す</button></div>
+    <IconPicker value={goal.goalType} onChange={next=>onIconSave(goal,next)} icon={icon} label={`${goal.title}のアイコン`} disabled={busy || !editable}/>
     <div className={styles.rowCount}><span>{units[period]}に</span><CountInput label={`${goal.title}の目標回数`} value={value} onChange={change} disabled={busy || !editable}/><span>回</span><button className={styles.apply} type="submit" disabled={busy || !editable || !dirty || !validTargetCount(Number(value))}>{dirty?"保存":"設定済み"}</button></div>
     <div className={styles.reminder}><label htmlFor={`care-reminder-${goal.id}`}>お知らせ時間</label><input id={`care-reminder-${goal.id}`} type="time" value={reminder} disabled={busy || !editable} onChange={e=>changeReminder(e.target.value)} aria-label={`${goal.title}のお知らせ時間`}/>{reminder && <button type="button" disabled={busy || !editable} onClick={()=>changeReminder("")}>解除</button>}</div>
-    {dirty && <p className={styles.draftNote}>アイコン・目標・お知らせを変更したら「保存」を押してください。</p>}
+    {dirty && <p className={styles.draftNote}>目標・お知らせを変更したら「保存」を押してください。</p>}
     {confirm && <div className={styles.confirm} role="group" aria-label={`${goal.title}を外す確認`}><p>「{goal.title}」を外しますか？過去の実績は残ります。</p><button type="button" disabled={busy} onClick={()=>setConfirm(false)}>戻る</button><button type="button" disabled={busy || !editable} onClick={async()=>{if(await onRemove(goal))onDirty(goal.id,false);}}>外す</button></div>}
   </form>;
 }
-export default function HomeCareEditor({period,goals,templates,editable,progress,icon,onCreate,onCountChange,onRemove,onClose}:Props) {
+export default function HomeCareEditor({period,goals,templates,editable,progress,icon,onCreate,onCountChange,onIconChange,onRemove,onClose}:Props) {
   const dialog=useRef<HTMLDialogElement>(null);
   const lock=useRef(false);
   const dirtyRows=useRef(new Set<string>());
@@ -83,8 +82,9 @@ export default function HomeCareEditor({period,goals,templates,editable,progress
     <p className={styles.intro}>{period==="day"?"1日に何回やるか、暮らしに合わせて設定。":`${units[period]}の目標回数を、無理なく続けられる数に。`}</p>
     {!editable && <p className={styles.error} role="status">オンライン接続後に追加・変更できます。</p>}
     <section aria-label="登録済みのお世話" className={styles.editList}>
-      {items.length?items.map(goal=><EditRow key={`${goal.id}:${goal.targetCount}:${goal.reminderTime ?? ""}:${goal.goalType}`} goal={goal} period={period} busy={busy} editable={editable} icon={icon} onDirty={(id,dirty)=>{if(dirty)dirtyRows.current.add(id);else dirtyRows.current.delete(id);}}
-        onSave={(g,next,time,nextIcon)=>run(async()=>{await onCountChange(g,next,time,nextIcon);},`「${goal.title}」の設定を保存しました。実績${progress(goal)}回はそのままです。`)}
+      {items.length?items.map(goal=><EditRow key={`${goal.id}:${goal.targetCount}:${goal.reminderTime ?? ""}`} goal={goal} period={period} busy={busy} editable={editable} icon={icon} onDirty={(id,dirty)=>{if(dirty)dirtyRows.current.add(id);else dirtyRows.current.delete(id);}}
+        onSave={(g,next,time)=>run(async()=>{await onCountChange(g,next,time);},`「${goal.title}」の設定を保存しました。実績${progress(goal)}回はそのままです。`)}
+        onIconSave={(g,nextIcon)=>run(async()=>{await onIconChange(g,nextIcon);},`「${goal.title}」のアイコンを変更しました。`)}
         onRemove={g=>run(async()=>{await onRemove(g);},`「${goal.title}」を一覧から外しました。`)}/>):<p className={styles.intro}>まだ項目がありません。下から追加できます。</p>}
     </section>
     <form className={styles.addForm} onSubmit={e=>void add(e)}><h3>やることを追加</h3>

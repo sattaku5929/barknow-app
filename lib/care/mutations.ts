@@ -20,6 +20,12 @@ export async function changeCareCount(client:SupabaseClient,scope:Scope,id:strin
   if(error||!data)throw new Error("回数を保存できませんでした。接続を確認してもう一度お試しください。");
   return adapt(data);
 }
+export async function changeCareIcon(client:SupabaseClient,scope:Scope,id:string,goalType:CareGoal["goalType"]) {
+  if(!validCareIcon(goalType))throw new Error("アイコンを確認してください。");
+  const {data,error}=await client.from("wt_care_goals").update({goal_type:goalType}).eq("id",id).eq("owner_id",scope.ownerId).eq("dog_id",scope.dogId).eq("active",true).select(columns).single();
+  if(error||!data)throw new Error("アイコンを保存できませんでした。もう一度選んでください。");
+  return adapt(data);
+}
 export async function archiveCareGoal(client:SupabaseClient,scope:Scope,id:string) {
   // Archive instead of DELETE: retain linked history in the calendar.
   const {data,error}=await client.from("wt_care_goals").update({active:false}).eq("id",id).eq("owner_id",scope.ownerId).eq("dog_id",scope.dogId).eq("active",true).select("id").single();
