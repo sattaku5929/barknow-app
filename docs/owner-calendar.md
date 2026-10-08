@@ -23,6 +23,8 @@ If frontend rollback is needed, restore the previous frontend deployment; retain
 
 Each period has its own Edit button opening a native modal dialog on home. Create from a preset or custom title, adjust that period's target (integer 1–31) with a stepper or numeric input, and archive an item with confirmation. Existing completion history remains intact. Changing a target recalculates completion using the existing goal ID; it does not create or discard completions.
 
+The periods now share one home care card, with one heading per period and an internal Settings button. The standalone goal/notification settings shortcut is removed. Settings include each item's reminder time and clearing it; target and reminder changes save together in one scoped UPDATE so simultaneous edits are retained. No second goal-list page is opened by this button.
+
 All active goals remain visible. 1–3 items use cards (one item uses a horizontal row), 4–8 use short horizontal tiles, and 9+ use a dense two-column list. Larger screens use three columns for tiles/lists. Names wrap in full; there is no hidden overflow or “show more” gate. Home displays the icon, name, and compact state: daily “完了”, weekly/monthly “達成”, or partial count such as 1/3. Each pending tile adds one completion per tap.
 
 Home edit writes reuse `wt_care_goals`; no schema, RLS or migration changes. UPDATE is scoped by owner, dog, ID and active state and requires a returned row before publishing state/cache. Errors retain the editor input. Archive uses `active=false`, never DELETE. Create retries reuse the same UUID. Offline edits are disabled, closing with unsaved input requires confirmation, and the native dialog traps focus; focus returns to the period's Edit button.

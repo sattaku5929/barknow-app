@@ -3784,11 +3784,11 @@ export default function Home() {
     } finally { homeCareMutationRef.current = false; }
   }
 
-  async function changeHomeCareCount(goal: CareGoal, count: number) {
+  async function changeHomeCareCount(goal: CareGoal, count: number, reminderTime?: string | null) {
     if (homeCareMutationRef.current) throw new Error("保存中です。少しお待ちください。");
     homeCareMutationRef.current = true;
     try {
-      const saved = await changeCareCount(supabase, await homeCareScope(), goal.id, count);
+      const saved = await changeCareCount(supabase, await homeCareScope(), goal.id, count, reminderTime);
       publishCareGoals((current) => current.map((item) => item.id === saved.id ? saved : item));
     } finally { homeCareMutationRef.current = false; }
   }
@@ -4206,7 +4206,7 @@ export default function Home() {
         <span className="home-v3-daily-icon" aria-hidden="true"><TopicIcon name="daily" /></span>
       </section>
 
-      <HomeCareGroups key={profile.id ?? "no-dog-care"} goals={careGoals} templates={CARE_GOAL_TEMPLATES} editable={connection === "online" && !!profile.id} progress={goalProgress} onComplete={async (goal) => { await completeCareGoal(goal); setCalendarRefresh(value => value + 1); }} onCreate={createHomeCareGoal} onCountChange={changeHomeCareCount} onRemove={removeHomeCareGoal} onManage={() => navigateOwnerView("goals")} icon={(goal) => <CareIcon name={goal.goalType} />} />
+      <HomeCareGroups key={profile.id ?? "no-dog-care"} goals={careGoals} templates={CARE_GOAL_TEMPLATES} editable={connection === "online" && !!profile.id} progress={goalProgress} onComplete={async (goal) => { await completeCareGoal(goal); setCalendarRefresh(value => value + 1); }} onCreate={createHomeCareGoal} onCountChange={changeHomeCareCount} onRemove={removeHomeCareGoal} icon={(goal) => <CareIcon name={goal.goalType} />} />
       <HomeCalendar key={profile.id ?? "no-dog"} dogId={profile.id} dogName={dogName} birthday={profile.birthday} online={connection === "online"} today={today()} refreshToken={`${eventRefresh}:${checkRefresh}:${calendarRefresh}:${records.length}`} onRecord={(date, kind, note) => { openNewRecord(kind); setRecordDate(date); if (kind === "win") setGoodMoment(note ?? ""); }} />
 
       <section className="home-v3-shortcuts" aria-label="ショートカット">
