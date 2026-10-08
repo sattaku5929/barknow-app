@@ -11,7 +11,7 @@ export const carePeriods = [
   { key: "month", title: "今月中にやること", label: "今月", hint: "月単位の目標はこちら。" },
 ] as const;
 
-type Props={goals:CareGoal[];templates:CareTemplate[];progress:(goal:CareGoal)=>number;onComplete:(goal:CareGoal)=>Promise<void>;onCreate:(goal:CareTemplate,id:string)=>Promise<boolean>;onCountChange:(goal:CareGoal,count:number,reminderTime?:string|null)=>Promise<void>;onRemove:(goal:CareGoal)=>Promise<void>;icon:(goal:Pick<CareGoal,"goalType">)=>ReactNode;editable:boolean};
+type Props={goals:CareGoal[];templates:CareTemplate[];progress:(goal:CareGoal)=>number;onComplete:(goal:CareGoal)=>Promise<void>;onCreate:(goal:CareTemplate,id:string)=>Promise<boolean>;onCountChange:(goal:CareGoal,count:number,reminderTime?:string|null,goalType?:CareGoal["goalType"])=>Promise<void>;onRemove:(goal:CareGoal)=>Promise<void>;icon:(goal:Pick<CareGoal,"goalType">)=>ReactNode;editable:boolean};
 export default function HomeCareGroups({goals,templates,progress,onComplete,onCreate,onCountChange,onRemove,icon,editable}:Props) {
   const lock = useRef(false);
   const returnFocus=useRef<HTMLElement|null>(null);

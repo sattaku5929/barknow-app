@@ -17,7 +17,7 @@ import OwnerHomeLifestyle from "@/components/owner/OwnerHomeLifestyle";
 import HomeCalendar from "@/components/owner/HomeCalendar";
 import HomeCareGroups, { carePeriods } from "@/components/owner/HomeCareGroups";
 import { careDate, careProgress, subscribeCareDate } from "@/lib/care/clock";
-import type { CareGoal as EditableCareGoal, CareTemplate } from "@/lib/care/model";
+import type { CareGoal as EditableCareGoal, CareTemplate, CareGoalType } from "@/lib/care/model";
 import { archiveCareGoal, changeCareCount, createCareGoal } from "@/lib/care/mutations";
 import OwnerAppBackdrop from "@/components/owner/OwnerAppBackdrop";
 import OwnerHomeScene from "@/components/owner/illustrations/OwnerHomeScene";
@@ -34,7 +34,6 @@ type Status = "良い" | "ふつう" | "気になる";
 type RecordCategory = "daily" | "meal" | "barking" | "toilet" | "walk" | "sleep" | "win";
 type BehaviorType = "barking" | "nipping" | "toilet_accident" | "jumping" | "pulling" | "other";
 type GoalPeriod = "day" | "week" | "month";
-type CareGoalType = "brush" | "teeth" | "paws" | "bath" | "nails" | "ears" | "training" | "custom";
 type UserRole = "owner" | "coach" | "admin";
 type AuthMode = "login" | "signup";
 type CoachingStatus = "submitted" | "offered" | "assigned" | "consulting" | "payment_pending" | "active" | "closed";
@@ -933,7 +932,34 @@ function SettingsGlyph({ name }: { name: "mail" | "dog" | "person" | "bell" | "i
 }
 
 function CareIcon({ name }: { name: CareGoalType }) {
-  const paths: Record<CareGoalType, ReactNode> = {
+  const linePaths: Partial<Record<CareGoalType,string>> = {
+    walk: "M7 20l3-7 4 3 3 4M10 13l2-6 4 3 4 1M12 7l-5 3-3 5M14 3h.01",
+    meal: "M3 11h18c0 6-4 9-9 9s-9-3-9-9ZM7 7h.01M12 5h.01M17 7h.01",
+    water: "M12 3s-7 8-7 12a7 7 0 0 0 14 0c0-4-7-12-7-12ZM9 16c0 2 1 3 3 3",
+    toilet: "M5 13h14v2a7 7 0 0 1-14 0ZM7 4h10v9M8 20h8M10 7h4",
+    sleep: "M20 15A9 9 0 0 1 9 4a9 9 0 1 0 11 11Z",
+    home: "M3 11l9-8 9 8M5 9v12h14V9M10 21v-7h4v7",
+    ball: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM5 6c8 0 4 12 14 12M6 19c0-8 12-4 12-14",
+    toy: "M8 8c-5-6-9 1-5 3-4 4 2 8 5 3l8 2c3 5 9 1 5-3 4-2 0-9-5-3Z",
+    nose: "M5 9l7-4 7 4-4 7h-6ZM12 16v4M9 20h6M3 4l2 2M21 4l-2 2",
+    book: "M12 6c-3-3-7-3-9-2v15c3-1 6-1 9 2 3-3 6-3 9-2V4c-2-1-6-1-9 2ZM12 6v15",
+    star: "M12 3l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1Z",
+    people: "M9 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM21 7a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM2 20v-4a4 4 0 0 1 8 0v4M14 20v-4a4 4 0 0 1 8 0v4",
+    hospital: "M5 21V4h14v17M3 21h18M12 7v6M9 10h6M10 21v-5h4v5",
+    medicine: "M5 19a5 5 0 0 1 0-7l7-7a5 5 0 0 1 7 7l-7 7a5 5 0 0 1-7 0ZM8 9l7 7",
+    vaccine: "M7 14l7-7 5 5-7 7ZM3 21l4-7M13 3l8 8M16 6l3-3M10 11l3 3",
+    weight: "M4 4h16v17H4ZM8 7a6 6 0 0 1 8 0M12 10l2-3",
+    temperature: "M9 14V5a3 3 0 0 1 6 0v9a5 5 0 1 1-6 0ZM12 8v9M18 5h3M18 9h3",
+    shield: "M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6ZM8 12l3 3 5-6",
+    car: "M4 11l2-7h12l2 7M3 11h18v8H3ZM6 19v2M18 19v2M6 15h2M16 15h2",
+    travel: "M5 7h14v14H5ZM9 7V3h6v4M8 11v6M16 11v6M8 21v1M16 21v1",
+    school: "M3 21V9l9-6 9 6v12ZM12 7v4M10 9h4M10 21v-6h4v6M6 12h1M17 12h1",
+    park: "M12 3l-6 8h3l-5 6h16l-5-6h3ZM12 17v5",
+    birthday: "M4 12h16v9H4ZM4 16c2 3 4-3 6 0s4-3 6 0 4 0 4 0M8 12V8M12 12V7M16 12V8M8 4v1M12 3v1M16 4v1",
+    camera: "M3 7h4l2-3h6l2 3h4v14H3ZM16 14a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z",
+  };
+  if(linePaths[name])return <svg className="care-line-svg" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d={linePaths[name]}/></svg>;
+  const paths: Partial<Record<CareGoalType, ReactNode>> = {
     brush: <><rect x="4" y="3.5" width="12" height="6" rx="2" /><rect x="15" y="5" width="5" height="3" rx="1.5" /><rect x="5.5" y="8.5" width="2.5" height="12" rx="1.25" /><rect x="9" y="8.5" width="2.5" height="12" rx="1.25" /><rect x="12.5" y="8.5" width="2.5" height="12" rx="1.25" /></>,
     teeth: <path d="M8 3c-3 0-4 2.5-3 5 1 2.5 1 4.5 1.5 8 .4 2.7 2.7 5 3.5 1l.5-3c.2-1 2.8-1 3 0l.5 3c.8 4 3.1 1.7 3.5-1 .5-3.5.5-5.5 1.5-8 1-2.5 0-5-3-5-1.5 0-2.5 1-4 1s-2.5-1-4-1Z" />,
     paws: <><ellipse cx="12" cy="15.5" rx="4.7" ry="4" /><ellipse cx="6.8" cy="10" rx="2" ry="2.6" transform="rotate(-25 6.8 10)" /><ellipse cx="11" cy="7.5" rx="2" ry="2.6" /><ellipse cx="16" cy="9" rx="2" ry="2.6" transform="rotate(25 16 9)" /></>,
@@ -943,7 +969,7 @@ function CareIcon({ name }: { name: CareGoalType }) {
     training: <><circle cx="12" cy="12" r="9" /><path className="icon-negative" d="m7.8 12 2.7 2.7 5.8-6" /></>,
     custom: <><circle cx="12" cy="12" r="9" /><path className="icon-negative" d="M12 7.5v9M7.5 12h9" /></>,
   };
-  return <svg className="flat-icon-svg" viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
+  return <svg className="flat-icon-svg" viewBox="0 0 24 24" aria-hidden="true">{paths[name] ?? paths.custom}</svg>;
 }
 
 function TopicIcon({ name }: { name: RecordCategory }) {
@@ -3779,11 +3805,11 @@ export default function Home() {
     } finally { homeCareMutationRef.current = false; }
   }
 
-  async function changeHomeCareCount(goal: CareGoal, count: number, reminderTime?: string | null) {
+  async function changeHomeCareCount(goal: CareGoal, count: number, reminderTime?: string | null, goalType?: CareGoalType) {
     if (homeCareMutationRef.current) throw new Error("保存中です。少しお待ちください。");
     homeCareMutationRef.current = true;
     try {
-      const saved = await changeCareCount(supabase, await homeCareScope(), goal.id, count, reminderTime);
+      const saved = await changeCareCount(supabase, await homeCareScope(), goal.id, count, reminderTime, goalType);
       publishCareGoals((current) => current.map((item) => item.id === saved.id ? saved : item));
     } finally { homeCareMutationRef.current = false; }
   }
