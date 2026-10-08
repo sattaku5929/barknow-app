@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Fragment, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type CSSProperties, FormEvent, Fragment, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import ChatInput, { SentChatMessage } from "@/components/ChatInput";
 import { usePushNotification } from "@/hooks/usePushNotification";
@@ -5332,7 +5332,7 @@ export default function Home() {
           {view === "coach" && coachView}
           {view === "profile" && profileView}
         </main>
-        <nav ref={bottomNavigation.navRef} className={`bottom-nav ${bottomNavigation.hidden ? "bottom-nav-hidden" : ""}`} aria-label="メインメニュー" inert={bottomNavigation.hidden} onFocusCapture={bottomNavigation.show}>
+        <nav ref={bottomNavigation.navRef} style={{ "--bottom-nav-hide": bottomNavigation.progress } as CSSProperties} className={`bottom-nav ${bottomNavigation.hidden ? "bottom-nav-hidden" : ""}`} aria-label="メインメニュー" inert={bottomNavigation.hidden} onFocusCapture={bottomNavigation.show}>
           <button className={view === "home" ? "active" : ""} aria-current={view === "home" ? "page" : undefined} onClick={() => runBottomNavAction("home", returnToOwnerHome)}><Icon><NavGlyph name="home" /></Icon><span>ホーム</span></button>
           <button className={view === "report" ? "active" : ""} aria-current={view === "report" ? "page" : undefined} onClick={() => runBottomNavAction("report", () => navigateOwnerView("report"))}><Icon><NavGlyph name="report" /></Icon><span>変化</span></button>
           <button className={`bottom-nav-record ${view === "record" ? "active" : ""}`} aria-current={view === "record" ? "page" : undefined} onClick={() => runBottomNavAction("record", () => openNewRecord())}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>

@@ -211,20 +211,19 @@
   }
 }
 
-/* Hide the whole bar, including the raised Record circle, without moving content. */
+/* Scroll distance controls fading and travel; preserve desktop horizontal centering. */
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] {
-  translate: 0 0;
-  transition: translate .2s ease, opacity .2s ease, visibility 0s;
+  --bottom-nav-hide: 0;
+  translate: 0 calc((100% + 28px) * var(--bottom-nav-hide));
+  opacity: calc(1 - var(--bottom-nav-hide));
+  transition: none;
 }
 .app-stage .app-shell nav.bottom-nav.bottom-nav-hidden[aria-label="メインメニュー"] {
-  translate: 0 calc(100% + 28px);
-  opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: translate .2s ease, opacity .2s ease, visibility 0s .2s;
 }
 @media (prefers-reduced-motion: reduce) {
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] {
-    transition: none;
+    translate: 0 0;
   }
 }
