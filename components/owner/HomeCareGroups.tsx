@@ -26,7 +26,7 @@ export default function HomeCareGroups({goals,templates,progress,onComplete,onCr
   }
   function edit(period:CarePeriod){returnFocus.current=document.activeElement as HTMLElement;setEditing(period);}
   return <section className={styles.groups} aria-label="期間ごとのお世話">
-    {carePeriods.filter((period) => period.key !== "month" || goals.some((goal) => goal.period === "month")).map((period) => {
+    {carePeriods.map((period) => {
       const items = goals.filter((goal) => goal.period === period.key);
       const doneCount = items.filter((goal) => progress(goal) >= goal.targetCount).length;
       const layout=careLayout(items.length);

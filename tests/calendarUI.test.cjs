@@ -16,7 +16,7 @@ function load(relative) {
 const Care = load("components/owner/HomeCareGroups.tsx").default;
 const Calendar = load("components/owner/HomeCalendar.tsx").default;
 const careHtml = renderToStaticMarkup(React.createElement(Care,{goals:[{id:"day",period:"day",title:"歯磨き",targetCount:1},{id:"week",period:"week",title:"ブラッシング",targetCount:3}],progress:g=>g.id==="day"?1:2,onComplete:async()=>{},onManage:()=>{},icon:()=>null}));
-assert.match(careHtml,/毎日やること/); assert.match(careHtml,/今週中にやること/); assert.doesNotMatch(careHtml,/今月中にやること/);
+assert.match(careHtml,/毎日やること/); assert.match(careHtml,/今週中にやること/); assert.match(careHtml,/今月中にやること/);
 assert.match(careHtml,/歯磨き：今日1\/1回、完了/); assert.match(careHtml,/ブラッシング：今週2\/3回、できたを1回追加/);
 assert.match(careHtml,/毎日やることの目標・お知らせを設定/); assert.match(careHtml,/今週中にやることの目標・お知らせを設定/);
 assert.equal((careHtml.match(/id="care-day-title"/g)||[]).length,1);assert.equal((careHtml.match(/id="care-week-title"/g)||[]).length,1);
@@ -24,6 +24,7 @@ assert.equal((careHtml.match(/aria-label="期間ごとのお世話"/g)||[]).leng
 const allPeriods=renderToStaticMarkup(React.createElement(Care,{goals:[{id:"d",title:"毎日項目",period:"day",targetCount:1},{id:"w",title:"週項目",period:"week",targetCount:1},{id:"m",title:"月項目",period:"month",targetCount:1}],progress:()=>0,icon:()=>null}));
 for(const period of ["day","week","month"])assert.equal((allPeriods.match(new RegExp(`id="care-${period}-title"`,"g"))||[]).length,1);
 assert.equal((allPeriods.match(/>設定<\/button>/g)||[]).length,3);
+assert.equal((careHtml.match(/>設定<\/button>/g)||[]).length,3,"empty month keeps settings/add access");
 for(const count of [1,2,3,4,8,9,20,40]) {
   const goals=Array.from({length:count},(_,i)=>({id:String(i),title:`項目${i}`,period:"day",targetCount:1}));
   const html=renderToStaticMarkup(React.createElement(Care,{goals,templates:[],editable:true,progress:()=>0,onComplete:async()=>{},onCreate:async()=>true,onCountChange:async()=>{},onRemove:async()=>{},onManage:()=>{},icon:()=>null}));
