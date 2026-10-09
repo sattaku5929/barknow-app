@@ -31,3 +31,12 @@ export async function archiveCareGoal(client:SupabaseClient,scope:Scope,id:strin
   const {data,error}=await client.from("wt_care_goals").update({active:false}).eq("id",id).eq("owner_id",scope.ownerId).eq("dog_id",scope.dogId).eq("active",true).select("id").single();
   if(error||!data)throw new Error("項目を外せませんでした。接続を確認してもう一度お試しください。");
 }
+
+export async function undoCareCompletions(client:SupabaseClient,scope:Scope,goalId:string,ids:readonly string[]) {
+  if (!ids.length) return;
+  const {data,error}=await client.from("wt_care_goal_completions").delete().in("id",[...ids])
+    .eq("owner_id",scope.ownerId).eq("dog_id",scope.dogId).eq("goal_id",goalId).select("id");
+  if(error || !data || data.length!==ids.length || !ids.every(id=>data.some(row=>row.id===id))) {
+    throw new Error("取り消せませんでした。接続を確認してもう一度お試しください。");
+  }
+}

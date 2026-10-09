@@ -9,7 +9,7 @@ function load(relative) {
   new Function("require", "module", "exports", code)(name => load(path.relative(path.join(__dirname, ".."), path.resolve(path.dirname(filename), `${name}.ts`))), module, module.exports);
   return module.exports;
 }
-const { careDate, careProgress, untilCareMidnight, subscribeCareDate } = load("lib/care/clock.ts");
+const { careDate, careProgress, careUndoEntries, untilCareMidnight, subscribeCareDate } = load("lib/care/clock.ts");
 assert.equal(careDate(new Date("2026-10-31T14:59:59Z")), "2026-10-31");
 assert.equal(careDate(new Date("2026-10-31T15:00:00Z")), "2026-11-01");
 assert.equal(untilCareMidnight(new Date("2026-10-31T14:59:59Z")), 1000);
@@ -40,3 +40,22 @@ try {
   stop(); assert.equal(timers.size, 0); assert.equal(listeners.size, 0);
 } finally { Object.assign(global, originals); }
 console.log("Care rollover: Japan midnight, Monday/week/month boundaries, preserved history, resume and timer cleanup passed.");
+
+const undoRows = [
+  {id:"past",goalId:"a",completedOn:"2026-09-30",completedAt:"2026-09-30T10:00:00Z"},
+  {id:"early",goalId:"a",completedOn:"2026-10-08",completedAt:"2026-10-08T01:00:00Z"},
+  {id:"late",goalId:"a",completedOn:"2026-10-08",completedAt:"2026-10-08T02:00:00Z"},
+  {id:"future",goalId:"a",completedOn:"2026-10-09",completedAt:"2026-10-09T01:00:00Z"},
+  {id:"other",goalId:"b",completedOn:"2026-10-08",completedAt:"2026-10-08T03:00:00Z"},
+];
+for(const period of ["day","week","month"]) {
+  const task={id:"a",period,targetCount:2};
+  const undone=careUndoEntries(task,undoRows,"2026-10-08");
+  assert.deepEqual(undone.map(item=>item.id),["late"]);
+  const remaining=undoRows.filter(item=>!undone.includes(item));
+  assert.equal(careProgress(task,remaining,"2026-10-08"),1);
+  assert.deepEqual(remaining.map(item=>item.id),["past","early","future","other"]);
+  assert.deepEqual(careUndoEntries({...task,targetCount:3},undoRows,"2026-10-08"),[]);
+  assert.deepEqual(careUndoEntries({...task,targetCount:1},undoRows,"2026-10-08").map(item=>item.id),["late","early"]);
+}
+console.log("Care undo: newest completion, all periods, lowered targets and unrelated/history preservation passed.");
