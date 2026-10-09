@@ -26,11 +26,11 @@ for(const id of [undefined,"dog-a","dog-b"]){
 }
 for(const component of homeKeys)assert.notEqual(component.key({id:"dog-a"}),component.key({id:"dog-b"}),"changing dogs still resets child state");
 // Render the real components without replacing their UI. SSR must not issue reads/writes.
-function load(relative) {
+function load(relative, reactOverride = React) {
   const filename = path.join(__dirname,"..",relative);
   const code = ts.transpileModule(fs.readFileSync(filename,"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText;
   const module = {exports:{}};
-  const localRequire = name => name.endsWith(".module.css") ? {__esModule:true,default:new Proxy({}, {get:(_,key)=>String(key)})} : name === "@/lib/care/model" ? load("lib/care/model.ts") : name === "./HomeCareEditor" ? load("components/owner/HomeCareEditor.tsx") : name === "@/lib/calendar/model" ? load("lib/calendar/model.ts") : name === "@/lib/calendar/service" ? new Proxy({}, {get:()=>()=>{throw new Error("Unexpected server-side database access");}}) : require(name);
+  const localRequire = name => name === "react" ? reactOverride : name === "./CalendarDays" ? load("components/owner/CalendarDays.tsx",reactOverride) : name.endsWith(".module.css") ? {__esModule:true,default:new Proxy({}, {get:(_,key)=>String(key)})} : name === "@/lib/care/model" ? load("lib/care/model.ts") : name === "./HomeCareEditor" ? load("components/owner/HomeCareEditor.tsx") : name === "@/lib/calendar/model" ? load("lib/calendar/model.ts") : name === "@/lib/calendar/service" ? new Proxy({}, {get:()=>()=>{throw new Error("Unexpected server-side database access");}}) : require(name);
   new Function("require","module","exports",code)(localRequire,module,module.exports);
   return module.exports;
 }
@@ -69,7 +69,38 @@ assert.match(editorHtml,/毎日やることの設定/);assert.match(editorHtml,/
 const calendarHtml = renderToStaticMarkup(React.createElement(Calendar,{dogId:"dog",dogName:"はな",birthday:"2020-10-07",online:false,today:"2026-10-07",refreshToken:"0",onRecord:()=>{throw new Error("Unexpected navigation");}}));
 assert.match(calendarHtml,/愛犬とのカレンダー/); assert.match(calendarHtml,/はなちゃんの誕生日/);
 assert.match(calendarHtml,/接続後に予定と記録を確認できます/);
-assert.equal((calendarHtml.match(/aria-label="10月/g)||[]).length,7);
+assert.equal((calendarHtml.match(/aria-label="10月/g)||[]).length,31);
 assert.match(calendarHtml,/aria-current="date"/); assert.match(calendarHtml,/予定・誕生日/); assert.match(calendarHtml,/できた・記録/);
 assert.match(calendarHtml,/disabled=""[^>]*>＋ 予定/);
-console.log("Calendar and care UI: actual SSR, period separation, correct counts, birthday, seven-day navigation, offline safety passed.");
+console.log("Calendar and care UI: actual SSR, period separation, correct counts, birthday, month-first navigation, offline safety passed.");
+
+// Actual date cells: custom titles, capped previews and expandable overflow.
+const CalendarDays = load("components/owner/CalendarDays.tsx").default;
+const calendarProps = {dates:["2026-10-07"],selected:"2026-10-07",today:"2026-10-07",birthday:"",records:[],mode:"month",onSelect:()=>{}};
+const makePlans = count => Array.from({length:count},(_,i)=>({id:`plan-${i}`,title:`予定名${i}`,category:"other",start_date:"2026-10-07",end_date:"2026-10-07",start_time:null,location:"",note:""}));
+for(const count of [0,1,2,3,8]) {
+  const html=renderToStaticMarkup(React.createElement(CalendarDays,{...calendarProps,events:makePlans(count)}));
+  assert.equal((html.match(/class="title"/g)||[]).length,Math.min(2,count));
+  if(count>2)assert.match(html,new RegExp(`>＋${count-2}件<`));
+  else assert.doesNotMatch(html,/class="more"/);
+  assert.doesNotMatch(html,/plan-dot|>他</,"custom schedule titles replace category marks");
+}
+let expanded=null, chosen=null;
+const interactiveGrid=load("components/owner/CalendarDays.tsx",{...React,useState:()=>[expanded,value=>{expanded=value;}]}).default;
+const interactiveProps={...calendarProps,events:makePlans(4),onSelect:date=>{chosen=date;}};
+let tree=interactiveGrid(interactiveProps);
+let cell=tree.props.children[1][0];
+cell.props.children[1].props.onClick();
+assert.equal(chosen,"2026-10-07");
+tree=interactiveGrid(interactiveProps);
+let html=renderToStaticMarkup(tree);
+assert.equal((html.match(/class="title"/g)||[]).length,4);
+assert.match(html,/aria-expanded="true"/);assert.match(html,/>閉じる</);
+assert.doesNotMatch(html,/<button[^>]*>(?:(?!<\/button>)[\s\S])*<button/,"no nested buttons");
+cell=tree.props.children[1][0];cell.props.children[1].props.onClick();
+html=renderToStaticMarkup(interactiveGrid(interactiveProps));
+assert.equal((html.match(/class="title"/g)||[]).length,2);
+assert.match(html,/>＋2件</);
+const birthdayGrid=renderToStaticMarkup(React.createElement(CalendarDays,{...calendarProps,birthday:"2020-10-07",events:makePlans(2)}));
+assert.match(birthdayGrid,/>誕生日</);assert.match(birthdayGrid,/>＋1件</);
+console.log("Calendar titles: 0–8 plans, overflow expansion/collapse, selection, birthday and button semantics passed.");

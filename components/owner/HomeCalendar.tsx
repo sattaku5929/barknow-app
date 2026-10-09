@@ -4,13 +4,14 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { addDays, eventsOnDate, isBirthday, monthDays, moveMonth, scheduleError, scheduleKinds, weekStart } from "@/lib/calendar/model";
 import type { CalendarEvent, CalendarRecord, ScheduleKind } from "@/lib/calendar/model";
 import { deleteCalendarEvent, loadCalendar, saveCalendarEvent } from "@/lib/calendar/service";
+import CalendarDays from "./CalendarDays";
 
 type Props = { dogId?:string; dogName:string; birthday:string; online:boolean; today:string; refreshToken:string; onRecord:(date:string,kind:"daily"|"win"|null,note?:string)=>void };
 const dayLabel = (date:string) => new Intl.DateTimeFormat("ja-JP",{month:"long",day:"numeric",weekday:"short",timeZone:"UTC"}).format(new Date(`${date}T12:00:00Z`));
 
 export default function HomeCalendar({dogId,dogName,birthday,online,today,refreshToken,onRecord}:Props) {
   const [selected,setSelected] = useState(today);
-  const [mode,setMode] = useState<"week"|"month">("week");
+  const [mode,setMode] = useState<"week"|"month">("month");
   const [loaded,setLoaded] = useState<{key:string;events:CalendarEvent[];records:CalendarRecord[];error:string}|null>(null);
   const [revision,setRevision] = useState(0);
   const [notice,setNotice] = useState("");
@@ -80,16 +81,7 @@ export default function HomeCalendar({dogId,dogName,birthday,online,today,refres
     <header className="calendar-heading"><div><small>OUR DAYS</small><h2 id="calendar-heading">愛犬とのカレンダー</h2></div><button className="calendar-add" type="button" disabled={!online || !dogId || loading} onClick={()=>open("other")}>＋ 予定</button></header>
     <div className="calendar-toolbar"><strong>{selected.slice(0,4)}年 {Number(selected.slice(5,7))}月</strong><div className="calendar-mode" aria-label="表示期間">{(["week","month"] as const).map(m=><button key={m} type="button" aria-pressed={mode===m} onClick={()=>setMode(m)}>{m==="week"?"週":"月"}</button>)}</div><button type="button" onClick={()=>setSelected(today)}>今日</button></div>
     <div className="calendar-nav"><button type="button" aria-label={mode==="week"?"前の週":"前の月"} onClick={()=>setSelected(mode==="week"?addDays(selected,-7):moveMonth(selected,-1))}>‹</button><span>{mode==="week"?`${dayLabel(start)} 〜 ${dayLabel(end)}`:"日付をタップして予定と記録を確認"}</span><button type="button" aria-label={mode==="week"?"次の週":"次の月"} onClick={()=>setSelected(mode==="week"?addDays(selected,7):moveMonth(selected,1))}>›</button></div>
-    <div className={`calendar-days calendar-${mode}`} aria-label="日付を選ぶ">
-      {["月","火","水","木","金","土","日"].map(d=><span className="calendar-weekday" key={d}>{d}</span>)}
-      {dates.map(date=>{
-        const plans = eventsOnDate(events,date), logs = records.filter(r=>r.date===date), birth = isBirthday(birthday,date);
-        return <button key={date} type="button" aria-pressed={selected===date} aria-current={date===today?"date":undefined} aria-label={`${dayLabel(date)}${date===today?"、今日":""}、予定${plans.length}件、記録${logs.length}件${birth?"、誕生日":""}`} className={`${selected===date?"is-selected":""} ${date===today?"is-today":""} ${date.slice(0,7)!==selected.slice(0,7)?"is-adjacent":""}`} onClick={()=>setSelected(date)}>
-          <strong>{Number(date.slice(8))}</strong><span className="calendar-indicators">{(plans.length>0 || birth) && <i className="plan-dot" />}{logs.length>0 && <i className="record-dot" />}</span>
-          {mode==="week" && <small>{birth?"誕生日":plans[0]?scheduleKinds.find(k=>k.key===plans[0].category)?.label:logs.length?`${logs.length}記録`:"—"}</small>}
-        </button>;
-      })}
-    </div>
+    <CalendarDays key={mode} dates={dates} mode={mode} selected={selected} today={today} birthday={birthday} events={events} records={records} onSelect={setSelected} />
     <p className="calendar-legend"><span><i className="plan-dot" />予定・誕生日</span><span><i className="record-dot" />できた・記録</span></p>
     <div className="calendar-feedback" aria-live="polite">{loading ? "読み込み中…" : !dogId ? "愛犬を登録すると予定を追加できます。" : !online ? "接続後に予定と記録を確認できます。" : loadError ? <>{loadError}<button type="button" onClick={()=>setRevision(r=>r+1)}>再読み込み</button></> : notice}</div>
     <div className="calendar-agenda" aria-busy={loading}><h3>{dayLabel(selected)}{selected===today && <small>今日</small>}</h3>
