@@ -1,7 +1,7 @@
 # Owner home: care periods and calendar
 
 - Daily goals count today only; weekly goals run Monday–Sunday; monthly goals count the current calendar month. Existing goals/completions are not rewritten.
-- Calendar defaults to a compact week, with a complete Monday–Sunday month grid available. Dates use date keys, not browser-dependent midnight arithmetic.
+- Calendar opens with a complete Monday–Sunday month grid; the week view remains available. Each date shows up to two schedule names (including the profile birthday). For three or more, ＋N件 expands all names in that date cell and selects the day; 閉じる collapses it. Names wrap to two lines, with full titles in the selected-day agenda. Dates use date keys, not browser-dependent midnight arithmetic.
 - `wt_calendar_events` stores owner plans only. Travel may span multiple days. Time, place and notes are optional. Editing/deleting requires the same owner and their dog through RLS.
 - Existing active observation entries, legacy daily records and care completions populate the selected date automatically; archived observation entries are excluded. Reads paginate instead of truncating at a server row limit.
 - Birthday is read from the dog profile. It is not automatically inserted as an observation. Feb 29 birthdays appear on Feb 29 in leap years.
