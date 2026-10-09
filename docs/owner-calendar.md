@@ -36,3 +36,7 @@ Home edit writes reuse `wt_care_goals`; no schema, RLS or migration changes. UPD
 Home displays exactly three care cards: daily, weekly and monthly, each once. There is no period switch. Each card contains its tasks as unframed compact rows and one internal Settings button; empty periods remain available for adding tasks. Goals are not deleted or reduced to one task.
 
 Progress uses Japan time: daily at 00:00, weekly Monday at 00:00, monthly on the 1st at 00:00. The existing midnight subscription and mobile resume checks remain unchanged. Goals, targets, reminders and completion history are retained. No database or persistence changes.
+
+## Tap to undo completion
+
+Completed home care tasks remain interactive: tap again to undo the newest completion in the current day/week/month. Earlier periods and other tasks remain untouched. If the target was lowered below the current count, undo only the excess entries needed to return below the target. Online undo is scoped to owner, dog, goal and exact completion IDs; state/cache and calendar refresh update after successful persistence. Errors leave the displayed state unchanged; taps are locked while saving. Local-only mode updates the existing device cache. Rollover behavior remains automatic, with no rollover-time captions shown on home.

@@ -38,7 +38,9 @@ const Care = load("components/owner/HomeCareGroups.tsx").default;
 const Calendar = load("components/owner/HomeCalendar.tsx").default;
 const careHtml = renderToStaticMarkup(React.createElement(Care,{goals:[{id:"day",period:"day",title:"歯磨き",targetCount:1},{id:"week",period:"week",title:"ブラッシング",targetCount:3}],progress:g=>g.id==="day"?1:2,onComplete:async()=>{},onManage:()=>{},icon:()=>null}));
 for(const period of ["day","week","month"])assert.equal((careHtml.match(new RegExp(`data-care-period="${period}"`,"g"))||[]).length,1);
-assert.match(careHtml,/歯磨き：今日1\/1回、完了/);assert.match(careHtml,/ブラッシング：今週2\/3回、できたを1回追加/);
+assert.match(careHtml,/歯磨き：今日1\/1回、完了、押すと未完了に戻す/);
+assert.match(careHtml,/aria-pressed="true"/);
+assert.doesNotMatch(careHtml,/<button[^>]*disabled[^>]*aria-label="歯磨き：/);assert.match(careHtml,/ブラッシング：今週2\/3回、できたを1回追加/);
 assert.equal((careHtml.match(/>設定<\/button>/g)||[]).length,3);
 assert.doesNotMatch(careHtml,/お世話の期間を選ぶ|home-care-panel|目標・お知らせの設定/);
 const emptyCare=renderToStaticMarkup(React.createElement(Care,{goals:[],progress:()=>0,icon:()=>null}));
@@ -51,7 +53,7 @@ for(const period of ["day","week","month"]) {
 }
 assert.equal((nineHtml.match(/できたを1回追加/g)||[]).length,9,"retain all tasks inside three cards");
 assert.equal((nineHtml.match(/>設定<\/button>/g)||[]).length,3);
-for(const hint of ["毎日0時","毎週月曜0時","毎月1日0時"])assert.match(nineHtml,new RegExp(hint));
+for(const hint of ["毎日0時","毎週月曜0時","毎月1日0時"])assert.doesNotMatch(nineHtml,new RegExp(hint));
 for(const count of [1,2,3,4,8,9,20,40]) {
   const goals=Array.from({length:count},(_,i)=>({id:String(i),title:`項目${i}`,period:"day",targetCount:1}));
   const html=renderToStaticMarkup(React.createElement(Care,{goals,templates:[],editable:true,progress:()=>0,onComplete:async()=>{},onCreate:async()=>true,onCountChange:async()=>{},onRemove:async()=>{},onManage:()=>{},icon:()=>null}));
@@ -104,3 +106,27 @@ assert.match(html,/>＋2件</);
 const birthdayGrid=renderToStaticMarkup(React.createElement(CalendarDays,{...calendarProps,birthday:"2020-10-07",events:makePlans(2)}));
 assert.match(birthdayGrid,/>誕生日</);assert.match(birthdayGrid,/>＋1件</);
 console.log("Calendar titles: 0–8 plans, overflow expansion/collapse, selection, birthday and button semantics passed.");
+// Exercise the real task button handler, including the in-flight tap lock.
+(async()=>{
+  const mockHooks={...React,useRef:value=>({current:value}),useState:value=>[value,()=>{}]};
+  const InteractiveCare=load("components/owner/HomeCareGroups.tsx",mockHooks).default;
+  const task={id:"toggle",title:"散歩",goalType:"walk",period:"day",targetCount:1};
+  let count=0,added=0,undone=0,release;
+  const props={goals:[task],templates:[],editable:true,icon:()=>null,progress:()=>count,
+    onComplete:async()=>{added++;await new Promise(resolve=>{release=resolve;});count++;},onUndo:async()=>{undone++;count--;}};
+  function taskButton(node){
+    if(!node||typeof node!=="object")return null;
+    if(node.type==="button"&&node.props["aria-label"]?.startsWith("散歩："))return node;
+    for(const child of React.Children.toArray(node.props?.children)){const match=taskButton(child);if(match)return match;}
+    return null;
+  }
+  let button=taskButton(InteractiveCare(props));assert.ok(button);assert.equal(button.props.disabled,false);
+  button.props.onClick();button.props.onClick();assert.equal(added,1,"in-flight repeated tap cannot double count");
+  release();await new Promise(resolve=>setImmediate(resolve));
+  button=taskButton(InteractiveCare(props));assert.equal(button.props["aria-pressed"],true);assert.equal(button.props.disabled,false);
+  button.props.onClick();await new Promise(resolve=>setImmediate(resolve));assert.equal(undone,1);assert.equal(count,0);
+  button=taskButton(InteractiveCare(props));assert.equal(button.props["aria-pressed"],false);
+  for(const period of ["week","month"]){count=3;const week={...task,period,targetCount:3};
+    button=taskButton(InteractiveCare({...props,goals:[week]}));button.props.onClick();await new Promise(resolve=>setImmediate(resolve));assert.equal(count,2);}
+  console.log("Home care actual handlers: complete, undo, repeat tap lock and weekly/monthly undo passed.");
+})().catch(error=>{console.error(error);process.exitCode=1;});

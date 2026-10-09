@@ -10,6 +10,15 @@ export function careProgress(goal: Pick<CareGoal, "id" | "period">, completions:
   return completions.filter(item => item.goalId === goal.id && item.completedOn >= start && item.completedOn <= date).length;
 }
 
+// Undo only this period, newest first. A lowered target may require undoing
+// excess entries as well so a completed task really returns to incomplete.
+export function careUndoEntries<T extends { id: string; goalId: string; completedOn: string; completedAt: string }>(goal: Pick<CareGoal, "id" | "period" | "targetCount">, completions: readonly T[], date: string): T[] {
+  const start = periodStart(goal.period, date);
+  const current = completions.filter(item => item.goalId === goal.id && item.completedOn >= start && item.completedOn <= date)
+    .sort((a, b) => b.completedOn.localeCompare(a.completedOn) || b.completedAt.localeCompare(a.completedAt) || b.id.localeCompare(a.id));
+  return current.length >= goal.targetCount ? current.slice(0, current.length - goal.targetCount + 1) : [];
+}
+
 export function untilCareMidnight(now = new Date()) {
   const midnight = Date.parse(`${careDate(now)}T00:00:00+09:00`) + 86_400_000;
   return Math.max(1, midnight - now.getTime());
