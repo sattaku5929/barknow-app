@@ -101,7 +101,8 @@ for (const counts of [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 1], [10
   }
 }
 // Real report integration: current rows only, selected-theme ordering and unchanged filters.
-const reportStates = [{ ...trends, event_themes: [...sampleTrends, { ...sampleTrends[0], period: "previous" }] }, [], false, false, null];
+const reportDailyDays = [{ local_date: trends.previous_start }];
+const reportStates = [{ ...trends, event_themes: [...sampleTrends, { ...sampleTrends[0], period: "previous" }] }, reportDailyDays, false, false, null];
 let selection;
 const Report = load("components/insights/RecentObservationTrends.tsx", {
   ...React, useState: () => [reportStates.shift(), value => { selection = value; }], useEffect: () => {}, useRef: () => ({ current: null }),
@@ -127,6 +128,7 @@ assert.equal(visibleTables.length, 1, "one owner event table only");
 assert.ok(visibleTables[0].parents.every(parent => parent.type !== "details"), "table must be visible without opening any disclosure");
 const visibleCharts = findNodes(reportTree, node => node.type?.name === "DailyCheckHistoryChart");
 assert.equal(visibleCharts.length, 1);
+assert.equal(visibleCharts[0].node.props.days, reportDailyDays, "previous-week data reaches the chart without a current-week filter");
 assert.ok(visibleCharts[0].parents.every(parent => parent.type !== "details"), "Daily Check chart is in the initial summary, outside disclosures");
 const moreButtons = findNodes(reportTree, node => node.type === "button" && node.props["aria-label"] === "詳しく見る、直近7日間の全テーマの記録");
 assert.equal(moreButtons.length, 1);
@@ -180,7 +182,13 @@ assert.match(chartHtml, /全項目/);
 assert.match(chartHtml, /数値の表を見る/);
 assert.doesNotMatch(chartHtml, /NaN|Infinity/);
 let selectedMetric = "all";
-const InteractiveChart = load("components/insights/DailyCheckHistoryChart.tsx", { ...React, useState: () => [selectedMetric, next => { selectedMetric = next; }] }).default;
+let selectedWeek = "current";
+const swipeRef = { current: null };
+const InteractiveChart = load("components/insights/DailyCheckHistoryChart.tsx", { ...React,
+  useRef: () => swipeRef,
+  useState: initial => initial === "all" ? [selectedMetric, next => { selectedMetric = next; }]
+    : [selectedWeek, next => { selectedWeek = next; }],
+}).default;
 let chartTree = InteractiveChart(chartProps);
 const activityButton = findNodes(chartTree, node => node.type === "button" && node.props.children === "活動")[0].node;
 activityButton.props.onClick();
@@ -204,6 +212,36 @@ assert.equal(findNodes(partialTree, node => node.props?.["data-missing-date"] ==
 selectedMetric = "all";
 const partialAll = InteractiveChart({ ...chartProps, days: partialDays });
 assert.equal(findNodes(partialAll, node => node.props?.["data-missing-date"] === "2026-10-05").length, 0, "day with other scores is not a fully unrecorded day");
+assert.doesNotMatch(chartHtml, /<caption|は未入力です/);
+const priorDay = { local_date: "2026-09-29", ...Object.fromEntries(keys.map(key => [key, 5])) };
+const bothWeeks = { ...chartProps, days: [...chartDays, priorDay] };
+function swipe(tree, table, dx, dy = 0, scrollLeft = 0) {
+  const surface = findNodes(tree, node => node.type === "div" && node.props.onTouchStart
+    && (table ? node.props.role === "region" : node.props.role !== "region"))[0].node;
+  surface.props.onTouchStart({ touches: [{ clientX: 100, clientY: 100 }], currentTarget: { scrollLeft, clientWidth: 320, scrollWidth: 410 } });
+  surface.props.onTouchEnd({ changedTouches: [{ clientX: 100 + dx, clientY: 100 + dy }] });
+}
+swipe(InteractiveChart(bothWeeks), false, 80, 100);
+assert.equal(selectedWeek, "current", "vertical scroll does not switch week");
+swipe(InteractiveChart(bothWeeks), false, 80);
+assert.equal(selectedWeek, "previous");
+const previousTree = InteractiveChart(bothWeeks);
+const previousSvg = findNodes(previousTree, node => node.type === "svg" && node.props.role === "img")[0].node;
+assert.match(previousSvg.props["aria-label"], /2026-09-27から2026-10-03/);
+assert.equal(findNodes(previousTree, node => node.type === "circle").length, 6);
+const previousTable = findNodes(previousTree, node => node.type === "table")[0].node;
+assert.match(previousTable.props["aria-label"], /2026-09-27から2026-10-03/);
+assert.equal(findNodes(previousTable, node => node.type === "td" && node.props.children === 5).length, 6);
+assert.equal(findNodes(previousTree, node => node.type === "strong" && node.props.children === "5.0").length, 1);
+swipe(previousTree, true, -80, 0, 30);
+assert.equal(selectedWeek, "previous", "table scroll inside its range does not change weeks");
+swipe(previousTree, true, -80, 0, 90);
+assert.equal(selectedWeek, "current", "swipe at table end synchronizes graph and table");
+swipe(InteractiveChart(bothWeeks), true, 80);
+assert.equal(selectedWeek, "previous", "table start can switch to previous week");
+findNodes(InteractiveChart(bothWeeks), node => node.type === "button" && node.props.children === "今週 ›")[0].node.props.onClick();
+assert.equal(selectedWeek, "current");
+assert.equal(findNodes(InteractiveChart(bothWeeks), node => node.type === "circle").length, 18);
 const acrossMonthTrends = { ...trends, current_start: "2026-12-29", as_of_local_date: "2027-01-04" };
 const recordedDays = ["2026-12-30", "2027-01-01", "2027-01-04", "2027-01-04", "2026-12-20"].map(local_date => ({ local_date, ...Object.fromEntries(keys.map(key => [key, 3])) }));
 const calendarSummary = Summary({ trends: acrossMonthTrends, dailyDays: recordedDays, onEventRecords: () => {} });

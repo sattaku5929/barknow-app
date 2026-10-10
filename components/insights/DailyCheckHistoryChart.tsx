@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type TouchEvent } from "react";
 import { dailyLabels } from "@/lib/insights/presentation";
 import type { DailyCheckDay, DailyMetricKey } from "@/lib/insights/trendTypes";
 import styles from "./DailyCheckHistoryChart.module.css";
@@ -54,7 +54,28 @@ export default function DailyCheckHistoryChart({ days, startDate, endDate }: {
   endDate: string;
 }) {
   const [metric, setMetric] = useState<ChartMetric>("all");
-  const slots = Array.from({ length: 7 }, (_, index) => addDays(startDate, index));
+  const [week, setWeek] = useState<"current" | "previous">("current");
+  const gesture = useRef<{ x: number; y: number; left: boolean; right: boolean } | null>(null);
+  const displayedStart = week === "previous" ? addDays(startDate, -7) : startDate;
+  const displayedEnd = week === "previous" ? addDays(startDate, -1) : endDate;
+  const slots = Array.from({ length: 7 }, (_, index) => addDays(displayedStart, index));
+  function startSwipe(event: TouchEvent<HTMLDivElement>, table = false) {
+    if (event.touches.length !== 1) { gesture.current = null; return; }
+    const target = event.currentTarget;
+    gesture.current = { x: event.touches[0].clientX, y: event.touches[0].clientY,
+      left: !table || target.scrollLeft <= 1,
+      right: !table || target.scrollLeft + target.clientWidth >= target.scrollWidth - 1 };
+  }
+  function endSwipe(event: TouchEvent<HTMLDivElement>) {
+    const origin = gesture.current;
+    gesture.current = null;
+    if (!origin || event.changedTouches.length !== 1) return;
+    const dx = event.changedTouches[0].clientX - origin.x;
+    const dy = event.changedTouches[0].clientY - origin.y;
+    if (Math.abs(dx) < 50 || Math.abs(dx) <= Math.abs(dy) * 1.5) return;
+    if (dx > 0 && origin.left) setWeek("previous");
+    else if (dx < 0 && origin.right) setWeek("current");
+  }
   const byDate = new Map(days.map((day) => [day.local_date, day]));
   const periodDays = slots.flatMap(date => byDate.has(date) ? [byDate.get(date)!] : []);
   const series = metric === "overall" ? [{ key: "overall" as const, color: "#008661", dash: undefined }]
@@ -78,12 +99,19 @@ export default function DailyCheckHistoryChart({ days, startDate, endDate }: {
       <div className="insight-chart-average"><small>{metric === "all" ? "総合の7日平均" : "7日平均"}</small><strong>{average === null ? "–" : average.toFixed(1)}</strong></div>
     </div>
     <p className="insight-section-intro">1 気になる · 3 いつも通り · 5 とても良い。</p>
+    <div className={styles.weekNavigation}>
+      <button type="button" disabled={week === "previous"} onClick={() => setWeek("previous")}>‹ 前週</button>
+      <span aria-live="polite">{displayedStart.slice(5).replace("-", "/")} – {displayedEnd.slice(5).replace("-", "/")}</span>
+      <button type="button" disabled={week === "current"} onClick={() => setWeek("current")}>今週 ›</button>
+    </div>
     <div className="insight-metric-tabs" role="group" aria-label="グラフの表示項目">
       {metrics.map((item) => <button type="button" aria-pressed={metric === item.key}
         className={metric === item.key ? "is-selected" : ""} key={item.key} onClick={() => setMetric(item.key)}>{item.label}</button>)}
     </div>
-    <div className="insight-chart-wrap">
-      <svg viewBox="0 0 320 150" role="img" aria-label={`${label}の${startDate}から${endDate}までの推移`}>
+    <div className={`insight-chart-wrap ${styles.swipeChart}`} onTouchStart={startSwipe}
+      onTouchEnd={endSwipe} onTouchCancel={() => { gesture.current = null; }}
+      onTouchMove={event => { if (event.touches.length !== 1) gesture.current = null; }}>
+      <svg viewBox="0 0 320 150" role="img" aria-label={`${label}の${displayedStart}から${displayedEnd}までの推移`}>
         {slots.map((date, index) => plotted.length > 0 && plotted.every(item => item.points[index].value === null)
           ? <rect key={`missing-${date}`} className={styles.missingBand} data-missing-date={date}
               x={x(index) - 20} y="12" width="40" height="138"><title>{`${date} 未入力`}</title></rect> : null)}
@@ -117,8 +145,11 @@ export default function DailyCheckHistoryChart({ days, startDate, endDate }: {
     {periodDays.length === 0 && <p role="status" className={styles.note}>この7日間のDaily Checkはまだありません。</p>}
     <details className={styles.values}>
       <summary>数値の表を見る</summary>
-      <div className={styles.scroll} role="region" aria-label="Daily Checkの項目別数値" tabIndex={0}>
-        <table><caption>{startDate}〜{endDate}のDaily Check。– は未入力です。</caption>
+      <div className={styles.scroll} role="region" aria-label="Daily Checkの項目別数値" tabIndex={0}
+        onTouchStart={event => startSwipe(event, true)} onTouchEnd={endSwipe}
+        onTouchCancel={() => { gesture.current = null; }}
+        onTouchMove={event => { if (event.touches.length !== 1) gesture.current = null; }}>
+        <table aria-label={`${displayedStart}から${displayedEnd}のDaily Check`}>
           <thead><tr><th scope="col">項目</th>{slots.map(date => <th key={date} scope="col">{date.slice(5).replace("-", "/")}</th>)}</tr></thead>
           <tbody>{dailyChartMetrics.map(item => <tr key={item.key}><th scope="row" style={{ color: item.color }}>{dailyLabels[item.key]}</th>
             {slots.map(date => <td key={date}>{byDate.get(date)?.[item.key] ?? "–"}</td>)}</tr>)}</tbody>
