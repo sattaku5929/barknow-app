@@ -29,6 +29,13 @@ export default function InsightDashboardSummary({ trends, dailyDays, onEventReco
   const previousCondition = averageCondition(previousDays);
   const currentEvents = trends.event_overall.find((row) => row.period === "current");
   const comparableDaily = currentDays.length >= 3 && previousDays.length >= 3;
+  const recordedDates = new Set(currentDays.map(day => day.local_date));
+  const calendarDays = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(`${trends.current_start}T12:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + index);
+    return { value: date.toISOString().slice(0, 10), day: date.getUTCDate(), weekday: ["日", "月", "火", "水", "木", "金", "土"][date.getUTCDay()] };
+  });
+  const recordedCount = calendarDays.filter(day => recordedDates.has(day.value)).length;
 
   const weeklyChange = comparableDaily && currentCondition !== null && previousCondition !== null
     ? currentCondition - previousCondition
@@ -42,8 +49,14 @@ export default function InsightDashboardSummary({ trends, dailyDays, onEventReco
       <div className="insight-week-summary-grid">
         <article>
           <small>Daily Check</small>
-          <strong>{currentDays.length}<em>/7日</em></strong>
-          <span className="insight-mini-progress"><i style={{ width: `${Math.min(100, currentDays.length / 7 * 100)}%` }} /></span>
+          <strong>{recordedCount}<em>/7日</em></strong>
+          <ol className={styles.dailyDates} aria-label="直近7日間のDaily Check記録状況">
+            {calendarDays.map(day => <li key={day.value} data-recorded={recordedDates.has(day.value)}
+              aria-label={`${day.value}（${day.weekday}）：${recordedDates.has(day.value) ? "記録済み" : "未入力"}`}>
+              <span className={styles.weekday} aria-hidden="true">{day.weekday}</span>
+              <span className={`${styles.dateCircle} ${recordedDates.has(day.value) ? styles.recorded : ""}`} aria-hidden="true">{day.day}</span>
+            </li>)}
+          </ol>
         </article>
         <article>
           <button type="button" className={styles.eventButton} onClick={onEventRecords}
