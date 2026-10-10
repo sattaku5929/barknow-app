@@ -3,12 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { EventTheme } from "@/lib/observations/observationEvent";
 import { loadObservationDailyDays, loadObservationTrends } from "@/lib/insights/observationTrends";
-import { featuredDaily, handlerComparisons, orderedThemes, themeLabel } from "@/lib/insights/presentation";
+import { orderedThemes } from "@/lib/insights/presentation";
 import type { InsightFilter } from "@/lib/insights/recordSources";
 import type { DailyCheckDay, ObservationTrends } from "@/lib/insights/trendTypes";
 import DailyCheckHistoryChart from "./DailyCheckHistoryChart";
-import DailyCheckTrendCard from "./DailyCheckTrendCard";
-import HandlerComparisonCard from "./HandlerComparisonCard";
 import InsightDashboardSummary from "./InsightDashboardSummary";
 import InsightRecordList from "./InsightRecordList";
 import ThemeTrendTable from "./ThemeTrendTable";
@@ -55,8 +53,6 @@ export default function RecentObservationTrends({ dogId, online, selectedThemes 
   }, [dogId, online]);
 
   const themes = trends ? orderedThemes(trends, selectedThemes) : [];
-  const handlers = trends ? handlerComparisons(trends) : [];
-  const daily = trends ? featuredDaily(trends) : [];
   const showRecords = (title: string, filter: InsightFilter, isDaily = false) => setSelection({ title, filter, daily: isDaily });
 
   return <section className="recent-observation-trends" aria-label="記録のサマリーと詳細">
@@ -79,26 +75,6 @@ export default function RecentObservationTrends({ dogId, online, selectedThemes 
           <button type="button" className={styles.moreButton} onClick={() => showRecords("最近のできごと", { period: "current" })}
             aria-label="詳しく見る、直近7日間の全テーマの記録">詳しく見る <span aria-hidden="true">→</span></button>
         </section>
-
-        <details className="insight-deep-dive">
-          <summary>
-            <span><strong>詳しいデータを見る</strong><small>項目別平均・担当者別</small></span>
-            <i aria-hidden="true">⌄</i>
-          </summary>
-          <div className="insight-deep-dive-body">
-            {daily.length > 0 && <details className="insight-detail-disclosure">
-              <summary>Daily Checkの項目別平均を見る</summary>
-              <div className="insight-daily-list">{daily.map((item) => <DailyCheckTrendCard key={item.current.metric_key} {...item} />)}</div>
-            </details>}
-
-            {handlers.length > 0 && <section className="insight-section" aria-labelledby="handler-trends-title">
-              <h3 id="handler-trends-title">担当した人による記録の違い</h3>
-              <div className="insight-card-stack">{handlers.map(({ theme, handlers: pair }) => <HandlerComparisonCard key={theme.theme_key}
-                theme={theme} handlers={pair} onRecords={() => showRecords(themeLabel(theme.theme_key),
-                  { themeKey: theme.theme_key, period: "current", handlerIds: pair.map((row) => row.handled_by_member_id) })} />)}</div>
-            </section>}
-          </div>
-        </details>
 
       </>}
   </section>;
