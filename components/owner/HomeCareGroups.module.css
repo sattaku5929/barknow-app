@@ -24,7 +24,7 @@
 .single .icon { grid-area:icon; }
 .dense { gap:0 10px; }.dense .item { grid-template-columns:22px minmax(0,1fr); grid-template-areas:"icon title" "icon state"; justify-items:start; text-align:left; align-content:center; gap:0 7px; padding:7px 0; min-height:50px; border:0; border-radius:0; border-bottom:1px solid #e7eee6; background:transparent; }.dense .icon { width:22px; height:22px; }.dense .icon svg { width:20px; height:20px; }.dense .item strong { font-size:11px; }.dense .done .state { color:#008661; }
 .empty { width:100%; min-height:48px; border:1px dashed #cfded1; border-radius:13px; background:#f8faf5; color:#008661; font-size:12px; }
-.dialog { width:min(480px,calc(100vw - 24px)); max-height:calc(100dvh - 32px); overflow-y:auto; overscroll-behavior:contain; padding:22px 18px; border:0; border-radius:24px; background:#fffdf8; color:#263f34; }
+.dialog { position:fixed; inset:0; margin:auto; width:min(480px,calc(100vw - 24px)); max-height:calc(100dvh - 32px); overflow-y:auto; overscroll-behavior:contain; padding:22px 18px; border:0; border-radius:24px; background:#fffdf8; color:#263f34; }
 .dialog::backdrop { background:#173b3265; }
 .dialogHeader { display:flex; align-items:center; justify-content:space-between; gap:8px; }.dialogHeader small { font-size:9px; color:#7c8a7f; letter-spacing:2px; }.dialogHeader h2 { font-size:19px; line-height:1.5; margin:5px 0 0; }.close { width:44px; height:44px; border:0; border-radius:50%; background:#eff4eb; color:#48664f; font-size:26px; flex-shrink:0; }
 .intro { font-size:12px; line-height:1.7; color:#738272; margin:13px 0 18px; }
