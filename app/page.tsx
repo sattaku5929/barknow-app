@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import ChatInput, { SentChatMessage } from "@/components/ChatInput";
 import { usePushNotification } from "@/hooks/usePushNotification";
 import { clearAppBadge } from "@/lib/appBadge";
+import RecordedDaysSummary from "@/components/owner/RecordedDaysSummary";
 import DailyCheckForm from "@/components/observations/DailyCheckForm";
 import ObservationThemeSelector from "@/components/observations/ObservationThemeSelector";
 import HouseholdMemberManager from "@/components/observations/HouseholdMemberManager";
@@ -4243,7 +4244,7 @@ export default function Home() {
         </button>
         <button onClick={() => navigateOwnerView("report")}>
           <span className="home-v3-summary-icon is-week"><NavGlyph name="report" /></span>
-          <span><small>記録した日</small><strong>{recentDays.filter((day) => day.entries.length > 0).length}<em>DAYS</em></strong></span>
+          <RecordedDaysSummary key={`recorded-days:${profile.id ?? "no-dog"}`} dogId={profile.id} online={connection === "online"} revision={`${checkRefresh}:${eventRefresh}`} legacyRecords={records} />
           <b aria-hidden="true">›</b>
         </button>
       </section>
