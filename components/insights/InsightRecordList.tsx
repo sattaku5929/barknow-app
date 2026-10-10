@@ -32,7 +32,7 @@ export default function InsightRecordList({ dogId, trends, filter, title, daily 
         <strong>{themeLabel(entry.themeKey)} <span>{eventResultLabels[entry.result]}</span></strong>
         <small>{entry.localDate} · {new Date(entry.occurredAt).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}</small>
         {entry.note && <p>{entry.note}</p>}
-      </li>)}</ul>{events.length === 60 && <small>直近60件を表示しています。</small>}</>
+      </li>)}</ul></>
       : <p>条件に合う記録はありません。</p>}
   </section>;
 }

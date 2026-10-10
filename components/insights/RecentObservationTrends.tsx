@@ -12,6 +12,7 @@ import HandlerComparisonCard from "./HandlerComparisonCard";
 import InsightDashboardSummary from "./InsightDashboardSummary";
 import InsightRecordList from "./InsightRecordList";
 import ThemeTrendTable from "./ThemeTrendTable";
+import styles from "./RecentObservationTrends.module.css";
 
 type RecordSelection = { title: string; filter: InsightFilter; daily?: boolean };
 
@@ -66,24 +67,25 @@ export default function RecentObservationTrends({ dogId, online, selectedThemes 
         <InsightDashboardSummary trends={trends} dailyDays={dailyDays}
           onEventRecords={() => showRecords("最近のできごと", { period: "current" })} />
 
+        <DailyCheckHistoryChart days={dailyDays.filter((day) => day.local_date >= trends.current_start)}
+          startDate={trends.current_start} endDate={trends.as_of_local_date} />
+
         {selection && dogId && <div ref={recordsRef}><InsightRecordList key={JSON.stringify(selection)} dogId={dogId} trends={trends} {...selection} onClose={() => setSelection(null)} /></div>}
 
         <section className="insight-section insight-theme-section" aria-labelledby="theme-trends-title">
           <div className="insight-section-heading"><div><span className="card-label">EVENT LOG / 直近7日間</span><h3 id="theme-trends-title">できごとの傾向</h3></div></div>
-          {themes.length > 0 ? <ThemeTrendTable trends={themes}
-            onRecords={row => showRecords(themeLabel(row.theme_key), { themeKey: row.theme_key, period: "current" })} />
+          {themes.length > 0 ? <ThemeTrendTable trends={themes} />
             : <p>直近7日間のできごとはまだありません。記録するとここに内訳が表示されます。</p>}
+          <button type="button" className={styles.moreButton} onClick={() => showRecords("最近のできごと", { period: "current" })}
+            aria-label="詳しく見る、直近7日間の全テーマの記録">詳しく見る <span aria-hidden="true">→</span></button>
         </section>
 
         <details className="insight-deep-dive">
           <summary>
-            <span><strong>詳しいデータを見る</strong><small>7日推移・担当者別</small></span>
+            <span><strong>詳しいデータを見る</strong><small>項目別平均・担当者別</small></span>
             <i aria-hidden="true">⌄</i>
           </summary>
           <div className="insight-deep-dive-body">
-            <DailyCheckHistoryChart days={dailyDays.filter((day) => day.local_date >= trends.current_start)}
-              startDate={trends.current_start} endDate={trends.as_of_local_date} />
-
             {daily.length > 0 && <details className="insight-detail-disclosure">
               <summary>Daily Checkの項目別平均を見る</summary>
               <div className="insight-daily-list">{daily.map((item) => <DailyCheckTrendCard key={item.current.metric_key} {...item} />)}</div>
