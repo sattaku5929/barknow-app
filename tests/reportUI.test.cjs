@@ -53,9 +53,10 @@ for (const scenario of [
   }).default;
   const html = renderToStaticMarkup(React.createElement(Report, { dogId: "dog", selectedThemes: [], online: scenario.online }));
   assert.doesNotMatch(html, /最近の変化|今日の状態|最近の気づき|recent-observation-trends-title|recent-discoveries-title/);
+  assert.doesNotMatch(html, /この変化を一緒に振り返る|WITH YOUR COACH|insight-coach-cta|担当コーチが決まると/);
   assert.match(html, /aria-label="記録のサマリーと詳細"/);
   if (scenario.online && !scenario.loading && !scenario.error) {
-    for (const title of ["今週のサマリー", "最近の記録", "詳しいデータを見る", "この変化を一緒に振り返る"]) assert.ok(html.includes(title));
+    for (const title of ["今週のサマリー", "最近の記録", "詳しいデータを見る"]) assert.ok(html.includes(title));
   }
 }
-console.log("Owner report UI: removed sections absent in all states; remaining summary, records, details and coach entry preserved.");
+console.log("Owner report UI: removed overviews and coach invitation absent in all states; summary, records and details preserved.");

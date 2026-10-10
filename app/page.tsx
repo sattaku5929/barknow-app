@@ -4477,8 +4477,7 @@ export default function Home() {
       <p className="lead">記録がつながると、調子・暮らし・困りごとの変化が見えてきます。</p>
       <div className="owner-scene-panel owner-scene-panel--report" aria-hidden="true"><OwnerReportScene /></div>
 
-      <RecentObservationTrends key={profile.id} dogId={profile.id} online={connection === "online"} selectedThemes={eventThemesSelected}
-        onCoachChat={coachingApplication?.ownerConfirmedAt ? () => { navigateOwnerView("coach"); setOwnerCoachTab("chat"); } : undefined} />
+      <RecentObservationTrends key={profile.id} dogId={profile.id} online={connection === "online"} selectedThemes={eventThemesSelected} />
 
       <details className="report-deep-dive">
         <summary>
