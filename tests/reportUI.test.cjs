@@ -6,6 +6,17 @@ const React = require("react");
 const { renderToStaticMarkup } = require("react-dom/server");
 
 const root = path.join(__dirname, "..");
+const ownerSource = ts.createSourceFile("page.tsx", fs.readFileSync(path.join(root, "app/page.tsx"), "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+let reportView;
+function findReportView(node) {
+  if (ts.isVariableDeclaration(node) && node.name.getText(ownerSource) === "reportView") reportView = node.initializer;
+  ts.forEachChild(node, findReportView);
+}
+findReportView(ownerSource);
+assert.ok(reportView);
+const reportSource = reportView.getText(ownerSource);
+assert.doesNotMatch(reportSource, /LIFE CONDITION|WELLBEING ANALYSIS|LOG CALENDAR|report-condition|wellbeing-analysis|report-calendar|状態・カレンダー・困りごとの推移/);
+for (const retained of ["RecentObservationTrends", "詳細データを見る", "困りごとの推移", "困りごとの変化", "behavior-chart", "report-filter"]) assert.ok(reportSource.includes(retained), `${retained} stays in owner report`);
 function load(relative, reactOverride = React) {
   const filename = path.join(root, relative);
   const code = ts.transpileModule(fs.readFileSync(filename, "utf8"), {
@@ -56,9 +67,10 @@ for (const scenario of [
   assert.doesNotMatch(html, /最近の変化|今日の状態|最近の気づき|recent-observation-trends-title|recent-discoveries-title/);
   assert.doesNotMatch(html, /この変化を一緒に振り返る|WITH YOUR COACH|insight-coach-cta|担当コーチが決まると/);
   assert.doesNotMatch(html, /insight-record-entry|RECENT LOGS|<h3>最近の記録<\/h3>/);
+  assert.doesNotMatch(html, /詳しいデータを見る|項目別平均・担当者別|insight-deep-dive|担当した人による記録の違い/);
   assert.match(html, /aria-label="記録のサマリーと詳細"/);
   if (scenario.online && !scenario.loading && !scenario.error) {
-    for (const title of ["今週のサマリー", "できごとの傾向", "詳しいデータを見る", "直近7日間のできごとはまだありません"]) assert.ok(html.includes(title));
+    for (const title of ["今週のサマリー", "できごとの傾向", "Daily Checkの推移", "直近7日間のできごとはまだありません"]) assert.ok(html.includes(title));
   }
 }
 console.log("Owner report UI: removed overviews and coach invitation absent in all states; summary, records and details preserved.");

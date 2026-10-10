@@ -4481,71 +4481,10 @@ export default function Home() {
 
       <details className="report-deep-dive">
         <summary>
-          <span><strong>詳細データを見る</strong><small>状態・カレンダー・困りごとの推移</small></span>
+          <span><strong>詳細データを見る</strong><small>困りごとの推移</small></span>
           <i aria-hidden="true">⌄</i>
         </summary>
         <div className="report-deep-dive-body">
-      <section className={`report-condition condition-${recordedConditionDays.length < 3 ? "collecting" : conditionScore >= 78 ? "good" : conditionScore >= 58 ? "middle" : "watch"}`}>
-        <div className="condition-ring" style={{ background: `conic-gradient(var(--green) ${conditionScore * 3.6}deg, #e4ebe7 0deg)` }}>
-          <span><strong>{recordedConditionDays.length ? conditionScore : "–"}</strong><small>{recordedConditionDays.length ? "/100" : "集計中"}</small></span>
-        </div>
-        <div><p className="card-label">LIFE CONDITION</p><h2>{conditionLevel}</h2><p>{conditionCopy}</p><small>診断ではなく、記録から見た目安です。</small></div>
-      </section>
-
-      <section className="wellbeing-analysis" aria-labelledby="wellbeing-analysis-title">
-        <div className="wellbeing-analysis-head">
-          <div><p className="card-label">WELLBEING ANALYSIS</p><h2 id="wellbeing-analysis-title">直近7日間の状態</h2></div>
-          <span>100点換算</span>
-        </div>
-        <p className="wellbeing-analysis-lead">「できた・できなかった」ではなく、食欲や元気などの状態と変化を見ています。</p>
-        <div className="wellbeing-metric-grid">
-          {wellbeingMetrics.map((metric) => (
-            <article className={`wellbeing-metric category-${metric.icon} ${metric.currentScore === null ? "is-empty" : metric.currentScore >= 82 ? "is-good" : metric.currentScore >= 62 ? "is-middle" : "is-watch"}`} key={metric.id}>
-              <div className="wellbeing-metric-title">
-                <span className="topic-mark"><TopicIcon name={metric.icon} /></span>
-                <div><h3>{metric.label}</h3><small>{wellbeingLevel(metric.currentScore)}</small></div>
-              </div>
-              <div className="wellbeing-metric-score"><strong>{metric.currentScore ?? "–"}</strong><span>{metric.currentScore === null ? "未集計" : "/100"}</span></div>
-              <div className="wellbeing-mini-chart" role="img" aria-label={`${metric.label}の直近7日間の推移`}>
-                {metric.series.map((score, index) => <i className={score === null ? "is-missing" : ""} style={{ height: `${score === null ? 5 : Math.max(12, score)}%` }} key={`${metric.id}-${reportDays[index + 7].value}`}></i>)}
-              </div>
-              <div className="wellbeing-metric-foot">
-                <span>{metric.id === "walk" ? `${metric.currentCount}回${metric.currentTotal ? `・${metric.currentTotal}分` : ""}` : `${metric.currentCount}件の記録`}</span>
-                {metric.trend === null ? <b>比較データ待ち</b> : <b className={metric.trend >= 5 ? "is-up" : metric.trend <= -5 ? "is-down" : "is-flat"}>{metric.trend > 0 ? "+" : ""}{metric.trend}pt</b>}
-              </div>
-            </article>
-          ))}
-        </div>
-        <div className="wellbeing-insights" aria-label="記録から見つかった気づき">
-          {wellbeingInsights.map((insight) => (
-            <article className={`is-${insight.tone}`} key={insight.title}>
-              <span aria-hidden="true">{insight.tone === "watch" ? "!" : insight.tone === "good" ? "✓" : "i"}</span>
-              <div><h3>{insight.title}</h3><p>{insight.body}</p></div>
-            </article>
-          ))}
-        </div>
-        <p className="wellbeing-analysis-note">スコアは「良い 100点・ふつう 72点・気になる 38点」を基準に集計しています。未記録日は0点にせず、因果関係や病気を判定するものではありません。</p>
-      </section>
-
-      <section className="report-calendar">
-        <div className="calendar-head">
-          <div><p className="card-label">LOG CALENDAR</p><h2>記録カレンダー</h2></div>
-          <div className="calendar-switch"><button className={calendarMode === "week" ? "is-selected" : ""} onClick={() => setCalendarMode("week")}>週</button><button className={calendarMode === "month" ? "is-selected" : ""} onClick={() => setCalendarMode("month")}>月</button></div>
-        </div>
-        {calendarMode === "week" ? (
-          <div className="week-dots">
-            {recentDays.map((day) => <button key={day.value} className={`week-day ${day.entries.length ? "is-recorded" : ""} ${day.value === today() ? "is-today" : ""}`} onClick={() => setSelectedCalendarDate(day.value)}><span>{day.label}</span><i>{day.entries.length || "–"}</i></button>)}
-          </div>
-        ) : (
-          <div className="month-view">
-            <div className="month-navigation"><button onClick={() => moveCalendarMonth(-1)}>‹</button><strong>{monthlyCalendar.label}</strong><button onClick={() => moveCalendarMonth(1)} disabled={calendarMonthOffset === 0}>›</button></div>
-            <div className="month-weekdays">{["日","月","火","水","木","金","土"].map((day) => <span key={day}>{day}</span>)}</div>
-            <div className="month-grid">{monthlyCalendar.cells.map((cell, index) => cell ? <button key={cell.value} className={`${cell.count ? "is-recorded" : ""} ${cell.value === today() ? "is-today" : ""}`} onClick={() => setSelectedCalendarDate(cell.value)}><span>{cell.day}</span>{cell.count > 0 && <b>{cell.count}</b>}</button> : <span key={`blank-${index}`}></span>)}</div>
-          </div>
-        )}
-        <p className="calendar-takeaway">{diaryInsight}</p>
-      </section>
-
       <div className="report-section-heading"><p className="card-label">BEHAVIOR TREND</p><h2>困りごとの変化</h2></div>
       <div className="report-filter" aria-label="困りごとの種類">
         {BEHAVIOR_TYPES.map((item) => (
