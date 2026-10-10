@@ -1,0 +1,15 @@
+.line { stroke:currentColor; stroke-width:2; fill:none; stroke-linecap:round; }
+.point { stroke:currentColor; stroke-width:1.5; fill:#fff; }
+.legend { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 12px; margin-top:12px; font-size:11px; line-height:1.5; }
+.legend span { display:flex; align-items:center; gap:6px; min-width:0; }
+.legend svg { width:24px; height:8px; flex:none; }
+.note { margin:10px 0 0; color:#64776b; font-size:10px; line-height:1.6; }
+.values { margin-top:12px; border-top:1px solid #edf1ee; }
+.values summary { min-height:44px; padding:12px 0; color:#008661; font-size:12px; cursor:pointer; }
+.scroll { max-width:100%; overflow-x:auto; }
+.scroll:focus-visible { outline:2px solid #008661; outline-offset:2px; }
+.values table { width:100%; min-width:410px; border-collapse:collapse; font-size:11px; font-variant-numeric:tabular-nums; }
+.values caption { padding:0 0 8px; color:#64776b; text-align:left; font-size:10px; }
+.values th,.values td { padding:8px 5px; border-bottom:1px solid #edf1ee; text-align:center; white-space:nowrap; }
+.values th:first-child { text-align:left; }
+@media (min-width:650px) { .legend { grid-template-columns:repeat(3,minmax(0,1fr)); } }
