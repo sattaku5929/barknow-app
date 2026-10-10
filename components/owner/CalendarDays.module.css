@@ -28,11 +28,10 @@
 .select strong { font-size: 14px; font-weight: 600; }
 .titles { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 0 2px 4px; }
 .day .title {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  display: block;
   overflow: hidden;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   font-size: 10px;
   font-weight: 600;
   line-height: 1.35;
@@ -41,7 +40,7 @@
   padding: 2px 1px;
   width: 100%;
   border: 0;
-  color: inherit;
+  color: #006b4d;
   text-align: center;
 }
 .day button.title { min-height: 32px; cursor: pointer; }
@@ -61,7 +60,8 @@
 .logs { display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 9px; color: #61766b; }
 .adjacent { background: #fff; color: #7a8880; }
 .today { border-color: #008661; }
-.selected { background: #008661; border-color: #008661; color: #fff; }
-.selected .title, .selected .more { background: #ffffff1f; color: #fff; }
-.selected .logs { color: #fff; }
-.selected .logs i { border-color: #fff; }
+.selected { background: #eef7f2; border-color: #008661; color: #30483f; }
+.selected .title, .selected .more { background: #00866118; color: #006b4d; }
+.saturday, .day.saturday .select strong { color: #2760a9; }
+.sunday, .day.sunday .select strong { color: #c13d42; }
+.holiday { color: #c13d42; font-size: 9px; line-height: 1.4; overflow-wrap: anywhere; }

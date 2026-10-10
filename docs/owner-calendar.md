@@ -1,7 +1,7 @@
 # Owner home: care periods and calendar
 
 - Daily goals count today only; weekly goals run Monday–Sunday; monthly goals count the current calendar month. Existing goals/completions are not rewritten.
-- Calendar opens with a complete Monday–Sunday month grid; the week view remains available. Each date shows up to two schedule names (including the profile birthday). For three or more, ＋N件 expands all names in that date cell and selects the day; 閉じる collapses it. Names wrap to two lines, with full titles accessible by tapping a schedule name to open the existing editor. Dates use date keys, not browser-dependent midnight arithmetic.
+- Calendar opens with a complete Monday–Sunday month grid; the week view remains available. Each date shows up to two schedule names (including the profile birthday). For three or more, ＋N件 expands all names in that date cell and selects the day; 閉じる collapses it. Names use single-line bands with ellipsis, with full titles accessible by tapping a schedule name to open the existing editor. Dates use date keys, not browser-dependent midnight arithmetic.
 - `wt_calendar_events` stores owner plans only. Travel may span multiple days. Time, place and notes are optional. Editing/deleting requires the same owner and their dog through RLS.
 - Existing active observation entries, legacy daily records and care completions populate the selected date automatically; archived observation entries are excluded. Reads paginate instead of truncating at a server row limit.
 - Birthday is read from the dog profile. It is not automatically inserted as an observation. Feb 29 birthdays appear on Feb 29 in leap years.
@@ -44,3 +44,7 @@ Completed home care tasks remain interactive: tap again to undo the newest compl
 ## Compact home calendar
 
 Home ends after the calendar grid and loading/error/save feedback. The always-visible selected-day agenda, birthday banner, records list, quick schedule presets, record actions and footer captions are removed. Tapping a schedule name opens its existing edit dialog (full title/time/location/note); the header ＋予定 button adds a plan on the selected date. The grid still shows birthdays, record counts and expandable schedule names. Stored plans and observation records are unchanged.
+
+## Weekends and Japanese public holidays
+
+Saturday dates and headings are blue; Sundays and national holidays are red, including when selected. Holiday names appear below the date, separate from owner plans (not counted in ＋N件). The checked-in Cabinet Office dataset covers 1955–2027, including substitute holidays, citizens' holidays and one-off historical changes; no unconfirmed future dates are calculated. Outside this range a notice indicates that holiday information is unverified. Refresh `lib/calendar/holidays.ts` from the official CSV after the annual February publication. No runtime network request or database write is needed.
