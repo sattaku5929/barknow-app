@@ -1,11 +1,12 @@
+.grid.grid { column-gap: 1px; row-gap: 6px; }
 .day {
   min-width: 0;
   min-height: 110px;
   display: flex;
   flex-direction: column;
-  border: 1px solid #e7ece8;
-  border-radius: 8px;
-  background: #f8f9f6;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: #30483f;
 }
 .day .select {
@@ -25,8 +26,8 @@
   text-align: center;
   cursor: pointer;
 }
-.select strong { font-size: 14px; font-weight: 600; }
-.titles { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 0 2px 4px; }
+.select strong { font-size: 14px; font-weight: 600; align-self: center; min-width: 26px; line-height: 20px; padding: 3px 0; border-radius: 50%; }
+.titles { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 0 0 4px; }
 .day .title {
   display: block;
   overflow: hidden;
@@ -37,7 +38,7 @@
   line-height: 1.35;
   background: #0086610c;
   border-radius: 3px;
-  padding: 2px 1px;
+  padding: 2px 0;
   width: 100%;
   border: 0;
   color: #006b4d;
@@ -58,9 +59,9 @@
   margin-top: auto;
 }
 .logs { display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 9px; color: #61766b; }
-.adjacent { background: #fff; color: #7a8880; }
-.today { border-color: #008661; }
-.selected { background: #eef7f2; border-color: #008661; color: #30483f; }
+.adjacent { color: #7a8880; }
+.today .select strong { box-shadow: inset 0 0 0 1px #008661; }
+.selected .select strong { background: #e3f2e9; box-shadow: inset 0 0 0 1px #008661; }
 .selected .title, .selected .more { background: #00866118; color: #006b4d; }
 .saturday, .day.saturday .select strong { color: #2760a9; }
 .sunday, .day.sunday .select strong { color: #c13d42; }
