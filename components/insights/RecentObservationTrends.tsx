@@ -63,7 +63,7 @@ export default function RecentObservationTrends({ dogId, online, selectedThemes 
         <InsightDashboardSummary trends={trends} dailyDays={dailyDays}
           onEventRecords={() => showRecords("最近のできごと", { period: "current" })} />
 
-        <DailyCheckHistoryChart days={dailyDays.filter((day) => day.local_date >= trends.current_start)}
+        <DailyCheckHistoryChart days={dailyDays}
           startDate={trends.current_start} endDate={trends.as_of_local_date} />
 
         {selection && dogId && <div ref={recordsRef}><InsightRecordList key={JSON.stringify(selection)} dogId={dogId} trends={trends} {...selection} onClose={() => setSelection(null)} /></div>}

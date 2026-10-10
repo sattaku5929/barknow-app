@@ -13,7 +13,11 @@
 .scroll { max-width:100%; overflow-x:auto; }
 .scroll:focus-visible { outline:2px solid #008661; outline-offset:2px; }
 .values table { width:100%; min-width:410px; border-collapse:collapse; font-size:11px; font-variant-numeric:tabular-nums; }
-.values caption { padding:0 0 8px; color:#64776b; text-align:left; font-size:10px; }
+.weekNavigation { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:12px 0; font-size:12px; font-variant-numeric:tabular-nums; }
+.weekNavigation button { min-height:44px; padding:8px 12px; border:1px solid #dce5df; border-radius:12px; background:#fff; color:#008661; font:inherit; cursor:pointer; }
+.weekNavigation button:disabled { color:#84948b; background:#f5f7f5; cursor:default; }
+.weekNavigation button:focus-visible { outline:2px solid #008661; outline-offset:2px; }
+.swipeChart { touch-action:pan-y; }
 .values th,.values td { padding:8px 5px; border-bottom:1px solid #edf1ee; text-align:center; white-space:nowrap; }
 .values th:first-child { text-align:left; }
 @media (min-width:650px) { .legend { grid-template-columns:repeat(3,minmax(0,1fr)); } }
