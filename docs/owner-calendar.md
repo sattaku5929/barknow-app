@@ -1,12 +1,12 @@
 # Owner home: care periods and calendar
 
 - Daily goals count today only; weekly goals run Monday–Sunday; monthly goals count the current calendar month. Existing goals/completions are not rewritten.
-- Calendar opens with a complete Monday–Sunday month grid; the week view remains available. Each date shows up to two schedule names (including the profile birthday). For three or more, ＋N件 expands all names in that date cell and selects the day; 閉じる collapses it. Names wrap to two lines, with full titles in the selected-day agenda. Dates use date keys, not browser-dependent midnight arithmetic.
+- Calendar opens with a complete Monday–Sunday month grid; the week view remains available. Each date shows up to two schedule names (including the profile birthday). For three or more, ＋N件 expands all names in that date cell and selects the day; 閉じる collapses it. Names wrap to two lines, with full titles accessible by tapping a schedule name to open the existing editor. Dates use date keys, not browser-dependent midnight arithmetic.
 - `wt_calendar_events` stores owner plans only. Travel may span multiple days. Time, place and notes are optional. Editing/deleting requires the same owner and their dog through RLS.
 - Existing active observation entries, legacy daily records and care completions populate the selected date automatically; archived observation entries are excluded. Reads paginate instead of truncating at a server row limit.
 - Birthday is read from the dog profile. It is not automatically inserted as an observation. Feb 29 birthdays appear on Feb 29 in leap years.
-- The quick-win picker prefills the existing win record form for nosework, visitor success and birthday celebrations. The user still confirms the record; a scheduled event never creates a false completion.
-- Daily checks and wins support the selected past date; the current observation event flow is offered only for today. Future dates offer schedules only.
+- Record entry remains available through the existing record screen; the compact home calendar has no record shortcuts. Scheduled plans do not create completion records.
+- Schedule names open the existing edit form. The header add button uses the selected date.
 - Offline schedule writes are disabled. A failed save retains input, and retry uses the same UUID. Navigation cancels stale read results; changing dog remounts the calendar.
 
 ## Verification
@@ -40,3 +40,7 @@ Progress uses Japan time: daily at 00:00, weekly Monday at 00:00, monthly on the
 ## Tap to undo completion
 
 Completed home care tasks remain interactive: tap again to undo the newest completion in the current day/week/month. Earlier periods and other tasks remain untouched. If the target was lowered below the current count, undo only the excess entries needed to return below the target. Online undo is scoped to owner, dog, goal and exact completion IDs; state/cache and calendar refresh update after successful persistence. Errors leave the displayed state unchanged; taps are locked while saving. Local-only mode updates the existing device cache. Rollover behavior remains automatic, with no rollover-time captions shown on home.
+
+## Compact home calendar
+
+Home ends after the calendar grid and loading/error/save feedback. The always-visible selected-day agenda, birthday banner, records list, quick schedule presets, record actions and footer captions are removed. Tapping a schedule name opens its existing edit dialog (full title/time/location/note); the header ＋予定 button adds a plan on the selected date. The grid still shows birthdays, record counts and expandable schedule names. Stored plans and observation records are unchanged.

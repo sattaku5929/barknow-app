@@ -69,10 +69,11 @@ for(const label of ["散歩","ノーズワーク","予防接種","保育園","�
 assert.match(editorHtml,/checked="" value="teeth"/);
 assert.match(editorHtml,/毎日やることの設定/);assert.match(editorHtml,/歯磨きの目標回数/);assert.match(editorHtml,/min="1" max="31" step="1"/);assert.match(editorHtml,/やることを追加/);assert.match(editorHtml,/歯磨きを一覧から外す/);assert.match(editorHtml,/歯磨きのお知らせ時間/);
 const calendarHtml = renderToStaticMarkup(React.createElement(Calendar,{dogId:"dog",dogName:"はな",birthday:"2020-10-07",online:false,today:"2026-10-07",refreshToken:"0",onRecord:()=>{throw new Error("Unexpected navigation");}}));
-assert.match(calendarHtml,/愛犬とのカレンダー/); assert.match(calendarHtml,/はなちゃんの誕生日/);
+assert.match(calendarHtml,/愛犬とのカレンダー/); assert.match(calendarHtml,/>誕生日</);
 assert.match(calendarHtml,/接続後に予定と記録を確認できます/);
 assert.equal((calendarHtml.match(/aria-label="10月/g)||[]).length,31);
-assert.match(calendarHtml,/aria-current="date"/); assert.match(calendarHtml,/予定・誕生日/); assert.match(calendarHtml,/できた・記録/);
+assert.match(calendarHtml,/aria-current="date"/);
+for(const removed of ["calendar-agenda", "calendar-presets", "calendar-record-actions", "calendar-caption", "calendar-legend", "できた！を残す", "この日の状態"])assert.doesNotMatch(calendarHtml,new RegExp(removed));
 assert.match(calendarHtml,/disabled=""[^>]*>＋ 予定/);
 console.log("Calendar and care UI: actual SSR, period separation, correct counts, birthday, month-first navigation, offline safety passed.");
 
@@ -92,14 +93,14 @@ const interactiveGrid=load("components/owner/CalendarDays.tsx",{...React,useStat
 const interactiveProps={...calendarProps,events:makePlans(4),onSelect:date=>{chosen=date;}};
 let tree=interactiveGrid(interactiveProps);
 let cell=tree.props.children[1][0];
-cell.props.children[1].props.onClick();
+cell.props.children[2].props.onClick();
 assert.equal(chosen,"2026-10-07");
 tree=interactiveGrid(interactiveProps);
 let html=renderToStaticMarkup(tree);
 assert.equal((html.match(/class="title"/g)||[]).length,4);
 assert.match(html,/aria-expanded="true"/);assert.match(html,/>閉じる</);
 assert.doesNotMatch(html,/<button[^>]*>(?:(?!<\/button>)[\s\S])*<button/,"no nested buttons");
-cell=tree.props.children[1][0];cell.props.children[1].props.onClick();
+cell=tree.props.children[1][0];cell.props.children[2].props.onClick();
 html=renderToStaticMarkup(interactiveGrid(interactiveProps));
 assert.equal((html.match(/class="title"/g)||[]).length,2);
 assert.match(html,/>＋2件</);
@@ -130,3 +131,10 @@ console.log("Calendar titles: 0–8 plans, overflow expansion/collapse, selectio
     button=taskButton(InteractiveCare({...props,goals:[week]}));button.props.onClick();await new Promise(resolve=>setImmediate(resolve));assert.equal(count,2);}
   console.log("Home care actual handlers: complete, undo, repeat tap lock and weekly/monthly undo passed.");
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
+let openedEvent=null;
+const editableGrid=interactiveGrid({...interactiveProps,onEvent:event=>{openedEvent=event;}});
+editableGrid.props.children[1][0].props.children[1].props.children[0].props.onClick();
+assert.equal(openedEvent.id,"plan-0");assert.equal(openedEvent.title,"予定名0");
+assert.doesNotMatch(renderToStaticMarkup(editableGrid),/<button[^>]*>(?:(?!<\/button>)[\s\S])*<button/,"schedule editing keeps buttons separate");
+console.log("Compact calendar: no under-calendar agenda/actions; schedule title opens existing editor passed.");
