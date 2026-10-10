@@ -1155,6 +1155,8 @@ export default function Home() {
   const [currentUserId, setCurrentUserId] = useState("");
   const [view, setView] = useState<View>("home");
   const [appVisitStats, setAppVisitStats] = useState<{ totalDays: number; currentStreak: number } | null>(null);
+  const [showVisitCelebration, setShowVisitCelebration] = useState(0);
+  const [observationDates, setObservationDates] = useState<string[]>([]);
   const [connection, setConnection] = useState<Connection>("checking");
   const [profile, setProfile] = useState<DogProfile>(initialProfile);
   const dogBirthday = useMemo(() => dogBirthdayStats(profile.birthday), [profile.birthday]);
@@ -1505,6 +1507,10 @@ export default function Home() {
           totalDays: Number(row.total_days ?? 0),
           currentStreak: Number(row.current_streak ?? 0),
         });
+        if (Number(row.current_streak ?? 0) >= 2) {
+          const { data: claimed, error: claimError } = await supabase.rpc("wt_claim_visit_celebration");
+          if (!cancelled && !claimError && claimed === true) setShowVisitCelebration(Number(row.current_streak));
+        }
       }
     })();
 
@@ -1695,6 +1701,22 @@ export default function Home() {
   const dailyGoals = careGoals.filter((goal) => goal.period === "day");
   const completedDailyGoalCount = dailyGoals.filter((goal) => goalProgress(goal) >= goal.targetCount).length;
   const nextCareGoals = careGoals.filter((goal) => goalProgress(goal) < goal.targetCount);
+  useEffect(() => {
+    if (!profile.id || connection !== "online" || !authenticated) { setObservationDates([]); return; }
+    let active = true;
+    const start = new Date(`${today()}T00:00:00+09:00`);
+    start.setUTCDate(start.getUTCDate() - 6);
+    const since = start.toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
+    void (async () => {
+      const { data, error } = await supabase.from("wt_observation_entries")
+        .select("local_date").eq("dog_id", profile.id!).is("deleted_at", null).gte("local_date", since).lte("local_date", today());
+      if (!active) return;
+      if (error) { console.warn("[Home] observation days unavailable", error); return; }
+      setObservationDates([...new Set((data ?? []).map((entry) => String(entry.local_date)))]);
+    })();
+    return () => { active = false; };
+  }, [profile.id, connection, authenticated, checkRefresh, eventRefresh, view]);
+
   const recentDays = useMemo(() => {
     const base = new Date(`${today()}T00:00:00+09:00`);
     return Array.from({ length: 7 }, (_, index) => {
@@ -4243,7 +4265,7 @@ export default function Home() {
         </button>
         <button onClick={() => navigateOwnerView("report")}>
           <span className="home-v3-summary-icon is-week"><NavGlyph name="report" /></span>
-          <span><small>記録した日</small><strong>{recentDays.filter((day) => day.entries.length > 0).length}<em>DAYS</em></strong></span>
+          <span><small>記録した日</small><strong>{new Set([...observationDates, ...recentDays.filter((day) => day.entries.length > 0).map((day) => day.value)]).size}<em>DAYS</em></strong></span>
           <b aria-hidden="true">›</b>
         </button>
       </section>
@@ -5368,6 +5390,18 @@ export default function Home() {
               <span>{celebration.message}</span>
               <button onClick={closeCelebration}>今日のできたを喜ぶ</button>
             </div>
+          </div>
+        )}
+        {showVisitCelebration >= 2 && !showBirthdayCelebration && (
+          <div className="birthday-celebration-backdrop" role="dialog" aria-modal="true" aria-labelledby="visit-celebration-title" onClick={() => setShowVisitCelebration(0)}>
+            <section className="birthday-celebration-card" onClick={(event) => event.stopPropagation()}>
+              <span className="celebration-paw" aria-hidden="true"><CareIcon name="paws" /></span>
+              <p>WITH WAN TONE</p>
+              <h2 id="visit-celebration-title">{showVisitCelebration}日連続でWanToneに来てくれました！ 🎉</h2>
+              <span>愛犬との毎日を、これからも一緒に楽しみましょう。</span>
+              <button type="button" onClick={() => setShowVisitCelebration(0)}>今日も楽しむ</button>
+              <button type="button" aria-label="閉じる" onClick={() => setShowVisitCelebration(0)}>閉じる</button>
+            </section>
           </div>
         )}
         {showBirthdayCelebration && dogBirthday && profile.name && (
