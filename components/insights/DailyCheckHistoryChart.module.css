@@ -1,5 +1,9 @@
 .line { stroke:currentColor; stroke-width:2; fill:none; stroke-linecap:round; }
 .point { stroke:currentColor; stroke-width:1.5; fill:#fff; }
+.missingBand { fill:#edf0ef; }
+.missingLegend { display:flex; align-items:center; flex-wrap:wrap; gap:5px; margin-top:6px; color:#64776b; font-size:10px; line-height:1.5; }
+.missingLegend i { width:12px; height:12px; border:1px solid #dce2df; border-radius:3px; background:#edf0ef; }
+.missingLegend span { margin-left:5px; }
 .legend { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 12px; margin-top:12px; font-size:11px; line-height:1.5; }
 .legend span { display:flex; align-items:center; gap:6px; min-width:0; }
 .legend svg { width:24px; height:8px; flex:none; }

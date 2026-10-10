@@ -77,21 +77,28 @@ export default function DailyCheckHistoryChart({ days, startDate, endDate }: {
       <div><span className="card-label">7 DAY TREND</span><h3 id="daily-chart-title">Daily Checkの推移</h3></div>
       <div className="insight-chart-average"><small>{metric === "all" ? "総合の7日平均" : "7日平均"}</small><strong>{average === null ? "–" : average.toFixed(1)}</strong></div>
     </div>
-    <p className="insight-section-intro">1 気になる · 3 いつも通り · 5 とても良い。未入力日は線でつなぎません。</p>
+    <p className="insight-section-intro">1 気になる · 3 いつも通り · 5 とても良い。</p>
     <div className="insight-metric-tabs" role="group" aria-label="グラフの表示項目">
       {metrics.map((item) => <button type="button" aria-pressed={metric === item.key}
         className={metric === item.key ? "is-selected" : ""} key={item.key} onClick={() => setMetric(item.key)}>{item.label}</button>)}
     </div>
     <div className="insight-chart-wrap">
       <svg viewBox="0 0 320 150" role="img" aria-label={`${label}の${startDate}から${endDate}までの推移`}>
+        {slots.map((date, index) => plotted.length > 0 && plotted.every(item => item.points[index].value === null)
+          ? <rect key={`missing-${date}`} className={styles.missingBand} data-missing-date={date}
+              x={x(index) - 20} y="12" width="40" height="138"><title>{`${date} 未入力`}</title></rect> : null)}
         {[1, 3, 5].map((score) => <g key={score}>
           <line className="insight-chart-grid" x1="24" y1={y(score)} x2="294" y2={y(score)} />
           <text className="insight-chart-y-label" x="7" y={y(score) + 3}>{score}</text>
         </g>)}
         {plotted.map(item => <g key={item.key} data-metric={item.key} style={{ color: item.color }}>
-          {item.points.map((point, index) => index > 0 && point.value !== null && item.points[index - 1].value !== null
-            ? <line key={`line-${point.date}`} className={styles.line} strokeDasharray={item.dash}
-                x1={x(index - 1)} y1={y(item.points[index - 1].value!)} x2={x(index)} y2={y(point.value)} /> : null)}
+          {item.points.flatMap((point, index) => {
+            if (point.value === null) return [];
+            let previous = index - 1;
+            while (previous >= 0 && item.points[previous].value === null) previous--;
+            return previous >= 0 ? [<line key={`line-${point.date}`} className={styles.line} strokeDasharray={item.dash}
+              x1={x(previous)} y1={y(item.points[previous].value!)} x2={x(index)} y2={y(point.value)} />] : [];
+          })}
           {item.points.map((point, index) => point.value !== null ? <circle key={point.date} className={styles.point}
             cx={x(index)} cy={y(point.value)} r="3"><title>{`${point.date} ${item.key === "overall" ? "総合" : dailyLabels[item.key]} ${point.value}`}</title></circle> : null)}
         </g>)}
@@ -100,6 +107,7 @@ export default function DailyCheckHistoryChart({ days, startDate, endDate }: {
         </text>)}
       </svg>
     </div>
+    <div className={styles.missingLegend}><i aria-hidden="true" />未入力の日<span>線は前後の記録をつないでいます</span></div>
     <div className={styles.legend} aria-label="項目ごとの色と線種">
       {dailyChartMetrics.map(item => <span key={item.key} style={{ color: item.color }}>
         <svg viewBox="0 0 24 8" aria-hidden="true"><line x1="0" y1="4" x2="24" y2="4" stroke="currentColor" strokeWidth="2" strokeDasharray={item.dash} /></svg>
