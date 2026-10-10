@@ -63,27 +63,26 @@ export default function RecentObservationTrends({ dogId, online, selectedThemes 
       : loading ? <p role="status">記録を集計しています…</p>
       : error || !trends ? <p role="alert">最近の傾向を読み込めませんでした。時間をおいて再度お試しください。</p>
       : <>
-        <InsightDashboardSummary trends={trends} dailyDays={dailyDays} />
+        <InsightDashboardSummary trends={trends} dailyDays={dailyDays}
+          onEventRecords={() => showRecords("最近のできごと", { period: "current" })} />
 
-        <section className="insight-record-entry insight-record-entry--compact">
-          <div><span className="card-label">RECENT LOGS</span><h3>最近の記録</h3><p>元の記録を必要なときだけ確認できます。</p></div>
-          <button type="button" onClick={() => showRecords("最近のできごと", { period: "current" })}>記録を見る <span aria-hidden="true">→</span></button>
+        {selection && dogId && <div ref={recordsRef}><InsightRecordList key={JSON.stringify(selection)} dogId={dogId} trends={trends} {...selection} onClose={() => setSelection(null)} /></div>}
+
+        <section className="insight-section insight-theme-section" aria-labelledby="theme-trends-title">
+          <div className="insight-section-heading"><div><span className="card-label">EVENT LOG / 直近7日間</span><h3 id="theme-trends-title">できごとの傾向</h3></div></div>
+          {themes.length > 0 ? <ThemeTrendTable trends={themes}
+            onRecords={row => showRecords(themeLabel(row.theme_key), { themeKey: row.theme_key, period: "current" })} />
+            : <p>直近7日間のできごとはまだありません。記録するとここに内訳が表示されます。</p>}
         </section>
 
         <details className="insight-deep-dive">
           <summary>
-            <span><strong>詳しいデータを見る</strong><small>7日推移・テーマ別・担当者別</small></span>
+            <span><strong>詳しいデータを見る</strong><small>7日推移・担当者別</small></span>
             <i aria-hidden="true">⌄</i>
           </summary>
           <div className="insight-deep-dive-body">
             <DailyCheckHistoryChart days={dailyDays.filter((day) => day.local_date >= trends.current_start)}
               startDate={trends.current_start} endDate={trends.as_of_local_date} />
-
-            {themes.length > 0 && <section className="insight-section insight-theme-section" aria-labelledby="theme-trends-title">
-              <div className="insight-section-heading"><div><span className="card-label">EVENT LOG</span><h3 id="theme-trends-title">できごとの傾向</h3></div></div>
-              <ThemeTrendTable trends={themes}
-                onRecords={row => showRecords(themeLabel(row.theme_key), { themeKey: row.theme_key, period: "current" })} />
-            </section>}
 
             {daily.length > 0 && <details className="insight-detail-disclosure">
               <summary>Daily Checkの項目別平均を見る</summary>
@@ -98,8 +97,6 @@ export default function RecentObservationTrends({ dogId, online, selectedThemes 
             </section>}
           </div>
         </details>
-
-        {selection && dogId && <div ref={recordsRef}><InsightRecordList key={JSON.stringify(selection)} dogId={dogId} trends={trends} {...selection} onClose={() => setSelection(null)} /></div>}
 
       </>}
   </section>;

@@ -1,5 +1,6 @@
 import type { DailyCheckDay, ObservationTrends } from "@/lib/insights/trendTypes";
 import { averageCondition } from "./DailyCheckHistoryChart";
+import styles from "./InsightDashboardSummary.module.css";
 
 function between(days: DailyCheckDay[], start: string, end: string) {
   return days.filter((day) => day.local_date >= start && day.local_date <= end);
@@ -17,9 +18,10 @@ function conditionLabel(value: number | null) {
   return "少し気になる";
 }
 
-export default function InsightDashboardSummary({ trends, dailyDays }: {
+export default function InsightDashboardSummary({ trends, dailyDays, onEventRecords }: {
   trends: ObservationTrends;
   dailyDays: DailyCheckDay[];
+  onEventRecords: () => void;
 }) {
   const currentDays = between(dailyDays, trends.current_start, trends.as_of_local_date);
   const previousDays = between(dailyDays, trends.previous_start, trends.previous_end);
@@ -44,9 +46,12 @@ export default function InsightDashboardSummary({ trends, dailyDays }: {
           <span className="insight-mini-progress"><i style={{ width: `${Math.min(100, currentDays.length / 7 * 100)}%` }} /></span>
         </article>
         <article>
+          <button type="button" className={styles.eventButton} onClick={onEventRecords}
+            aria-label={`できごと${currentEvents?.total_count ?? 0}件、最近の記録を見る`}>
           <small>できごと</small>
           <strong>{currentEvents?.total_count ?? 0}<em>件</em></strong>
-          <span>記録した出来事</span>
+          <span>記録した出来事 <i aria-hidden="true">→</i></span>
+          </button>
         </article>
         <article>
           <small>7日平均</small>
