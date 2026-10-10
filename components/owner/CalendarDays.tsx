@@ -14,13 +14,14 @@ type Props = {
   records: CalendarRecord[];
   mode: "week" | "month";
   onSelect: (date: string) => void;
+  onEvent?: (event: CalendarEvent) => void;
 };
 
 const dateLabel = (date: string) => new Intl.DateTimeFormat("ja-JP", {
   month: "long", day: "numeric", weekday: "short", timeZone: "UTC",
 }).format(new Date(`${date}T12:00:00Z`));
 
-export default function CalendarDays({ dates, selected, today, birthday, events, records, mode, onSelect }: Props) {
+export default function CalendarDays({ dates, selected, today, birthday, events, records, mode, onSelect, onEvent }: Props) {
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
 
   return <div className={`calendar-days calendar-${mode}`} aria-label="日付を選ぶ">
@@ -39,11 +40,13 @@ export default function CalendarDays({ dates, selected, today, birthday, events,
           aria-label={`${label}${date === today ? "、今日" : ""}、予定${plans.length}件、記録${logCount}件${birth ? "、誕生日" : ""}${titles.length ? `、${titles.map(item => item.title).join("、")}` : ""}`}
           onClick={() => onSelect(date)}>
           <strong>{Number(date.slice(8))}</strong>
-          <span className={styles.titles} id={`calendar-titles-${date}`}>
-            {visibleTitles.map(item => <span className={styles.title} key={item.id} title={item.title}>{item.title}</span>)}
-          </span>
           {logCount > 0 && <span className={styles.logs} aria-hidden="true"><i className="record-dot" />{logCount}</span>}
         </button>
+        <div className={styles.titles} id={`calendar-titles-${date}`}>
+          {visibleTitles.map(item => "category" in item
+            ? <button type="button" className={styles.title} key={item.id} title={item.title} aria-label={`${item.title}の予定を確認・編集`} onClick={() => onEvent?.(item)}>{item.title}</button>
+            : <span className={styles.title} key={item.id}>{item.title}</span>)}
+        </div>
         {hiddenCount > 0 && <button className={styles.more} type="button" aria-expanded={expanded} aria-controls={`calendar-titles-${date}`}
           aria-label={`${label}の予定を${expanded ? "畳む" : `あと${hiddenCount}件表示`}`}
           onClick={() => { onSelect(date); setExpandedDate(expanded ? null : date); }}>
