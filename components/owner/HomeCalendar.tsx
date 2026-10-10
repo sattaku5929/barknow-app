@@ -5,6 +5,7 @@ import { addDays, monthDays, moveMonth, scheduleError, scheduleKinds, weekStart 
 import type { CalendarEvent, CalendarRecord, ScheduleKind } from "@/lib/calendar/model";
 import { deleteCalendarEvent, loadCalendar, saveCalendarEvent } from "@/lib/calendar/service";
 import CalendarDays from "./CalendarDays";
+import { holidayYearCovered } from "@/lib/calendar/holidays";
 
 type Props = { dogId?:string; dogName:string; birthday:string; online:boolean; today:string; refreshToken:string; onRecord:(date:string,kind:"daily"|"win"|null,note?:string)=>void };
 const dayLabel = (date:string) => new Intl.DateTimeFormat("ja-JP",{month:"long",day:"numeric",weekday:"short",timeZone:"UTC"}).format(new Date(`${date}T12:00:00Z`));
@@ -75,6 +76,7 @@ export default function HomeCalendar({dogId,birthday,online,today,refreshToken}:
     <div className="calendar-toolbar"><strong>{selected.slice(0,4)}年 {Number(selected.slice(5,7))}月</strong><div className="calendar-mode" aria-label="表示期間">{(["week","month"] as const).map(m=><button key={m} type="button" aria-pressed={mode===m} onClick={()=>setMode(m)}>{m==="week"?"週":"月"}</button>)}</div><button type="button" onClick={()=>setSelected(today)}>今日</button></div>
     <div className="calendar-nav"><button type="button" aria-label={mode==="week"?"前の週":"前の月"} onClick={()=>setSelected(mode==="week"?addDays(selected,-7):moveMonth(selected,-1))}>‹</button><span>{mode==="week"?`${dayLabel(start)} 〜 ${dayLabel(end)}`:"予定名をタップして確認・編集"}</span><button type="button" aria-label={mode==="week"?"次の週":"次の月"} onClick={()=>setSelected(mode==="week"?addDays(selected,7):moveMonth(selected,1))}>›</button></div>
     <CalendarDays key={mode} dates={dates} mode={mode} selected={selected} today={today} birthday={birthday} events={events} records={records} onSelect={setSelected} onEvent={event=>open(event.category,event)} />
+    {dates.some(date=>!holidayYearCovered(date)) && <p className="calendar-feedback">表示中の一部の日付は、祝日情報が未確認です。</p>}
     <div className="calendar-feedback" aria-live="polite">{loading ? "読み込み中…" : !dogId ? "愛犬を登録すると予定を追加できます。" : !online ? "接続後に予定と記録を確認できます。" : loadError ? <>{loadError}<button type="button" onClick={()=>setRevision(r=>r+1)}>再読み込み</button></> : notice}</div>
     {draft && <dialog ref={dialog} className="calendar-dialog" aria-labelledby="schedule-title" onCancel={e=>{e.preventDefault();close();}} onClose={()=>{if(!lock.current)setDraft(null);}}>
       <form onSubmit={(e:FormEvent)=>{e.preventDefault();void mutate();}}><header><div><small>PLAN</small><h2 id="schedule-title">{isNew?"予定を追加":"予定を編集"}</h2></div><button type="button" aria-label="閉じる" disabled={saving} onClick={close}>×</button></header>

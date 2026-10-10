@@ -30,7 +30,7 @@ function load(relative, reactOverride = React) {
   const filename = path.join(__dirname,"..",relative);
   const code = ts.transpileModule(fs.readFileSync(filename,"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText;
   const module = {exports:{}};
-  const localRequire = name => name === "react" ? reactOverride : name === "./CalendarDays" ? load("components/owner/CalendarDays.tsx",reactOverride) : name.endsWith(".module.css") ? {__esModule:true,default:new Proxy({}, {get:(_,key)=>String(key)})} : name === "@/lib/care/model" ? load("lib/care/model.ts") : name === "./HomeCareEditor" ? load("components/owner/HomeCareEditor.tsx") : name === "@/lib/calendar/model" ? load("lib/calendar/model.ts") : name === "@/lib/calendar/service" ? new Proxy({}, {get:()=>()=>{throw new Error("Unexpected server-side database access");}}) : require(name);
+  const localRequire = name => name === "react" ? reactOverride : name === "@/lib/calendar/holidays" ? load("lib/calendar/holidays.ts") : name === "./CalendarDays" ? load("components/owner/CalendarDays.tsx",reactOverride) : name.endsWith(".module.css") ? {__esModule:true,default:new Proxy({}, {get:(_,key)=>String(key)})} : name === "@/lib/care/model" ? load("lib/care/model.ts") : name === "./HomeCareEditor" ? load("components/owner/HomeCareEditor.tsx") : name === "@/lib/calendar/model" ? load("lib/calendar/model.ts") : name === "@/lib/calendar/service" ? new Proxy({}, {get:()=>()=>{throw new Error("Unexpected server-side database access");}}) : require(name);
   new Function("require","module","exports",code)(localRequire,module,module.exports);
   return module.exports;
 }
@@ -138,3 +138,17 @@ editableGrid.props.children[1][0].props.children[1].props.children[0].props.onCl
 assert.equal(openedEvent.id,"plan-0");assert.equal(openedEvent.title,"予定名0");
 assert.doesNotMatch(renderToStaticMarkup(editableGrid),/<button[^>]*>(?:(?!<\/button>)[\s\S])*<button/,"schedule editing keeps buttons separate");
 console.log("Compact calendar: no under-calendar agenda/actions; schedule title opens existing editor passed.");
+
+const {japaneseHoliday,holidayYearCovered}=load("lib/calendar/holidays.ts");
+for(const [date,name] of Object.entries({"2026-10-12":"スポーツの日","2026-09-22":"国民の休日","2026-05-06":"振替休日","2027-03-22":"振替休日","2019-05-01":"休日（祝日扱い）","2021-07-22":"海の日"}))assert.equal(japaneseHoliday(date),name);
+assert.equal(japaneseHoliday("2026-10-10"),undefined);
+assert.equal(japaneseHoliday("2021-07-19"),undefined,"respect exceptional moved holidays");
+assert.equal(holidayYearCovered("2027-12-31"),true);assert.equal(holidayYearCovered("2028-01-01"),false);
+const weekendHtml=renderToStaticMarkup(React.createElement(CalendarDays,{...calendarProps,dates:["2026-10-10","2026-10-11","2026-10-12"],selected:"2026-10-10",events:[]}));
+assert.match(weekendHtml,/class="day saturday selected/);assert.match(weekendHtml,/class="day sunday/);
+assert.match(weekendHtml,/class="holiday">スポーツの日</);assert.match(weekendHtml,/aria-label="10月12日.*スポーツの日/);
+const calendarCss=fs.readFileSync(path.join(__dirname,"../components/owner/CalendarDays.module.css"),"utf8");
+assert.match(calendarCss,/white-space: nowrap/);assert.match(calendarCss,/text-overflow: ellipsis/);assert.doesNotMatch(calendarCss,/-webkit-line-clamp/);
+const futureHtml=renderToStaticMarkup(React.createElement(Calendar,{dogId:"dog",birthday:"",online:false,today:"2028-01-01",refreshToken:"0"}));
+assert.match(futureHtml,/祝日情報が未確認です/);
+console.log("Calendar holidays: weekends/selected colors, national and substitute holidays, historical exceptions, unknown-year notice, single-line names passed.");
