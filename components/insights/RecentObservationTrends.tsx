@@ -15,11 +15,10 @@ import ThemeTrendCard from "./ThemeTrendCard";
 
 type RecordSelection = { title: string; filter: InsightFilter; daily?: boolean };
 
-export default function RecentObservationTrends({ dogId, online, selectedThemes, onCoachChat }: {
+export default function RecentObservationTrends({ dogId, online, selectedThemes }: {
   dogId?: string;
   online: boolean;
   selectedThemes: EventTheme[];
-  onCoachChat?: () => void;
 }) {
   const [trends, setTrends] = useState<ObservationTrends | null>(null);
   const [dailyDays, setDailyDays] = useState<DailyCheckDay[]>([]);
@@ -105,11 +104,6 @@ export default function RecentObservationTrends({ dogId, online, selectedThemes,
 
         {selection && dogId && <div ref={recordsRef}><InsightRecordList key={JSON.stringify(selection)} dogId={dogId} trends={trends} {...selection} onClose={() => setSelection(null)} /></div>}
 
-        <section className="insight-coach-cta">
-          <div><span className="card-label">WITH YOUR COACH</span><h3>この変化を一緒に振り返る</h3><p>数字だけで判断せず、実際の場面と合わせて相談できます。</p></div>
-          {onCoachChat ? <button type="button" onClick={onCoachChat}>コーチに相談する <span aria-hidden="true">→</span></button>
-            : <small>担当コーチが決まると、ここから相談できます。</small>}
-        </section>
       </>}
   </section>;
 }
