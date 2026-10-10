@@ -11,7 +11,7 @@ import DailyCheckTrendCard from "./DailyCheckTrendCard";
 import HandlerComparisonCard from "./HandlerComparisonCard";
 import InsightDashboardSummary from "./InsightDashboardSummary";
 import InsightRecordList from "./InsightRecordList";
-import ThemeTrendCard from "./ThemeTrendCard";
+import ThemeTrendTable from "./ThemeTrendTable";
 
 type RecordSelection = { title: string; filter: InsightFilter; daily?: boolean };
 
@@ -81,11 +81,8 @@ export default function RecentObservationTrends({ dogId, online, selectedThemes 
 
             {themes.length > 0 && <section className="insight-section insight-theme-section" aria-labelledby="theme-trends-title">
               <div className="insight-section-heading"><div><span className="card-label">EVENT LOG</span><h3 id="theme-trends-title">できごとの傾向</h3></div></div>
-              <div className="insight-result-legend" aria-label="できごとの評価">
-                <span className="success">うまくできた</span><span className="neutral">いつも通り</span><span className="concern">気になった</span>
-              </div>
-              <div className="insight-theme-list">{themes.map((row) => <ThemeTrendCard key={row.theme_key} trend={row}
-                onRecords={() => showRecords(themeLabel(row.theme_key), { themeKey: row.theme_key, period: "current" })} />)}</div>
+              <ThemeTrendTable trends={themes}
+                onRecords={row => showRecords(themeLabel(row.theme_key), { themeKey: row.theme_key, period: "current" })} />
             </section>}
 
             {daily.length > 0 && <details className="insight-detail-disclosure">

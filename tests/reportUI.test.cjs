@@ -14,6 +14,7 @@ function load(relative, reactOverride = React) {
   const module = { exports: {} };
   const localRequire = name => {
     if (name === "react") return reactOverride;
+    if (name.endsWith(".module.css")) return { __esModule: true, default: new Proxy({}, { get: (_, key) => String(key) }) };
     if (name === "@/lib/insights/observationTrends") return new Proxy({}, {
       get: () => () => { throw new Error("UI rendering must not access the database"); },
     });
@@ -32,7 +33,7 @@ const trends = {
   current_start: "2026-10-04", as_of_local_date: "2026-10-10",
   previous_start: "2026-09-27", previous_end: "2026-10-03",
   event_overall: [{ period: "current", total_count: 4 }],
-  event_themes: [], daily_metrics: [], handler_themes: [],
+  event_themes: [], daily_metrics: [], handlers: [], distances: [], numeric_metrics: [], daily_event_days: [],
 };
 const Summary = load("components/insights/InsightDashboardSummary.tsx").default;
 const summaryHtml = renderToStaticMarkup(React.createElement(Summary, { trends, dailyDays: [] }));
@@ -60,3 +61,53 @@ for (const scenario of [
   }
 }
 console.log("Owner report UI: removed overviews and coach invitation absent in all states; summary, records and details preserved.");
+
+const Table = load("components/insights/ThemeTrendTable.tsx").default;
+const makeTrend = (theme_key, counts) => ({
+  theme_key, period: "current", total_count: counts.reduce((a, b) => a + b, 0),
+  success_count: counts[0], neutral_count: counts[1], concern_count: counts[2],
+  success_rate: 33.3, neutral_rate: 33.3, concern_rate: 33.3,
+});
+const sampleTrends = [makeTrend("barking", [5, 2, 1]), makeTrend("walk", [8, 3, 0]), makeTrend("dog_reaction", [0, 1, 2])];
+const sampleHtml = renderToStaticMarkup(React.createElement(Table, { trends: sampleTrends, onRecords: () => {} }));
+assert.equal((sampleHtml.match(/scope="row"/g) || []).length, 3);
+assert.equal((sampleHtml.match(/role="img"/g) || []).length, 3);
+assert.match(sampleHtml, /うまくできた5件、いつも通り2件、気になった1件/);
+assert.match(sampleHtml, /width:62.5%/);
+assert.match(sampleHtml, /他の犬への反応の記録を見る、全3件/);
+assert.doesNotMatch(sampleHtml, /insight-theme-card|insight-theme-breakdown|根拠の記録を見る/);
+for (const counts of [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 1], [1000, 250, 7]]) {
+  const trend = makeTrend("barking", counts);
+  let selected;
+  const tree = Table({ trends: [trend], onRecords: value => { selected = value; } });
+  const row = tree.props.children[1].props.children[3].props.children[0];
+  row.props.children[0].props.children.props.onClick();
+  assert.equal(selected, trend, "theme button retains exact source record selection");
+  const html = renderToStaticMarkup(tree);
+  assert.doesNotMatch(html, /NaN|Infinity/);
+  if (trend.total_count) {
+    const widths = [...html.matchAll(/width:([\d.]+)%/g)].map(match => Number(match[1]));
+    assert.ok(Math.abs(widths.reduce((a, b) => a + b, 0) - 100) < 0.000001, "stacked widths sum to 100 even with rounded rates");
+  }
+}
+// Real report integration: current rows only, selected-theme ordering and unchanged filters.
+const reportStates = [{ ...trends, event_themes: [...sampleTrends, { ...sampleTrends[0], period: "previous" }] }, [], false, false, null];
+let selection;
+const Report = load("components/insights/RecentObservationTrends.tsx", {
+  ...React, useState: () => [reportStates.shift(), value => { selection = value; }], useEffect: () => {}, useRef: () => ({ current: null }),
+}).default;
+const reportTree = Report({ dogId: "dog", online: true, selectedThemes: ["walk"] });
+function findTable(node) {
+  if (!node || typeof node !== "object") return;
+  if (Array.isArray(node)) return node.map(findTable).find(Boolean);
+  if (node.type?.name === "ThemeTrendTable") return node;
+  return findTable(node.props?.children);
+}
+const embedded = findTable(reportTree);
+assert.ok(embedded);
+assert.equal(embedded.props.trends.length, 3);
+assert.equal(embedded.props.trends[0].theme_key, "walk");
+embedded.props.onRecords(sampleTrends[2]);
+assert.deepEqual(selection, { title: "他の犬への反応", filter: { themeKey: "dog_reaction", period: "current" }, daily: false });
+console.log("Compact event table: exact counts, rounded and zero-rate safety, full labels, current period, selected ordering and record filters passed.");
+module.exports = { sampleHtml };
