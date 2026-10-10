@@ -149,6 +149,10 @@ assert.match(weekendHtml,/class="day saturday selected/);assert.match(weekendHtm
 assert.match(weekendHtml,/class="holiday">スポーツの日</);assert.match(weekendHtml,/aria-label="10月12日.*スポーツの日/);
 const calendarCss=fs.readFileSync(path.join(__dirname,"../components/owner/CalendarDays.module.css"),"utf8");
 assert.match(calendarCss,/white-space: nowrap/);assert.match(calendarCss,/text-overflow: ellipsis/);assert.doesNotMatch(calendarCss,/-webkit-line-clamp/);
+assert.match(calendarCss,/\.grid\.grid \{ column-gap: 1px/);
+const dayCss=calendarCss.match(/\.day \{([^}]+)\}/)[1];
+assert.match(dayCss,/border: 0/);assert.match(dayCss,/background: transparent/);
+assert.match(calendarCss,/padding: 0 0 4px/);assert.match(calendarCss,/padding: 2px 0/);
 const futureHtml=renderToStaticMarkup(React.createElement(Calendar,{dogId:"dog",birthday:"",online:false,today:"2028-01-01",refreshToken:"0"}));
 assert.match(futureHtml,/祝日情報が未確認です/);
 console.log("Calendar holidays: weekends/selected colors, national and substitute holidays, historical exceptions, unknown-year notice, single-line names passed.");

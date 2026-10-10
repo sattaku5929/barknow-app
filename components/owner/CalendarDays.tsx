@@ -25,7 +25,7 @@ const dateLabel = (date: string) => new Intl.DateTimeFormat("ja-JP", {
 export default function CalendarDays({ dates, selected, today, birthday, events, records, mode, onSelect, onEvent }: Props) {
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
 
-  return <div className={`calendar-days calendar-${mode}`} aria-label="日付を選ぶ">
+  return <div className={`calendar-days calendar-${mode} ${styles.grid}`} aria-label="日付を選ぶ">
     {["月", "火", "水", "木", "金", "土", "日"].map((day,index) => <span className={`calendar-weekday ${index===5?styles.saturday:index===6?styles.sunday:""}`} key={day}>{day}</span>)}
     {dates.map(date => {
       const plans = eventsOnDate(events, date);

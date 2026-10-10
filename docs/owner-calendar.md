@@ -48,3 +48,5 @@ Home ends after the calendar grid and loading/error/save feedback. The always-vi
 ## Weekends and Japanese public holidays
 
 Saturday dates and headings are blue; Sundays and national holidays are red, including when selected. Holiday names appear below the date, separate from owner plans (not counted in ＋N件). The checked-in Cabinet Office dataset covers 1955–2027, including substitute holidays, citizens' holidays and one-off historical changes; no unconfirmed future dates are calculated. Outside this range a notice indicates that holiday information is unverified. Refresh `lib/calendar/holidays.ts` from the official CSV after the annual February publication. No runtime network request or database write is needed.
+
+Date cells have no individual borders or card backgrounds. A 1px column gap and no horizontal title padding maximize space for single-line schedule bands; today/selected-day indicators are limited to the date number so they do not consume schedule width.
