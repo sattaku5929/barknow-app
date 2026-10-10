@@ -3,15 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { EventTheme } from "@/lib/observations/observationEvent";
 import { loadObservationDailyDays, loadObservationTrends } from "@/lib/insights/observationTrends";
-import { featuredDaily, featuredInsights, handlerComparisons, orderedThemes, themeLabel } from "@/lib/insights/presentation";
+import { featuredDaily, handlerComparisons, orderedThemes, themeLabel } from "@/lib/insights/presentation";
 import type { InsightFilter } from "@/lib/insights/recordSources";
 import type { DailyCheckDay, ObservationTrends } from "@/lib/insights/trendTypes";
 import DailyCheckHistoryChart from "./DailyCheckHistoryChart";
 import DailyCheckTrendCard from "./DailyCheckTrendCard";
 import HandlerComparisonCard from "./HandlerComparisonCard";
-import InsightCard from "./InsightCard";
 import InsightDashboardSummary from "./InsightDashboardSummary";
-import InsightEmptyState from "./InsightEmptyState";
 import InsightRecordList from "./InsightRecordList";
 import ThemeTrendCard from "./ThemeTrendCard";
 
@@ -56,36 +54,17 @@ export default function RecentObservationTrends({ dogId, online, selectedThemes,
     return () => { active = false; };
   }, [dogId, online]);
 
-  const candidates = trends ? featuredInsights(trends).slice(0, 2) : [];
   const themes = trends ? orderedThemes(trends, selectedThemes) : [];
   const handlers = trends ? handlerComparisons(trends) : [];
   const daily = trends ? featuredDaily(trends) : [];
-  const eventCount = trends?.event_overall.find((row) => row.period === "current")?.total_count ?? 0;
   const showRecords = (title: string, filter: InsightFilter, isDaily = false) => setSelection({ title, filter, daily: isDaily });
 
-  return <section className="recent-observation-trends" aria-labelledby="recent-observation-trends-title">
-    <div className="insight-intro">
-      <span className="card-label">RECENT / 直近7日間</span>
-      <h2 id="recent-observation-trends-title">最近の変化</h2>
-      <p>まずは結論だけ。詳しいグラフや内訳は必要なときに開けます。</p>
-    </div>
-
+  return <section className="recent-observation-trends" aria-label="記録のサマリーと詳細">
     {!online ? <p role="status">接続すると最近の記録を確認できます。</p>
       : loading ? <p role="status">記録を集計しています…</p>
       : error || !trends ? <p role="alert">最近の傾向を読み込めませんでした。時間をおいて再度お試しください。</p>
       : <>
         <InsightDashboardSummary trends={trends} dailyDays={dailyDays} />
-
-        <section className="insight-section insight-discovery-overview" aria-labelledby="recent-discoveries-title">
-          <div className="insight-section-heading">
-            <div><span className="card-label">INSIGHTS</span><h3 id="recent-discoveries-title">最近の気づき</h3></div>
-          </div>
-          {candidates.length
-            ? <div className="insight-card-stack">{candidates.map((item, index) => <InsightCard key={`${item.kind}-${item.themeKey ?? "daily"}-${index}`} insight={item}
-                onRecords={() => showRecords(item.kind === "daily" ? "Daily Check" : themeLabel(item.themeKey ?? ""),
-                  { themeKey: item.themeKey, period: item.period, handlerIds: item.handlerIds }, item.kind === "daily")} />)}</div>
-            : <InsightEmptyState hasRecords={eventCount > 0 || daily.length > 0} />}
-        </section>
 
         <section className="insight-record-entry insight-record-entry--compact">
           <div><span className="card-label">RECENT LOGS</span><h3>最近の記録</h3><p>元の記録を必要なときだけ確認できます。</p></div>

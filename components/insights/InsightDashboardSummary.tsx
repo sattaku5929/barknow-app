@@ -1,7 +1,5 @@
-import { themeLabel } from "@/lib/insights/presentation";
-import { eligiblePeriods } from "@/lib/insights/rules";
 import type { DailyCheckDay, ObservationTrends } from "@/lib/insights/trendTypes";
-import { averageCondition, dailyConditionScore } from "./DailyCheckHistoryChart";
+import { averageCondition } from "./DailyCheckHistoryChart";
 
 function between(days: DailyCheckDay[], start: string, end: string) {
   return days.filter((day) => day.local_date >= start && day.local_date <= end);
@@ -27,51 +25,14 @@ export default function InsightDashboardSummary({ trends, dailyDays }: {
   const previousDays = between(dailyDays, trends.previous_start, trends.previous_end);
   const currentCondition = averageCondition(currentDays);
   const previousCondition = averageCondition(previousDays);
-  const latestDay = [...currentDays].sort((a, b) => b.local_date.localeCompare(a.local_date))[0];
-  const todayCondition = latestDay ? dailyConditionScore(latestDay) : null;
   const currentEvents = trends.event_overall.find((row) => row.period === "current");
-  const previousEvents = trends.event_overall.find((row) => row.period === "previous");
   const comparableDaily = currentDays.length >= 3 && previousDays.length >= 3;
-  const comparableEvents = Boolean(currentEvents && previousEvents && eligiblePeriods(currentEvents.total_count, previousEvents.total_count));
-  const currentConcernRate = currentEvents?.concern_rate ?? null;
-  const previousConcernRate = previousEvents?.concern_rate ?? null;
-
-  const prominentTheme = trends.event_themes
-    .filter((row) => row.period === "current" && row.total_count >= 3 && row.concern_count >= 2 && row.concern_rate >= 40)
-    .sort((a, b) => b.concern_rate - a.concern_rate || b.concern_count - a.concern_count)[0];
-
-  let headline = "この7日間は大きな変化は目立っていません";
-  if (prominentTheme) {
-    headline = `「${themeLabel(prominentTheme.theme_key)}」が少し気になります`;
-  } else if (comparableDaily && currentCondition !== null && previousCondition !== null && Math.abs(currentCondition - previousCondition) >= 0.35) {
-    headline = `最近の調子は前週より少し${currentCondition > previousCondition ? "上向き" : "低め"}です`;
-  } else if (comparableEvents && currentConcernRate !== null && previousConcernRate !== null && Math.abs(currentConcernRate - previousConcernRate) >= 10) {
-    headline = `“気になった”記録が前週より${currentConcernRate > previousConcernRate ? "増えています" : "減っています"}`;
-  }
 
   const weeklyChange = comparableDaily && currentCondition !== null && previousCondition !== null
     ? currentCondition - previousCondition
     : null;
 
   return <div className="insight-at-a-glance">
-    <section className="insight-today-card" aria-labelledby="today-condition-title">
-      <div>
-        <span className="card-label">TODAY</span>
-        <h3 id="today-condition-title">今日の状態</h3>
-        <p>{latestDay ? "最新のDaily Checkから" : "Daily Checkを記録すると表示されます"}</p>
-      </div>
-      <div className="insight-today-score">
-        <strong>{todayCondition === null ? "–" : formatValue(todayCondition)}</strong>
-        <span>{conditionLabel(todayCondition)}</span>
-      </div>
-    </section>
-
-    <section className="insight-weekly-hero" aria-labelledby="weekly-overview-title">
-      <span className="card-label">RECENT</span>
-      <h3 id="weekly-overview-title">最近の気づき</h3>
-      <strong>{headline}</strong>
-    </section>
-
     <section className="insight-week-summary" aria-labelledby="week-summary-title">
       <div className="insight-section-heading">
         <div><span className="card-label">THIS WEEK</span><h3 id="week-summary-title">今週のサマリー</h3></div>
