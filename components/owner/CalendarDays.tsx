@@ -24,14 +24,16 @@ const dateLabel = (date: string) => new Intl.DateTimeFormat("ja-JP", {
 }).format(new Date(`${date}T12:00:00Z`));
 
 export function calendarWeekBands(dates: string[], events: CalendarEvent[], birthday: string) {
-  const bands: { id: string; title: string; event: CalendarEvent | null; start: number; end: number; lane: number }[] = events.flatMap(event => {
+  const bands: { id: string; title: string; event: CalendarEvent | null; holiday?: boolean; start: number; end: number; lane: number }[] = events.flatMap(event => {
     const covered = dates.flatMap((date, index) => event.start_date <= date && event.end_date >= date ? [index] : []);
     return covered.length ? [{ id: event.id, title: event.title, event, start: covered[0], end: covered.at(-1)!, lane: 0 }] : [];
   });
   dates.forEach((date, index) => {
+    const holiday = japaneseHoliday(date);
+    if (holiday) bands.push({ id: `holiday-${date}`, title: holiday, event: null, holiday: true, start: index, end: index, lane: 0 });
     if (isBirthday(birthday, date)) bands.push({ id: `birthday-${date}`, title: "誕生日", event: null, start: index, end: index, lane: 0 });
   });
-  bands.sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start)
+  bands.sort((a, b) => Number(!!b.holiday) - Number(!!a.holiday) || a.start - b.start || (b.end - b.start) - (a.end - a.start)
     || Number(!!a.event) - Number(!!b.event)
     || (a.event?.start_time ?? "").localeCompare(b.event?.start_time ?? "") || a.title.localeCompare(b.title));
   const occupied: boolean[][] = [];
@@ -69,7 +71,6 @@ export default function CalendarDays({ dates, selected, today, birthday, events,
           aria-label={`${label}${date === today ? "、今日" : ""}${holiday?`、${holiday}`:""}、予定${plans.length}件${birth ? "、誕生日" : ""}${titles.length ? `、${titles.map(item => item.title).join("、")}` : ""}`}
           onClick={() => { onSelect(date); onDateOpen?.(date); }}>
           <strong>{Number(date.slice(8))}</strong>
-          {holiday && <small className={styles.holiday}>{holiday}</small>}
         </button>
       </div>;
     })}</div>
@@ -79,6 +80,7 @@ export default function CalendarDays({ dates, selected, today, birthday, events,
         return band.event ? <button type="button" className={styles.title} key={band.id} style={placement}
           data-event-id={band.id} title={band.title} aria-label={`${band.title}、${band.event.start_date}から${band.event.end_date}の予定を確認・編集`}
           onClick={() => onEvent?.(band.event!)}>{band.title}</button>
+          : band.holiday ? <small className={styles.holiday} key={band.id} style={placement}>{band.title}</small>
           : <span className={styles.title} key={band.id} style={placement}>{band.title}</span>;
       })}
     </div>

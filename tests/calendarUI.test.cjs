@@ -150,7 +150,7 @@ assert.equal(japaneseHoliday("2021-07-19"),undefined,"respect exceptional moved 
 assert.equal(holidayYearCovered("2027-12-31"),true);assert.equal(holidayYearCovered("2028-01-01"),false);
 const weekendHtml=renderToStaticMarkup(React.createElement(CalendarDays,{...calendarProps,dates:["2026-10-10","2026-10-11","2026-10-12"],selected:"2026-10-10",events:[]}));
 assert.match(weekendHtml,/class="day saturday selected/);assert.match(weekendHtml,/class="day sunday/);
-assert.match(weekendHtml,/class="holiday">スポーツの日</);assert.match(weekendHtml,/aria-label="10月12日.*スポーツの日/);
+assert.match(weekendHtml,/class="holiday"[^>]*>スポーツの日</);assert.match(weekendHtml,/aria-label="10月12日.*スポーツの日/);
 const calendarCss=fs.readFileSync(path.join(__dirname,"../components/owner/CalendarDays.module.css"),"utf8");
 assert.match(calendarCss,/white-space: nowrap/);assert.match(calendarCss,/text-overflow: ellipsis/);assert.doesNotMatch(calendarCss,/-webkit-line-clamp/);
 assert.match(calendarCss,/\.grid\.grid \{ column-gap: 1px/);
@@ -165,6 +165,21 @@ console.log("Calendar holidays: weekends/selected colors, national and substitut
 const {calendarWeekBands}=load("components/owner/CalendarDays.tsx");
 const {monthDays}=load("lib/calendar/model.ts");
 const monthDates=monthDays("2026-10-08");
+const holidayWeek=["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18"];
+const holidayPlans=[
+  {...makePlans(1)[0],id:"after-holiday",start_date:"2026-10-13",end_date:"2026-10-13"},
+  {...makePlans(1)[0],id:"on-holiday",start_date:"2026-10-12",end_date:"2026-10-12"},
+  {...makePlans(1)[0],id:"travel-holiday",start_date:"2026-10-16",end_date:"2026-10-18"},
+];
+const holidayBands=calendarWeekBands(holidayWeek,holidayPlans,"");
+assert.equal(holidayBands.find(b=>b.id==="after-holiday").lane,0,"a holiday must not push the other days' events down");
+assert.equal(holidayBands.find(b=>b.id==="travel-holiday").lane,0);
+assert.equal(holidayBands.find(b=>b.holiday).lane,0);
+assert.equal(holidayBands.find(b=>b.id==="on-holiday").lane,1,"holiday text and its day's event must not overlap");
+const holidayTree=interactiveGrid({...calendarProps,dates:holidayWeek,events:holidayPlans,birthday:""});
+assert.equal(calendarNodes(holidayTree,n=>n.props?.className==="select").some(n=>calendarNodes(n,x=>x.props?.className==="holiday").length>0),false,"holiday labels cannot enlarge the shared date header");
+assert.equal(calendarNodes(holidayTree,n=>n.props?.["data-event-id"]==="after-holiday")[0].props.style.gridRow,1);
+console.log("Calendar holiday layout: other dates start at the top row; holiday labels stay in their own lane without overlap.");
 const trips=[
   {...makePlans(1)[0],id:"trip",title:"愛犬と旅行",start_date:"2026-10-08",end_date:"2026-10-14"},
   {...makePlans(1)[0],id:"daycare",title:"保育園",start_date:"2026-10-09",end_date:"2026-10-09"},
