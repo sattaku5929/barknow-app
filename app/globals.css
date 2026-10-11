@@ -2390,6 +2390,25 @@ body { font-size: 16px; }
 .settings-screen > footer small { margin-top:9px; font-size:9px; }
 .settings-back { min-height:38px; margin:0 0 20px; padding:0 12px; border:1px solid rgba(0,134,97,.13); border-radius:999px; background:#edf5f1; color:var(--green-dark); cursor:pointer; font-size:10px; font-weight:800; }
 .settings-profile-editor > .section-title { margin-top:0; }
+.dog-profile-summary-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:22px; }
+.dog-profile-summary-heading h1 { margin:5px 0 0; font-size:24px; line-height:1.5; }
+.dog-profile-summary-heading p { margin:6px 0 0; color:#718078; font-size:12px; }
+.app-stage .dog-profile-edit-button { flex-shrink:0; min-height:44px; padding:10px 18px; border:1px solid #cbded3; border-radius:14px; background:#fff; color:#008661; font-size:13px; font-weight:600; cursor:pointer; }
+.dog-profile-summary-avatar { display:flex; align-items:center; gap:16px; margin-bottom:22px; }
+.dog-profile-summary-avatar > img,.dog-profile-summary-avatar > svg { width:80px; height:80px; flex-shrink:0; object-fit:cover; border-radius:22px; background:#edf5f0; color:#008661; }
+.dog-profile-summary-avatar h2 { margin:0; font-size:20px; overflow-wrap:anywhere; }
+.dog-profile-summary-avatar p { margin:6px 0 0; color:#718078; font-size:12px; }
+.dog-profile-summary .profile-form-section > h2 { margin:0 0 16px; font-size:15px; line-height:1.6; }
+.dog-profile-facts { margin:0; }
+.dog-profile-facts > div { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); align-items:start; gap:16px; padding:13px 0; border-bottom:1px solid #edf0ec; }
+.dog-profile-facts > div:first-child { padding-top:0; }
+.dog-profile-facts > div:last-child { padding-bottom:0; border-bottom:0; }
+.dog-profile-facts dt { color:#758079; font-size:12px; line-height:1.7; }
+.dog-profile-facts dd { margin:0; color:#30483d; font-size:13px; line-height:1.7; overflow-wrap:anywhere; }
+.dog-profile-concerns { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.8; }
+.dog-profile-themes-note { margin:0 0 12px; color:#718078; font-size:12px; line-height:1.7; }
+.dog-profile-theme-list { display:flex; flex-wrap:wrap; gap:8px; padding:0; margin:0; list-style:none; }
+.dog-profile-theme-list li { padding:7px 12px; border-radius:12px; background:#edf5f0; color:#35654c; font-size:12px; }
 .settings-document { min-height:calc(100svh - 190px); padding:4px 2px 24px; }
 .settings-document > h1 { margin:5px 0 0; font-size:28px; }
 .settings-document-date { margin:8px 0 24px; color:#8a948f; font-size:10px; }
