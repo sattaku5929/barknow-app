@@ -6607,9 +6607,9 @@ body { font-size: 16px; }
 
 
 
-/* ===== Owner Home: compact daily dashboard ===== */
-.app-stage:has(.owner-view-home) { background:#fafcfb; }
-.app-stage:has(.owner-view-home)::before {
+/* ===== Owner Home and Changes: shared soft background ===== */
+.app-stage:has(.owner-view-home,.owner-view-report) { background:#fafcfb; }
+.app-stage:has(.owner-view-home,.owner-view-report)::before {
   /* A static pastel wash behind the UI, kept soft at every scroll position. */
   background:
     radial-gradient(ellipse at 8% 18%, rgba(133,224,209,.25), transparent 48%),
@@ -6618,7 +6618,11 @@ body { font-size: 16px; }
     radial-gradient(ellipse at 88% 96%, rgba(239,201,197,.18), transparent 36%),
     #fafcfb;
 }
-.app-stage:has(.owner-view-home) .app-shell { background:transparent; }
+.app-stage:has(.owner-view-home,.owner-view-report) .app-shell { background:transparent; }
+.app-stage:has(.owner-view-report) .owner-app-backdrop { display:none; }
+.app-stage .owner-view-report { background:transparent; }
+.app-stage:has(.owner-view-report) .app-header { background:rgba(250,252,251,.78); }
+/* ===== Owner Home: compact daily dashboard ===== */
 .app-stage .owner-view-home,
 .app-stage .owner-view-home.home-flat { background:transparent; padding-top:0; }
 .app-stage:has(.owner-view-home) .app-header {
