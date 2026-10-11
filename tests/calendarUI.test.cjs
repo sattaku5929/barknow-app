@@ -92,15 +92,19 @@ let expanded=null, chosen=null;
 const interactiveGrid=load("components/owner/CalendarDays.tsx",{...React,useState:()=>[expanded,value=>{expanded=value;}]}).default;
 const interactiveProps={...calendarProps,events:makePlans(4),onSelect:date=>{chosen=date;}};
 let tree=interactiveGrid(interactiveProps);
-let cell=tree.props.children[1][0];
-cell.props.children[2].props.onClick();
+function calendarNodes(node,predicate) {
+  if(!node || typeof node!=="object")return [];
+  if(Array.isArray(node))return node.flatMap(child=>calendarNodes(child,predicate));
+  return [...(predicate(node)?[node]:[]),...calendarNodes(node.props?.children,predicate)];
+}
+calendarNodes(tree,node=>node.props?.className==="more")[0].props.onClick();
 assert.equal(chosen,"2026-10-07");
 tree=interactiveGrid(interactiveProps);
 let html=renderToStaticMarkup(tree);
 assert.equal((html.match(/class="title"/g)||[]).length,4);
 assert.match(html,/aria-expanded="true"/);assert.match(html,/>閉じる</);
 assert.doesNotMatch(html,/<button[^>]*>(?:(?!<\/button>)[\s\S])*<button/,"no nested buttons");
-cell=tree.props.children[1][0];cell.props.children[2].props.onClick();
+calendarNodes(tree,node=>node.props?.className==="more")[0].props.onClick();
 html=renderToStaticMarkup(interactiveGrid(interactiveProps));
 assert.equal((html.match(/class="title"/g)||[]).length,2);
 assert.match(html,/>＋2件</);
@@ -134,7 +138,7 @@ console.log("Calendar titles: 0–8 plans, overflow expansion/collapse, selectio
 
 let openedEvent=null;
 const editableGrid=interactiveGrid({...interactiveProps,onEvent:event=>{openedEvent=event;}});
-editableGrid.props.children[1][0].props.children[1].props.children[0].props.onClick();
+calendarNodes(editableGrid,node=>node.props?.["data-event-id"]==="plan-0")[0].props.onClick();
 assert.equal(openedEvent.id,"plan-0");assert.equal(openedEvent.title,"予定名0");
 assert.doesNotMatch(renderToStaticMarkup(editableGrid),/<button[^>]*>(?:(?!<\/button>)[\s\S])*<button/,"schedule editing keeps buttons separate");
 console.log("Compact calendar: no under-calendar agenda/actions; schedule title opens existing editor passed.");
@@ -152,7 +156,37 @@ assert.match(calendarCss,/white-space: nowrap/);assert.match(calendarCss,/text-o
 assert.match(calendarCss,/\.grid\.grid \{ column-gap: 1px/);
 const dayCss=calendarCss.match(/\.day \{([^}]+)\}/)[1];
 assert.match(dayCss,/border: 0/);assert.match(dayCss,/background: transparent/);
-assert.match(calendarCss,/padding: 0 0 4px/);assert.match(calendarCss,/padding: 2px 0/);
+assert.match(calendarCss,/\.grid \.titles \.title/);
+assert.match(calendarCss,/height:32px/);
 const futureHtml=renderToStaticMarkup(React.createElement(Calendar,{dogId:"dog",birthday:"",online:false,today:"2028-01-01",refreshToken:"0"}));
 assert.match(futureHtml,/祝日情報が未確認です/);
 console.log("Calendar holidays: weekends/selected colors, national and substitute holidays, historical exceptions, unknown-year notice, single-line names passed.");
+
+const {calendarWeekBands}=load("components/owner/CalendarDays.tsx");
+const {monthDays}=load("lib/calendar/model.ts");
+const monthDates=monthDays("2026-10-08");
+const trips=[
+  {...makePlans(1)[0],id:"trip",title:"愛犬と旅行",start_date:"2026-10-08",end_date:"2026-10-14"},
+  {...makePlans(1)[0],id:"daycare",title:"保育園",start_date:"2026-10-09",end_date:"2026-10-09"},
+  {...makePlans(1)[0],id:"vaccine",title:"予防接種",start_date:"2026-10-09",end_date:"2026-10-09"},
+];
+for(let index=0;index<monthDates.length;index+=7){
+  const bands=calendarWeekBands(monthDates.slice(index,index+7),trips,"2020-10-09");
+  for(let a=0;a<bands.length;a++)for(let b=a+1;b<bands.length;b++){
+    if(bands[a].lane===bands[b].lane)assert.ok(bands[a].end<bands[b].start || bands[b].end<bands[a].start,"same lane never overlaps, including birthdays and multi-day plans");
+  }
+}
+const tripTree=interactiveGrid({...calendarProps,dates:monthDates,events:trips,records:[{date:"2026-10-09",id:"log",kind:"care"}],birthday:"2020-10-09"});
+const tripBands=calendarNodes(tripTree,node=>node.props?.["data-event-id"]==="trip");
+assert.equal(tripBands.length,2,"week-crossing trip renders once per week, not once per day");
+assert.equal(tripBands[0].props.style.gridColumn,"4 / 8");
+assert.equal(tripBands[1].props.style.gridColumn,"1 / 4");
+const tripHtml=renderToStaticMarkup(tripTree);
+assert.doesNotMatch(tripHtml,/record-dot|class="logs"|記録\d+件/);
+const showMore=calendarNodes(tripTree,node=>node.props?.className==="more")[0];
+showMore.props.onClick();
+const expandedTrip=interactiveGrid({...calendarProps,dates:monthDates,events:trips,birthday:"2020-10-09"});
+assert.equal(calendarNodes(expandedTrip,node=>node.props?.["data-event-id"]==="vaccine").length,1);
+const weeklyHtml=renderToStaticMarkup(React.createElement(CalendarDays,{...calendarProps,mode:"week",dates:monthDates.slice(7,14),events:trips}));
+assert.equal((weeklyHtml.match(/data-event-id="trip"/g)||[]).length,1);
+console.log("Calendar event bands: multi-day spans, week boundaries, independent collision-free lanes, birthday collisions, overflow expansion and no record counts passed.");

@@ -1,7 +1,10 @@
 .grid.grid { column-gap: 1px; row-gap: 6px; }
+.week { grid-column:1 / -1; min-width:0; min-height:110px; padding-bottom:8px; }
+.dates,.titles,.overflow { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); min-width:0; }
+.dates { align-items:start; }
 .day {
   min-width: 0;
-  min-height: 110px;
+  min-height: 44px;
   display: flex;
   flex-direction: column;
   border: 0;
@@ -27,42 +30,46 @@
   cursor: pointer;
 }
 .select strong { font-size: 14px; font-weight: 600; align-self: center; min-width: 26px; line-height: 20px; padding: 3px 0; border-radius: 50%; }
-.titles { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 0 0 4px; }
-.day .title {
+.titles { gap:3px 1px; padding:0; }
+.grid .titles .title {
   display: block;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
   font-size: 10px;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 32px;
   background: #0086610c;
   border-radius: 3px;
-  padding: 2px 0;
+  padding: 0 2px;
+  min-width:0;
+  height:32px;
+  min-height:32px;
+  margin:0;
+  align-self:stretch;
   width: 100%;
   border: 0;
   color: #006b4d;
   text-align: center;
 }
-.day button.title { min-height: 32px; cursor: pointer; }
-.day .more {
+.grid .titles button.title { cursor: pointer; }
+.overflow { gap:1px; margin-top:4px; }
+.grid .overflow .more {
   width: 100%;
   min-height: 28px;
   padding: 3px 1px;
   border: 0;
-  border-radius: 0 0 7px 7px;
+  border-radius: 5px;
   background: #0086610c;
   color: #008661;
   font-size: 10px;
   font-weight: 700;
   cursor: pointer;
-  margin-top: auto;
+  margin:0;
 }
-.logs { display: flex; align-items: center; justify-content: center; gap: 3px; font-size: 9px; color: #61766b; }
 .adjacent { color: #7a8880; }
 .today .select strong { box-shadow: inset 0 0 0 1px #008661; }
 .selected .select strong { background: #e3f2e9; box-shadow: inset 0 0 0 1px #008661; }
-.selected .title, .selected .more { background: #00866118; color: #006b4d; }
 .saturday, .day.saturday .select strong { color: #2760a9; }
 .sunday, .day.sunday .select strong { color: #c13d42; }
 .holiday { color: #c13d42; font-size: 9px; line-height: 1.4; overflow-wrap: anywhere; }
