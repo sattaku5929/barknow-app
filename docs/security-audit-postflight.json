@@ -1,5 +1,5 @@
 {
-  "phase": "access-hardening-before-client-deployment",
+  "phase": "private-media-activated-after-successful-production-deployment",
   "snapshot": {
     "data": {
       "dogs": {
@@ -130,19 +130,39 @@
       },
       {
         "id": "dog-avatars",
-        "public": true
+        "public": false
+      }
+    ],
+    "migrations": [
+      {
+        "name": "security_access_hardening",
+        "version": "20261011145334"
+      },
+      {
+        "name": "private_media_activation",
+        "version": "20261011150823"
       }
     ],
     "storage_objects": {
       "count": 3,
       "digest": "54f99b0bcc37cdeea27bffc5d8f3ce7f"
     },
-    "attachment_trigger": 0,
-    "delete_rpc_service": true,
-    "ownership_triggers": 4,
-    "anonymous_table_read": 0,
-    "delete_rpc_anonymous": false,
-    "delete_rpc_authenticated": false,
-    "anonymous_function_execution": 0
+    "attachment_trigger": 1
+  },
+  "deployment": {
+    "pull_request": 132,
+    "merge_commit": "8c86d25f11182206f3000aeb7c37a7787597e7fb",
+    "vercel_status": "success"
+  },
+  "verification": {
+    "existing_unsigned_dog_avatar_http_status": 400,
+    "production_home_http_status": 200,
+    "unauthenticated_media_http_status": 401
+  },
+  "remaining": {
+    "r2_public_access": "Cloudflare operator must disable r2.dev and any bucket custom domains; no Cloudflare management capability available",
+    "leaked_password_protection": "Enable in Supabase Auth dashboard",
+    "runtime_audit_findings": 0,
+    "build_dependency_high_findings": 5
   }
 }

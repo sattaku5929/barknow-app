@@ -2,6 +2,8 @@
 
 Scope: application source, dependency lockfile, production public-table RLS/grants/functions, Storage configuration, chat attachment delivery, notification payloads, push destinations and browser cache isolation. This is a targeted audit, not a guarantee that every vulnerability or past incident has been identified. No evidence of an actual customer-data breach was established by these checks.
 
+Release: [PR #132](https://github.com/sattaku5929/barknow-app/pull/132) merged; Vercel production status succeeded for `8c86d25f11182206f3000aeb7c37a7787597e7fb`. Both migrations applied, with their history versions aligned to the committed filenames. All 29 public tables, six Auth users and three Storage objects retained their counts/digests. Dog bucket is private, coach bucket remains public, attachment guard is active. An existing unsigned dog-photo URL now returns HTTP 400; production home returns 200 with security headers and unauthenticated media POST returns 401/private/no-store. Cloudflare R2 public-access disablement remains outstanding.
+
 ## Findings, ordered by priority
 
 | Priority | Finding | Remediation / status |
