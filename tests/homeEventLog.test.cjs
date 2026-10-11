@@ -22,6 +22,7 @@ const form = elements.find(node => node.tagName.getText(source) === "Observation
 assert.ok(hub); assert.ok(form, "home renders the existing event form inline");
 const attribute = (node, name) => node.attributes.properties.find(p => p.name?.getText(source) === name);
 assert.ok(attribute(hub, "compact"));
+assert.ok(attribute(hub, "personalized"));
 assert.match(attribute(hub, "disabled").initializer.expression.getText(source), /connection !== "online".*!profile.id.*eventStatus !== "ready"/);
 const state = {}, navigations = [];
 const context = {
@@ -29,6 +30,7 @@ const context = {
   setEditingEvent: value => { state.editing = value; },
   setEventTheme: value => { state.theme = value; },
   navigateOwnerView: value => { navigations.push(value); },
+  setSettingsPanel: value => { state.settings = value; },
   setEventRefresh: update => { state.refresh = update(state.refresh ?? 0); },
   showNotice: value => { state.notice = value; },
 };
@@ -45,6 +47,8 @@ assert.equal(state.theme, "walk"); assert.equal(state.editing, null); assert.equ
 const entry = {id:"existing",themeKey:"barking"};
 handler(hub, "onEdit")(entry);
 assert.equal(state.editing, entry); assert.equal(state.theme, "barking"); assert.equal(navigations.at(-1), "home");
+handler(hub, "onConfigureThemes")();
+assert.equal(state.settings, "profile"); assert.equal(navigations.at(-1), "profile");
 const before = navigations.length;
 handler(form, "onSaved")();
 assert.equal(state.refresh, 1); assert.equal(state.theme, null); assert.equal(state.editing, null);
