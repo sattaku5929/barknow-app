@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   if (!uuid.test(token)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const payload = await request.json().catch(() => null);
   if (!uuid.test(payload?.jobId ?? "")) return NextResponse.json({ error: "Invalid job" }, { status: 400 });
-  const webhook = process.env.SLACK_COACHING_WEBHOOK_URL;
+  const webhook = process.env.SLACK_SIGNUP_WEBHOOK_URL?.trim();
   if (!webhook) return NextResponse.json({ error: "Notification unavailable" }, { status: 503 });
   try {
     const admin = serviceSupabase();
