@@ -1365,6 +1365,12 @@ export default function Home() {
     closeAppHistoryLayer("celebration", () => setCelebration(null));
   }, [closeAppHistoryLayer]);
 
+  useEffect(() => {
+    if (!celebration) return;
+    const timer = window.setTimeout(closeCelebration, 3000);
+    return () => window.clearTimeout(timer);
+  }, [celebration, closeCelebration]);
+
   const closePushPrompt = useCallback(() => {
     closeAppHistoryLayer("push-prompt", () => setShowPushPrompt(false));
   }, [closeAppHistoryLayer]);
