@@ -1,6 +1,8 @@
 import webpush, { type PushSubscription } from "web-push";
 import { serviceSupabase } from "@/lib/server/supabase";
 
+import { validPushSubscription } from "@/lib/push-security";
+
 let vapidConfigured = false;
 
 function configureVapid() {
@@ -23,7 +25,7 @@ export async function sendPushNotification(userId: string, title: string, body: 
     if (authError) throw authError;
     subscription = authData.user?.user_metadata?.push_subscription as PushSubscription | undefined;
   }
-  if (!subscription) return;
+  if (!subscription || !validPushSubscription(subscription)) return;
 
   try {
     await webpush.sendNotification(subscription, JSON.stringify({ title, body, url }));

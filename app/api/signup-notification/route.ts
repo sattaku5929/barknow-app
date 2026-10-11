@@ -3,7 +3,6 @@ import { serviceSupabase } from "@/lib/server/supabase";
 
 export const runtime = "nodejs";
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const escapeSlack = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 export async function POST(request: NextRequest) {
   // Each private outbox row has a random capability, never exposed to browser clients.
@@ -30,7 +29,6 @@ export async function POST(request: NextRequest) {
       const registered = new Intl.DateTimeFormat("ja-JP", {
         dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Tokyo",
       }).format(new Date(job.created_at));
-      const email = escapeSlack(userData.user.email);
       const response = await fetch(webhook, {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(10000),
         body: JSON.stringify({
@@ -38,7 +36,6 @@ export async function POST(request: NextRequest) {
           blocks: [
             { type: "header", text: { type: "plain_text", text: "新しい会員登録" } },
             { type: "section", fields: [
-              { type: "mrkdwn", text: `*メールアドレス*\n${email}`, verbatim: true },
               { type: "mrkdwn", text: `*登録日時（日本時間）*\n${registered}` },
             ] },
             { type: "actions", elements: [{ type: "button", text: { type: "plain_text", text: "管理画面を開く" }, url: "https://barknow-app.vercel.app/", style: "primary" }] },

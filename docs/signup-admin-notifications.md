@@ -5,7 +5,7 @@ Production endpoint: `https://barknow-app.vercel.app/api/signup-notification`.
 
 Only registrations after migration `20261011121748_signup_admin_notifications.sql` are queued. Anonymous accounts are excluded; conversion to a non-anonymous email account queues once. Existing-member email edits and repeat logins do not queue. Email confirmation is not required for the initial notification.
 
-The Auth trigger inserts a private outbox row with a unique user ID and random delivery capability. pg_net submits the request after commit. The server claims a two-minute lease, reads the member from Auth using the existing server-only service role, sends through the dedicated `SLACK_SIGNUP_WEBHOOK_URL`, and records delivery. It never falls back to `SLACK_COACHING_WEBHOOK_URL`; coaching notifications keep their existing destination. The Slack message contains the email address, Japanese registration time and the production management link. Passwords and webhook credentials are never included or logged.
+The Auth trigger inserts a private outbox row with a unique user ID and random delivery capability. pg_net submits the request after commit. The server claims a two-minute lease, reads the member from Auth using the existing server-only service role, sends through the dedicated `SLACK_SIGNUP_WEBHOOK_URL`, and records delivery. It never falls back to `SLACK_COACHING_WEBHOOK_URL`; coaching notifications keep their existing destination. Following the security audit, Slack receives only a registration notice, Japanese registration time and the production management link. Member email addresses and consultation details remain in the authenticated management screen. Passwords and webhook credentials are never included or logged.
 
 ## Channel configuration
 

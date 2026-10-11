@@ -1,0 +1,201 @@
+{
+  "policies": [
+    {
+      "cmd": "ALL",
+      "qual": "(owner_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wt_dogs",
+      "permissive": "PERMISSIVE",
+      "policyname": "Owners manage their dog",
+      "schemaname": "public",
+      "with_check": "(owner_id = auth.uid())"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "(owner_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wt_daily_records",
+      "permissive": "PERMISSIVE",
+      "policyname": "Owners manage their records",
+      "schemaname": "public",
+      "with_check": "(owner_id = auth.uid())"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(owner_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wt_coach_messages",
+      "permissive": "PERMISSIVE",
+      "policyname": "Owners read their messages",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wt_coach_messages",
+      "permissive": "PERMISSIVE",
+      "policyname": "Owners send owner messages",
+      "schemaname": "public",
+      "with_check": "((owner_id = auth.uid()) AND (sender = 'owner'::text))"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "(auth.uid() = owner_id)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "wt_care_goals",
+      "permissive": "PERMISSIVE",
+      "policyname": "owners manage care goals",
+      "schemaname": "public",
+      "with_check": "(auth.uid() = owner_id)"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "(auth.uid() = owner_id)",
+      "roles": [
+        "public"
+      ],
+      "tablename": "wt_care_goal_completions",
+      "permissive": "PERMISSIVE",
+      "policyname": "owners manage care completions",
+      "schemaname": "public",
+      "with_check": "((auth.uid() = owner_id) AND (EXISTS ( SELECT 1\n   FROM wt_care_goals goal\n  WHERE ((goal.id = wt_care_goal_completions.goal_id) AND (goal.owner_id = auth.uid())))))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(user_id = auth.uid())",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wt_user_roles",
+      "permissive": "PERMISSIVE",
+      "policyname": "users read own role",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "ALL",
+      "qual": "wt_is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wt_user_roles",
+      "permissive": "PERMISSIVE",
+      "policyname": "admins manage roles",
+      "schemaname": "public",
+      "with_check": "wt_is_admin()"
+    },
+    {
+      "cmd": "ALL",
+      "qual": "wt_is_admin()",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wt_coach_assignments",
+      "permissive": "PERMISSIVE",
+      "policyname": "admins manage assignments",
+      "schemaname": "public",
+      "with_check": "wt_is_admin()"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(wt_is_admin() OR ((coach_id = auth.uid()) AND wt_is_coach()))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wt_coach_assignments",
+      "permissive": "PERMISSIVE",
+      "policyname": "staff read assignments",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(wt_is_admin() OR (wt_is_coach() AND (EXISTS ( SELECT 1\n   FROM wt_coach_assignments a\n  WHERE ((a.coach_id = auth.uid()) AND (a.dog_id = wt_dogs.id))))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wt_dogs",
+      "permissive": "PERMISSIVE",
+      "policyname": "assigned staff read dogs",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(wt_is_admin() OR (wt_is_coach() AND (EXISTS ( SELECT 1\n   FROM wt_coach_assignments a\n  WHERE ((a.coach_id = auth.uid()) AND (a.dog_id = wt_daily_records.dog_id))))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wt_daily_records",
+      "permissive": "PERMISSIVE",
+      "policyname": "assigned staff read records",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(wt_is_admin() OR (wt_is_coach() AND (EXISTS ( SELECT 1\n   FROM wt_coach_assignments a\n  WHERE ((a.coach_id = auth.uid()) AND (a.dog_id = wt_coach_messages.dog_id))))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wt_coach_messages",
+      "permissive": "PERMISSIVE",
+      "policyname": "assigned staff read messages",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wt_coach_messages",
+      "permissive": "PERMISSIVE",
+      "policyname": "assigned staff reply",
+      "schemaname": "public",
+      "with_check": "((sender = 'coach'::text) AND (wt_is_admin() OR (wt_is_coach() AND (EXISTS ( SELECT 1\n   FROM wt_coach_assignments a\n  WHERE ((a.coach_id = auth.uid()) AND (a.dog_id = wt_coach_messages.dog_id) AND (a.owner_id = wt_coach_messages.owner_id)))))))"
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(wt_is_admin() OR (wt_is_coach() AND (EXISTS ( SELECT 1\n   FROM wt_coach_assignments a\n  WHERE ((a.coach_id = auth.uid()) AND (a.dog_id = wt_care_goals.dog_id))))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wt_care_goals",
+      "permissive": "PERMISSIVE",
+      "policyname": "assigned staff read care goals",
+      "schemaname": "public",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "qual": "(wt_is_admin() OR (wt_is_coach() AND (EXISTS ( SELECT 1\n   FROM wt_coach_assignments a\n  WHERE ((a.coach_id = auth.uid()) AND (a.dog_id = wt_care_goal_completions.dog_id))))))",
+      "roles": [
+        "authenticated"
+      ],
+      "tablename": "wt_care_goal_completions",
+      "permissive": "PERMISSIVE",
+      "policyname": "assigned staff read care completions",
+      "schemaname": "public",
+      "with_check": null
+    }
+  ],
+  "helpers": [
+    "CREATE OR REPLACE FUNCTION public.wt_is_admin()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  select exists (\n    select 1 from public.wt_user_roles\n    where user_id = auth.uid() and role = 'admin'\n  );\n$function$\n",
+    "CREATE OR REPLACE FUNCTION public.wt_is_coach()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  select exists (\n    select 1 from public.wt_user_roles\n    where user_id = auth.uid() and role = 'coach'\n  );\n$function$\n",
+    "CREATE OR REPLACE FUNCTION public.wt_is_staff()\n RETURNS boolean\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\n  select exists (\n    select 1 from public.wt_user_roles\n    where user_id = auth.uid() and role in ('coach', 'admin')\n  );\n$function$\n"
+  ]
+}

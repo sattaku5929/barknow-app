@@ -18,8 +18,8 @@ const req=(auth=`Bearer ${token}`,jobId=id)=>({headers:{get:()=>auth},json:async
   let h=harness();assert.equal((await h.post(req(''))).status,401);assert.equal(h.state.reads,0);
   assert.equal((await h.post(req(token))).status,401);assert.equal((await h.post(req(undefined,'invalid'))).status,400);
   assert.equal((await h.post(req())).status,200);assert.equal(h.state.calls.length,1);assert.equal(h.state.calls[0].url,'https://example.test/signup-webhook');
-  const message=JSON.parse(h.state.calls[0].init.body);assert.match(JSON.stringify(message),/21:00/);assert.match(JSON.stringify(message),/&lt;@everyone&gt;&amp;/);
-  assert.equal(message.blocks[1].fields[0].verbatim,true);assert.ok(h.state.updates[0].sent_at);
+  const message=JSON.parse(h.state.calls[0].init.body);assert.match(JSON.stringify(message),/21:00/);assert.ok(!JSON.stringify(message).includes('example.test'));assert.ok(!JSON.stringify(message).includes('everyone'));
+  assert.ok(h.state.updates[0].sent_at);
   for(const signupWebhook of [undefined,'','   ']){h=harness({signupWebhook:signupWebhook??''});assert.equal((await h.post(req())).status,503);assert.equal(h.state.reads,0);assert.equal(h.state.calls.length,0);assert.equal(h.state.updates.length,0);}
   h=harness({signupWebhook:'  https://example.test/signup-webhook  '});assert.equal((await h.post(req())).status,200);assert.equal(h.state.calls[0].url,'https://example.test/signup-webhook');
   h=harness({claimed:false});assert.equal((await h.post(req())).status,200);assert.equal(h.state.calls.length,0);

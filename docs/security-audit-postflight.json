@@ -1,0 +1,148 @@
+{
+  "phase": "access-hardening-before-client-deployment",
+  "snapshot": {
+    "data": {
+      "dogs": {
+        "count": "0",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "wt_dogs": {
+        "count": "4",
+        "digest": "0d1de909135bdcb651e6583f39953e68"
+      },
+      "messages": {
+        "count": "0",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "CUSTOMERS": {
+        "count": "4",
+        "digest": "477b12f6f93a8c2f0fe12740c933fda9"
+      },
+      "wt_app_visits": {
+        "count": "0",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "wt_care_goals": {
+        "count": "19",
+        "digest": "035a1baa2f9f11ddd7783feec7464c42"
+      },
+      "wt_user_roles": {
+        "count": "6",
+        "digest": "64e478d1c74ad883b3337eda01662886"
+      },
+      "wt_daily_checks": {
+        "count": "7",
+        "digest": "53b789f2537709be56910b10cd937533"
+      },
+      "wt_daily_records": {
+        "count": "8",
+        "digest": "9484c46fb7ef16452677424231c249ec"
+      },
+      "wt_notifications": {
+        "count": "6",
+        "digest": "f93beb8695a3f1f9410912bc10524085"
+      },
+      "wt_subscriptions": {
+        "count": "0",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "wt_coach_messages": {
+        "count": "33",
+        "digest": "a03fa9ebd8c642c68e5da52795edc5a0"
+      },
+      "wt_coach_profiles": {
+        "count": "1",
+        "digest": "eb0d424cea69eeceb1485a4c6502f01c"
+      },
+      "wt_owner_profiles": {
+        "count": "3",
+        "digest": "61d7eb69e99db3dde2b9f257b266eb6f"
+      },
+      "push_subscriptions": {
+        "count": "0",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "wt_calendar_events": {
+        "count": "12",
+        "digest": "39cfc9bf542af13f4148b3f1527381c2"
+      },
+      "wt_online_sessions": {
+        "count": "0",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "wt_coach_assignments": {
+        "count": "1",
+        "digest": "57957aa83158b1ab36bfeba9f34d5b54"
+      },
+      "wt_household_members": {
+        "count": "6",
+        "digest": "d33259b312fb43ad911ed2d4c85b5faa"
+      },
+      "wt_calendar_sync_jobs": {
+        "count": "0",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "wt_observation_events": {
+        "count": "18",
+        "digest": "1dd5cfd94272a3f40e70cc7400a14e24"
+      },
+      "wt_google_oauth_states": {
+        "count": "0",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "wt_observation_entries": {
+        "count": "25",
+        "digest": "b9858f35d1ef08581e1461862161821b"
+      },
+      "wt_care_goal_completions": {
+        "count": "43",
+        "digest": "5986223b8ffca34420b12bd60a9fc4f9"
+      },
+      "wt_coaching_applications": {
+        "count": "2",
+        "digest": "287c91e851b318abf2518e01b3d871d2"
+      },
+      "wt_dog_observation_themes": {
+        "count": "6",
+        "digest": "e1840d5f395669d7157f3eb0bd33ad61"
+      },
+      "wt_coach_availability_slots": {
+        "count": "3",
+        "digest": "f31bad88a83f77a7e69fb35bed4af8e5"
+      },
+      "wt_signup_notification_jobs": {
+        "count": "0",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "wt_google_calendar_connections": {
+        "count": "0",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      }
+    },
+    "auth_count": 6,
+    "auth_digest": "dd87a38fe673b77f867da0209c8c8eea"
+  },
+  "controls": {
+    "buckets": [
+      {
+        "id": "coach-avatars",
+        "public": true
+      },
+      {
+        "id": "dog-avatars",
+        "public": true
+      }
+    ],
+    "storage_objects": {
+      "count": 3,
+      "digest": "54f99b0bcc37cdeea27bffc5d8f3ce7f"
+    },
+    "attachment_trigger": 0,
+    "delete_rpc_service": true,
+    "ownership_triggers": 4,
+    "anonymous_table_read": 0,
+    "delete_rpc_anonymous": false,
+    "delete_rpc_authenticated": false,
+    "anonymous_function_execution": 0
+  }
+}

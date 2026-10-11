@@ -5,7 +5,6 @@ export const R2_ENVIRONMENT_VARIABLES = [
   "R2_ACCESS_KEY_ID",
   "R2_SECRET_ACCESS_KEY",
   "R2_BUCKET_NAME",
-  "R2_PUBLIC_URL",
 ] as const;
 
 export class R2ConfigurationError extends Error {
@@ -47,8 +46,4 @@ export function r2Client() {
 
 export function r2BucketName() {
   return required("R2_BUCKET_NAME");
-}
-
-export function r2PublicUrl() {
-  return required("R2_PUBLIC_URL").replace(/\/$/, "");
 }
