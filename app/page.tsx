@@ -1162,7 +1162,8 @@ export default function Home() {
   const [dogProfileErrors, setDogProfileErrors] = useState<DogProfileErrors>({});
   const [ownerProfile, setOwnerProfile] = useState<OwnerProfile>(initialOwnerProfile);
   const [onboardingRequired, setOnboardingRequired] = useState(false);
-  const [onboardingStep, setOnboardingStep] = useState<"owner" | "dog">("owner");
+  const [onboardingStep, setOnboardingStep] = useState<"owner" | "dog" | "themes">("owner");
+  const [observationThemesSaving, setObservationThemesSaving] = useState(false);
   const [onboardingError, setOnboardingError] = useState("");
   const [records, setRecords] = useState<DailyRecord[]>([]);
   const [messages, setMessages] = useState<CoachMessage[]>([]);
@@ -3591,10 +3592,7 @@ export default function Home() {
       const next = { ...profile, id: savedDogId, profileCompletedAt: completedAt };
       setProfile(next);
       writeLocal(PROFILE_KEY, next);
-      setOnboardingRequired(false);
-      returnToOwnerHome();
-      router.replace("/");
-      showNotice("登録が完了しました。今日から一緒に記録を始めましょう");
+      setOnboardingStep("themes");
     } catch (error) {
       const detail = getSubmissionErrorDetail(error);
       const message = "愛犬プロフィールを保存できませんでした。通信状況を確認して、もう一度お試しください。";
@@ -4279,13 +4277,19 @@ export default function Home() {
       <HomeCalendar key={`home-calendar:${profile.id ?? "no-dog"}`} dogId={profile.id} dogName={dogName} birthday={profile.birthday} online={connection === "online"} today={today()} refreshToken={`${eventRefresh}:${checkRefresh}:${calendarRefresh}:${records.length}`} onRecord={(date, kind, note) => { openNewRecord(kind); setRecordDate(date); if (kind === "win") setGoodMoment(note ?? ""); }} />
 
       <section id="home-event-log" className="home-v3-event-log" aria-labelledby="home-event-log-title">
-        <header><span className="card-label">QUICK LOG</span><h2 id="home-event-log-title">今日のできごとを残す</h2></header>
+        <header><span className="card-label">QUICK LOG · 観察テーマの記録</span><h2 id="home-event-log-title">今日のできごとを残す</h2>
+          <p className="quick-log-lead">毎日、選んだテーマを意識して観察しましょう。気づいた場面で、うまくできたことも気になったことも記録。</p>
+          <p className="quick-log-coaching-note">場面の記録が、コーチと変化を振り返る手がかりになります。</p>
+        </header>
         {eventTheme ? <ObservationEventForm key={`home:${profile.id}:${editingEvent?.id ?? eventTheme}`} dogId={profile.id} theme={eventTheme} editing={editingEvent}
           online={connection === "online"} onBack={() => { setEventTheme(null); setEditingEvent(null); }}
           onSaved={() => { setEventRefresh(current => current + 1); setEventTheme(null); setEditingEvent(null); showNotice("記録しました"); }} />
           : <>
             {eventStatus === "unavailable" && <p className="observation-error" role="alert">できごとを読み込めませんでした。画面を開き直してください。</p>}
-            <ObservationEventHub selectedThemes={eventThemesSelected} events={todayEvents} compact
+            {eventStatus === "loading" && <p role="status">観察テーマを読み込んでいます…</p>}
+            <ObservationEventHub selectedThemes={eventThemesSelected} events={todayEvents} compact personalized
+              themesLoaded={eventStatus === "ready"}
+              onConfigureThemes={() => { setSettingsPanel("profile"); navigateOwnerView("profile"); }}
               onSelect={theme => startEvent(theme, "home")} onEdit={entry => editEvent(entry, "home")}
               disabled={connection !== "online" || !profile.id || eventStatus !== "ready"} />
           </>}
@@ -4888,8 +4892,12 @@ export default function Home() {
     <div className="onboarding-stage">
       <header><strong>Wan Tone</strong><span>初期設定</span></header>
       <main className="onboarding-card">
-        <div className="onboarding-progress"><span className={onboardingStep === "owner" ? "is-current" : "is-done"}>1<b>飼い主情報</b></span><i></i><span className={onboardingStep === "dog" ? "is-current" : ""}>2<b>愛犬情報</b></span></div>
-        {onboardingStep === "owner" ? <form noValidate onSubmit={saveOwnerOnboarding} onInput={() => { if (onboardingError) setOnboardingError(""); }}><p className="card-label">WELCOME TO WAN TONE</p><h1>まず、飼い主さまのことを<br />教えてください。</h1><p className="onboarding-lead">担当コーチが安心してご連絡し、ご家族に合ったサポートを始めるための情報です。</p>
+        <div className="onboarding-progress"><span className={onboardingStep === "owner" ? "is-current" : "is-done"}>1<b>飼い主情報</b></span><i></i><span className={onboardingStep === "dog" ? "is-current" : onboardingStep === "themes" ? "is-done" : ""}>2<b>愛犬情報</b></span><i></i><span className={onboardingStep === "themes" ? "is-current" : ""}>3<b>観察テーマ</b></span></div>
+        {onboardingStep === "themes" ? <section className="onboarding-themes-step"><p className="card-label">YOUR OBSERVATION THEMES</p><h1>毎日、どんなことを<br />見ていきたいですか？</h1><p className="onboarding-lead">選んだテーマがホームのQuick Logに並びます。毎日の小さな気づきを、コーチと振り返る記録にしましょう。</p>
+          <ObservationThemeSelector dogId={profile.id} online={connection === "online"} onSavingChange={setObservationThemesSaving} />
+          <button type="button" className="onboarding-next" disabled={observationThemesSaving} onClick={() => { setOnboardingRequired(false); setEventRefresh(current => current + 1); returnToOwnerHome(); router.replace("/"); showNotice("登録が完了しました。今日から一緒に記録を始めましょう"); }}>{observationThemesSaving ? "保存中…" : "ホームで記録を始める"}<span>→</span></button>
+          <p className="onboarding-privacy">テーマはあとからプロフィールで変更できます。</p>
+        </section> : onboardingStep === "owner" ? <form noValidate onSubmit={saveOwnerOnboarding} onInput={() => { if (onboardingError) setOnboardingError(""); }}><p className="card-label">WELCOME TO WAN TONE</p><h1>まず、飼い主さまのことを<br />教えてください。</h1><p className="onboarding-lead">担当コーチが安心してご連絡し、ご家族に合ったサポートを始めるための情報です。</p>
           <label className="field-label">お名前（氏名）<input autoFocus autoComplete="name" value={ownerProfile.fullName} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullName: event.target.value })} placeholder="例：三宅 太郎" required /></label>
           <label className="field-label">フリガナ<input value={ownerProfile.fullNameKana} onChange={(event) => setOwnerProfile({ ...ownerProfile, fullNameKana: event.target.value })} placeholder="例：ミヤケ　タロウ" maxLength={150} required /></label>
           <label className="field-label">電話番号<input type="tel" inputMode="tel" autoComplete="tel" value={ownerProfile.phoneNumber} onChange={(event) => setOwnerProfile({ ...ownerProfile, phoneNumber: event.target.value })} placeholder="例：09012345678" required /></label>
@@ -4907,7 +4915,7 @@ export default function Home() {
           <div className="onboarding-grid"><label className={`field-label dog-profile-field ${dogProfileErrors.daycareFrequency ? "has-error" : ""}`} data-dog-field="daycareFrequency">保育園への頻度 <span className="required-badge">必須</span><select className="onboarding-select" value={profile.daycareFrequency} aria-invalid={Boolean(dogProfileErrors.daycareFrequency)} onChange={(event) => updateDogProfileField("daycareFrequency", event.target.value)}><option value="">選択してください</option><option>通っていない</option><option>不定期</option><option>月に数回</option><option>週1回</option><option>週2〜3回</option><option>週4回以上</option></select>{dogProfileErrors.daycareFrequency && <small className="field-error" role="alert">{dogProfileErrors.daycareFrequency}</small>}</label><label className={`field-label dog-profile-field ${dogProfileErrors.walkFrequency ? "has-error" : ""}`} data-dog-field="walkFrequency">散歩の頻度 <span className="required-badge">必須</span><select className="onboarding-select" value={profile.walkFrequency} aria-invalid={Boolean(dogProfileErrors.walkFrequency)} onChange={(event) => updateDogProfileField("walkFrequency", event.target.value)}><option value="">選択してください</option><option>ほとんど行かない</option><option>週に数回</option><option>毎日1回</option><option>毎日2回</option><option>毎日3回以上</option></select>{dogProfileErrors.walkFrequency && <small className="field-error" role="alert">{dogProfileErrors.walkFrequency}</small>}</label></div>
           <label className={`field-label dog-profile-field ${dogProfileErrors.concerns ? "has-error" : ""}`} data-dog-field="concerns">主な悩み・気になっていること <span className="required-badge">必須</span><textarea rows={5} value={profile.concerns} aria-invalid={Boolean(dogProfileErrors.concerns)} onChange={(event) => updateDogProfileField("concerns", event.target.value)} placeholder="吠える場面、散歩で困ること、日々気になる様子など" />{dogProfileErrors.concerns && <small className="field-error" role="alert">{dogProfileErrors.concerns}</small>}</label>
           {onboardingError && <p className="onboarding-error" role="alert">{onboardingError}</p>}
-          <div className="onboarding-actions"><button type="button" onClick={() => { setOnboardingError(""); setOnboardingStep("owner"); }}>← 戻る</button><button type="submit" className="onboarding-next" disabled={saving}>{saving ? "登録中…" : "登録して始める"}<span>→</span></button></div>
+          <div className="onboarding-actions"><button type="button" onClick={() => { setOnboardingError(""); setOnboardingStep("owner"); }}>← 戻る</button><button type="submit" className="onboarding-next" disabled={saving}>{saving ? "登録中…" : "観察テーマを選ぶ"}<span>→</span></button></div>
         </form>}
         <p className="onboarding-privacy">入力情報は担当コーチと管理者だけがサポート目的で確認できます。</p>
       </main>
