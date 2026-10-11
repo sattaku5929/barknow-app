@@ -190,3 +190,41 @@ assert.equal(calendarNodes(expandedTrip,node=>node.props?.["data-event-id"]==="v
 const weeklyHtml=renderToStaticMarkup(React.createElement(CalendarDays,{...calendarProps,mode:"week",dates:monthDates.slice(7,14),events:trips}));
 assert.equal((weeklyHtml.match(/data-event-id="trip"/g)||[]).length,1);
 console.log("Calendar event bands: multi-day spans, week boundaries, independent collision-free lanes, birthday collisions, overflow expansion and no record counts passed.");
+
+let stateIndex=0,refIndex=0;
+const dateStates=[],dateRefs=[];
+const DateCalendar=load("components/owner/HomeCalendar.tsx",{...React,useEffect:()=>{},
+  useState:initial=>{const index=stateIndex++;if(!(index in dateStates))dateStates[index]=initial;return [dateStates[index],next=>{dateStates[index]=typeof next==="function"?next(dateStates[index]):next;}];},
+  useRef:initial=>{const index=refIndex++;return dateRefs[index]??=( {current:initial} );},
+}).default;
+const dayProps={dogId:"dog",dogName:"はな",birthday:"",online:true,today:"2026-10-07",refreshToken:"0"};
+function renderDateCalendar(){stateIndex=0;refIndex=0;return DateCalendar(dayProps);}
+renderDateCalendar();
+dateStates[2]={key:"dog:true:2026-09-28:2026-11-01:0:0",events:makePlans(2),records:[],error:""};
+const originalDocument=global.document;global.document={activeElement:{focus(){}}};
+try{
+  let dateTree=renderDateCalendar();
+  calendarNodes(dateTree,node=>node.type?.name==="CalendarDays")[0].props.onDateOpen("2026-10-07");
+  dateTree=renderDateCalendar();
+  assert.equal(dateStates[5].start_date,"2026-10-07");
+  assert.equal(calendarNodes(dateTree,node=>node.type==="button"&&node.props.children==="予定名0").length,1);
+  calendarNodes(dateTree,node=>node.type==="button"&&node.props.children==="予定名1")[0].props.onClick();
+  assert.equal(dateStates[5].id,"plan-1");assert.equal(dateStates[6],false);
+  dateTree=renderDateCalendar();
+  calendarNodes(dateTree,node=>node.type==="button"&&node.props.children==="＋ この日に予定を追加")[0].props.onClick();
+  assert.equal(dateStates[6],true);assert.equal(dateStates[5].start_date,"2026-10-07");
+  calendarNodes(renderDateCalendar(),node=>node.type?.name==="CalendarDays")[0].props.onDateOpen("2026-10-09");
+  assert.equal(dateStates[5].start_date,"2026-10-09");assert.equal(dateStates[5].end_date,"2026-10-09");
+  dateStates[2].events=makePlans(1);
+  calendarNodes(renderDateCalendar(),node=>node.type?.name==="CalendarDays")[0].props.onDateOpen("2026-10-07");
+  assert.equal(dateStates[5].id,"plan-0");assert.equal(dateStates[6],false);
+  const headingHtml=renderToStaticMarkup(renderDateCalendar());
+  assert.doesNotMatch(headingHtml,/予定名をタップして確認/);assert.match(headingHtml,/2026年 10月/);
+  dateStates[5]=null;
+  calendarNodes(renderDateCalendar(),node=>node.props?.["aria-label"]==="次の月")[0].props.onClick();
+  assert.match(renderToStaticMarkup(renderDateCalendar()),/2026年 11月/);
+}finally{global.document=originalDocument;}
+let clickedDay;
+const dateClickGrid=interactiveGrid({...calendarProps,events:[],onDateOpen:date=>{clickedDay=date;}});
+calendarNodes(dateClickGrid,node=>node.props?.className==="select")[0].props.onClick();assert.equal(clickedDay,"2026-10-07");
+console.log("Calendar date editor: empty date prefilled, single plan editing, multiple-plan selection/addition, date-cell click and displayed month navigation passed.");

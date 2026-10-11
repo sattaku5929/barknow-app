@@ -15,6 +15,7 @@ type Props = {
   records: CalendarRecord[];
   mode: "week" | "month";
   onSelect: (date: string) => void;
+  onDateOpen?: (date: string) => void;
   onEvent?: (event: CalendarEvent) => void;
 };
 
@@ -44,7 +45,7 @@ export function calendarWeekBands(dates: string[], events: CalendarEvent[], birt
   return bands;
 }
 
-export default function CalendarDays({ dates, selected, today, birthday, events, mode, onSelect, onEvent }: Props) {
+export default function CalendarDays({ dates, selected, today, birthday, events, mode, onSelect, onDateOpen, onEvent }: Props) {
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
 
   return <div className={`calendar-days calendar-${mode} ${styles.grid}`} aria-label="日付を選ぶ">
@@ -66,7 +67,7 @@ export default function CalendarDays({ dates, selected, today, birthday, events,
       return <div key={date} className={`${styles.day} ${dayColor} ${selected === date ? styles.selected : ""} ${date === today ? styles.today : ""} ${date.slice(0, 7) !== selected.slice(0, 7) ? styles.adjacent : ""}`}>
         <button className={styles.select} type="button" aria-pressed={selected === date} aria-current={date === today ? "date" : undefined}
           aria-label={`${label}${date === today ? "、今日" : ""}${holiday?`、${holiday}`:""}、予定${plans.length}件${birth ? "、誕生日" : ""}${titles.length ? `、${titles.map(item => item.title).join("、")}` : ""}`}
-          onClick={() => onSelect(date)}>
+          onClick={() => { onSelect(date); onDateOpen?.(date); }}>
           <strong>{Number(date.slice(8))}</strong>
           {holiday && <small className={styles.holiday}>{holiday}</small>}
         </button>
