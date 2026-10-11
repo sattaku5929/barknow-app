@@ -1,0 +1,20 @@
+{
+  "project": "bkihicvavawchnkdhynj",
+  "existing_data_functions_policies_auth_trigger_match_preflight": true,
+  "existing_columns_match_preflight": true,
+  "existing_table_grants_match_preflight": true,
+  "auth_users": 6,
+  "queued_jobs": 0,
+  "outbox_rls": true,
+  "anon_outbox_select": false,
+  "authenticated_outbox_select": false,
+  "anon_claim_execute": false,
+  "authenticated_claim_execute": false,
+  "service_claim_execute": true,
+  "retry_cron": {"active": true, "schedule": "* * * * *", "recent_runs": "succeeded"},
+  "managed_pg_net_public_table_grants": "retained by supabase_admin; postgres revoke is ineffective",
+  "browser_net_data_api_probe": {"http_status": 406, "code": "PGRST106", "exposed_schemas": ["public", "graphql_public"]},
+  "security_advisors": "unchanged from preflight",
+  "real_trigger_test": "temporary user and HTTP request asserted in a rolled-back transaction; no account/job/test message remains",
+  "slack_live_delivery": "not sent during verification; awaiting a real registration"
+}
