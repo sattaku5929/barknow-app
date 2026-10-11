@@ -6701,6 +6701,10 @@ body { font-size: 16px; }
 .home-v3-care-empty small { margin-top:5px; color:#65736b; font-size:11px; line-height:1.6; }
 .home-v3-care-manage { width:100%; min-height:46px; padding:10px; border:0; border-top:1px solid #edf0ee; border-radius:0 0 22px 22px; background:#f5f8f4; color:#007253; font-size:12px; font-weight:600; }
 .home-v3-care-manage span { margin-left:6px; }
+.home-v3 .home-v3-event-log { min-width:0; padding:18px; border:1px solid #e9eee7; border-radius:22px; background:#fff; scroll-margin-top:24px; }
+.home-v3-event-log > header { margin-bottom:16px; }
+.home-v3-event-log > header h2 { margin:5px 0 0; color:#263f34; font-size:18px; line-height:1.5; }
+.home-v3-event-log .observation-event-form { max-width:100%; margin:0; padding:0; border:0; background:transparent; box-shadow:none; }
 .home-v3-shortcuts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
 .home-v3-shortcuts > button {
   position:relative; display:grid; grid-template-columns:24px minmax(0,1fr); align-content:start;
