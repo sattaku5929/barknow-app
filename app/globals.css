@@ -1377,6 +1377,15 @@ body { font-size: 16px; }
 .auth-form { display:grid; gap:15px; margin-top:20px; }
 .auth-form label { color:var(--ink); font-size:12px; font-weight:700; }
 .auth-form input { width:100%; min-height:53px; margin-top:7px; padding:0 15px; border:1px solid rgba(27,61,49,.14); border-radius:14px; background:#fff; color:var(--ink); font-size:16px; }
+.auth-password-input { position:relative; margin-top:7px; }
+.auth-form .auth-password-input input { margin-top:0; padding-right:58px; }
+.auth-password-toggle { position:absolute; right:5px; top:50%; transform:translateY(-50%); display:grid; place-items:center; width:44px; height:44px; padding:10px; border:0; border-radius:10px; background:transparent; color:var(--green-dark); cursor:pointer; }
+.auth-password-toggle svg { width:21px; height:21px; }
+.auth-confirmation { display:grid; gap:15px; margin-top:24px; }
+.auth-confirmation h3 { margin:0; color:var(--green-dark); font-size:20px; }
+.auth-confirmation p { margin:0; color:var(--muted); font-size:13px; line-height:1.8; overflow-wrap:anywhere; }
+.auth-confirmation .auth-error { color:#a54838; }
+.auth-confirmation .forgot-password { margin-top:0; }
 .auth-submit { display:flex; width:100%; min-height:54px; align-items:center; justify-content:space-between; padding:0 19px; border:0; border-radius:15px; background:var(--green-dark); color:#fff; cursor:pointer; font-size:14px; font-weight:800; }
 .auth-submit span { font-size:19px; }
 .auth-submit:disabled { opacity:.58; }
