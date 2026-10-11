@@ -1610,7 +1610,15 @@ export default function Home() {
         pullRefreshingRef.current = true;
         setPullRefreshing(true);
         setPullDistance(72);
-        window.setTimeout(() => window.location.reload(), 320);
+        window.setTimeout(() => {
+          const url = new URL(window.location.href);
+          const suffix = view === "profile" && settingsPanel !== "menu" ? `settings-${settingsPanel}`
+            : view === "coach" ? `coach-${ownerCoachTab}` : view;
+          url.hash = `wan-tone-${suffix}`;
+          if (view !== "coach" && url.searchParams.get("view") === "coach") url.searchParams.delete("view");
+          window.history.replaceState(window.history.state, "", url);
+          window.location.reload();
+        }, 320);
         return;
       }
       resetPull();
@@ -1626,7 +1634,7 @@ export default function Home() {
       window.removeEventListener("touchend", handleTouchEnd);
       window.removeEventListener("touchcancel", resetPull);
     };
-  }, [anonymousUser, authenticated, onboardingRequired]);
+  }, [anonymousUser, authenticated, onboardingRequired, view, settingsPanel, ownerCoachTab]);
 
   useEffect(() => {
     if (ownerCoachTab !== "chat") return;
