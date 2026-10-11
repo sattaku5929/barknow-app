@@ -54,6 +54,8 @@ export default function RecentObservationTrends({ dogId, online, selectedThemes 
 
   const themes = trends ? orderedThemes(trends, selectedThemes) : [];
   const showRecords = (title: string, filter: InsightFilter, isDaily = false) => setSelection({ title, filter, daily: isDaily });
+  const moreButton = <button type="button" className={styles.moreButton} onClick={() => showRecords("最近のできごと", { period: "current" })}
+    aria-label="詳しく見る、直近7日間の全テーマの記録">詳しく見る <span aria-hidden="true">→</span></button>;
 
   return <section className="recent-observation-trends" aria-label="記録のサマリーと詳細">
     {!online ? <p role="status">接続すると最近の記録を確認できます。</p>
@@ -70,10 +72,8 @@ export default function RecentObservationTrends({ dogId, online, selectedThemes 
 
         <section className="insight-section insight-theme-section" aria-labelledby="theme-trends-title">
           <div className="insight-section-heading"><div><span className="card-label">EVENT LOG / 直近7日間</span><h3 id="theme-trends-title">できごとの傾向</h3></div></div>
-          {themes.length > 0 ? <ThemeTrendTable trends={themes} />
-            : <p>直近7日間のできごとはまだありません。記録するとここに内訳が表示されます。</p>}
-          <button type="button" className={styles.moreButton} onClick={() => showRecords("最近のできごと", { period: "current" })}
-            aria-label="詳しく見る、直近7日間の全テーマの記録">詳しく見る <span aria-hidden="true">→</span></button>
+          {themes.length > 0 ? <ThemeTrendTable trends={themes}>{moreButton}</ThemeTrendTable>
+            : <div className={styles.emptyPanel}><p>直近7日間のできごとはまだありません。記録するとここに内訳が表示されます。</p>{moreButton}</div>}
         </section>
 
       </>}
