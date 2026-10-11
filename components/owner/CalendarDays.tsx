@@ -16,6 +16,7 @@ type Props = {
   mode: "week" | "month";
   onSelect: (date: string) => void;
   onDateOpen?: (date: string) => void;
+  onDateAdd?: (date: string) => void;
   onEvent?: (event: CalendarEvent) => void;
 };
 
@@ -47,7 +48,7 @@ export function calendarWeekBands(dates: string[], events: CalendarEvent[], birt
   return bands;
 }
 
-export default function CalendarDays({ dates, selected, today, birthday, events, mode, onSelect, onDateOpen, onEvent }: Props) {
+export default function CalendarDays({ dates, selected, today, birthday, events, mode, onSelect, onDateOpen, onDateAdd, onEvent }: Props) {
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
 
   return <div className={`calendar-days calendar-${mode} ${styles.grid}`} aria-label="日付を選ぶ">
@@ -58,6 +59,9 @@ export default function CalendarDays({ dates, selected, today, birthday, events,
       const visible = expanded ? bands : bands.filter(band => band.lane < 2);
       const rows = Math.max(0, ...visible.map(band => band.lane + 1));
       return <div className={styles.week} key={week[0]}>
+      {onDateAdd && <div className={styles.emptyDates}>{week.map(date => <button type="button" key={date}
+        className={styles.emptyDate} aria-label={`${dateLabel(date)}に予定を追加`} data-add-date={date}
+        onClick={() => { onSelect(date); onDateAdd(date); }} />)}</div>}
       <div className={styles.dates}>{week.map(date => {
       const plans = eventsOnDate(events, date);
       const birth = isBirthday(birthday, date);

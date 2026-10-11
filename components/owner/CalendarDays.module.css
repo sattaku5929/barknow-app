@@ -1,5 +1,11 @@
 .grid.grid { column-gap: 1px; row-gap: 6px; }
-.week { grid-column:1 / -1; min-width:0; min-height:110px; padding-bottom:8px; }
+.week { position:relative; isolation:isolate; grid-column:1 / -1; min-width:0; min-height:110px; padding-bottom:8px; }
+.emptyDates { position:absolute; inset:44px 0 0; z-index:0; display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); }
+.grid .emptyDates .emptyDate { width:100%; min-width:0; min-height:44px; margin:0; padding:0; border:0; border-radius:4px; background:transparent; cursor:pointer; }
+.grid .emptyDates .emptyDate:focus-visible { outline:2px solid #008661; outline-offset:-2px; background:#00866108; }
+.dates,.titles,.overflow { position:relative; z-index:1; }
+.titles,.overflow { pointer-events:none; }
+.titles button,.overflow button { pointer-events:auto; }
 .dates,.titles,.overflow { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); min-width:0; }
 .dates { align-items:start; }
 .day {

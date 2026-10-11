@@ -78,6 +78,7 @@ export default function HomeCalendar({dogId,birthday,online,today,refreshToken}:
     <div className="calendar-toolbar"><div className="calendar-mode" aria-label="表示期間">{(["week","month"] as const).map(m=><button key={m} type="button" aria-pressed={mode===m} onClick={()=>setMode(m)}>{m==="week"?"週":"月"}</button>)}</div><button type="button" onClick={()=>setSelected(today)}>今日</button></div>
     <div className="calendar-nav"><button type="button" aria-label={mode==="week"?"前の週":"前の月"} onClick={()=>setSelected(mode==="week"?addDays(selected,-7):moveMonth(selected,-1))}>‹</button><span aria-live="polite">{mode==="week"?`${selected.slice(0,4)}年 ${dayLabel(start)} 〜 ${dayLabel(end)}`:`${selected.slice(0,4)}年 ${Number(selected.slice(5,7))}月`}</span><button type="button" aria-label={mode==="week"?"次の週":"次の月"} onClick={()=>setSelected(mode==="week"?addDays(selected,7):moveMonth(selected,1))}>›</button></div>
     <CalendarDays key={mode} dates={dates} mode={mode} selected={selected} today={today} birthday={birthday} events={events} records={records} onSelect={setSelected}
+      onDateAdd={online && dogId && !loading ? date=>open("other",undefined,date) : undefined}
       onDateOpen={date=>{const plans=eventsOnDate(events,date);open(plans.length===1?plans[0].category:"other",plans.length===1?plans[0]:undefined,date);}}
       onEvent={event=>open(event.category,event,event.start_date)} />
     {dates.some(date=>!holidayYearCovered(date)) && <p className="calendar-feedback">表示中の一部の日付は、祝日情報が未確認です。</p>}
