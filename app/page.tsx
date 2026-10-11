@@ -29,6 +29,7 @@ import { deviceLocalDate, deviceLocalTime, loadDailyCheck } from "@/lib/observat
 import { loadEventThemes, loadEvents } from "@/lib/observations/observationEvent";
 import type { EventTheme, ObservationEvent } from "@/lib/observations/observationEvent";
 import { supabase } from "./supabase";
+import { authErrorMessage } from "@/lib/auth/messages";
 
 type View = "home" | "goals" | "record" | "report" | "coach" | "profile";
 type Connection = "checking" | "online" | "local";
@@ -1133,6 +1134,16 @@ export default function Home() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authError, setAuthError] = useState("");
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
+  const [confirmationEmail, setConfirmationEmail] = useState("");
+  const [resendSeconds, setResendSeconds] = useState(0);
+  const [resendMessage, setResendMessage] = useState("");
+  const authRequestBusy = useRef(false);
+  useEffect(() => {
+    if (!confirmationEmail) return;
+    const timer = window.setInterval(() => setResendSeconds((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [confirmationEmail]);
   const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>([]);
   const [adminAccounts, setAdminAccounts] = useState<AdminAccount[]>([]);
   const [adminAccountsError, setAdminAccountsError] = useState("");
@@ -2498,6 +2509,8 @@ export default function Home() {
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (authRequestBusy.current) return;
+    authRequestBusy.current = true;
     setAuthError("");
     setSaving(true);
     try {
@@ -2517,10 +2530,19 @@ export default function Home() {
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
-        if (!data.session) {
-          showNotice("確認メールを送りました。認証後、自動でログインできます");
+        if (!data.user) throw new Error("Missing signup user");
+        // Confirmation-enabled signup must not create an authenticated session.
+        if (data.session) {
+          await supabase.auth.signOut({ scope: "local" });
+          setAuthError("メール認証の設定を確認する必要があります。運営へお問い合わせください。");
           return;
         }
+        setConfirmationEmail(authEmail.trim());
+        setAuthPassword("");
+        setShowAuthPassword(false);
+        setResendSeconds(60);
+        setResendMessage("");
+        return;
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email: authEmail.trim(), password: authPassword });
         if (error) throw error;
@@ -2533,26 +2555,42 @@ export default function Home() {
         window.location.reload();
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "認証に失敗しました";
-      const normalized = message.toLowerCase();
-      setAuthError(
-        normalized.includes("email signups are disabled") || normalized.includes("signup is disabled")
-          ? "メールの新規登録が無効です。SupabaseのAuthentication設定でEmailを有効にしてください。"
-          : normalized.includes("database error saving new user")
-            ? "ユーザー保存用のDB設定が未完了です。migration 008・009を実行してください。"
-            : normalized.includes("rate limit") || normalized.includes("too many requests")
-              ? "確認メールの送信上限に達しています。しばらく待ってから再度お試しください。"
-              : normalized.includes("invalid login")
-                ? "メールアドレスまたはパスワードが違います。"
-                : normalized.includes("already registered") || normalized.includes("already been registered")
-                  ? "このメールアドレスは登録済みです。「ログイン」からお進みください。"
-                  : normalized.includes("password")
-                    ? "パスワードは8文字以上で設定してください。"
-                    : normalized.includes("invalid email")
-                      ? "メールアドレスの形式を確認してください。"
-                      : `登録できませんでした（${message}）`,
-      );
+      setAuthError(authErrorMessage(error));
     } finally {
+      authRequestBusy.current = false;
+      setSaving(false);
+    }
+  }
+
+  function switchAuthMode(mode: AuthMode) {
+    if (authRequestBusy.current) return;
+    setAuthMode(mode);
+    setAuthError("");
+    setConfirmationEmail("");
+    setAuthPassword("");
+    setShowAuthPassword(false);
+    setResendMessage("");
+  }
+
+  async function resendConfirmation() {
+    if (authRequestBusy.current || resendSeconds > 0 || !confirmationEmail) return;
+    authRequestBusy.current = true;
+    setSaving(true);
+    setAuthError("");
+    setResendMessage("");
+    setResendSeconds(60);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: confirmationEmail,
+        options: { emailRedirectTo: window.location.origin },
+      });
+      if (error) throw error;
+      setResendMessage("確認メールを再送しました。メール内のリンクをご確認ください。");
+    } catch (error) {
+      setAuthError(authErrorMessage(error));
+    } finally {
+      authRequestBusy.current = false;
       setSaving(false);
     }
   }
@@ -4922,17 +4960,26 @@ export default function Home() {
         </div>
         {!anonymousUser && (
           <div className="auth-switch">
-            <button className={authMode === "login" ? "is-selected" : ""} onClick={() => { setAuthMode("login"); setAuthError(""); }}>ログイン</button>
-            <button className={authMode === "signup" ? "is-selected" : ""} onClick={() => { setAuthMode("signup"); setAuthError(""); }}>新規登録</button>
+            <button className={authMode === "login" ? "is-selected" : ""} disabled={saving} onClick={() => switchAuthMode("login")}>ログイン</button>
+            <button className={authMode === "signup" ? "is-selected" : ""} disabled={saving} onClick={() => switchAuthMode("signup")}>新規登録</button>
           </div>
         )}
-        <form className="auth-form" onSubmit={submitAuth}>
+        {confirmationEmail ? <div className="auth-confirmation">
+          <h3>確認メールを送信しました</h3>
+          <p><strong>{confirmationEmail}</strong> 宛に確認メールを送信しました。メール内のリンクから登録を完了してください。</p>
+          <p>メールが届かない場合は、迷惑メールフォルダもご確認ください。</p>
+          <p>すでに登録済みの場合は、ログインまたはパスワード再設定をお試しください。</p>
+          {authError && <p className="auth-error" role="alert">{authError}</p>}
+          <p role="status" aria-live="polite">{resendMessage}</p>
+          <button type="button" className="auth-submit" disabled={saving || resendSeconds > 0} onClick={() => void resendConfirmation()}>{saving ? "送信中…" : resendSeconds > 0 ? `再送まで ${resendSeconds} 秒` : "確認メールを再送する"}</button>
+          <button type="button" className="forgot-password" onClick={() => switchAuthMode("login")} disabled={saving}>ログインへ戻る</button>
+        </div> : <form className="auth-form" onSubmit={submitAuth}>
           <label>メールアドレス<input type="email" inputMode="email" autoComplete="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" required /></label>
-          <label>パスワード<input type="password" autoComplete={authMode === "login" && !anonymousUser ? "current-password" : "new-password"} minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="8文字以上" required /></label>
+          <div className="auth-password-field"><label htmlFor="auth-password">パスワード</label><div className="auth-password-input"><input id="auth-password" type={showAuthPassword ? "text" : "password"} autoComplete={authMode === "login" && !anonymousUser ? "current-password" : "new-password"} minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="8文字以上" required /><button type="button" className="auth-password-toggle" aria-label={showAuthPassword ? "パスワードを非表示" : "パスワードを表示"} aria-pressed={showAuthPassword} aria-controls="auth-password" onClick={() => setShowAuthPassword((shown) => !shown)}><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" />{showAuthPassword && <path d="m3 3 18 18" />}</svg></button></div></div>
           {authError && <p className="auth-error" role="alert">{authError}</p>}
           <button className="auth-submit" disabled={saving}>{saving ? "確認中…" : anonymousUser ? "今のデータを引き継ぐ" : authMode === "login" ? "ログインする" : "アカウントを作る"}<span>→</span></button>
-        </form>
-        {!anonymousUser && authMode === "login" && <button className="forgot-password" onClick={() => void resetPassword()}>パスワードを忘れた方</button>}
+        </form>}
+        {!anonymousUser && !confirmationEmail && authMode === "login" && <button className="forgot-password" onClick={() => void resetPassword()}>パスワードを忘れた方</button>}
         {anonymousUser && <p className="migration-note">この操作では愛犬・記録・相談履歴の所有者IDは変わりません。</p>}
       </section>
       <div className={`toast ${notice ? "show" : ""}`} role="status">{notice}</div>
