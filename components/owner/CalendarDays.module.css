@@ -30,7 +30,7 @@
   cursor: pointer;
 }
 .select strong { font-size: 14px; font-weight: 600; align-self: center; min-width: 26px; line-height: 20px; padding: 3px 0; border-radius: 50%; }
-.titles { gap:3px 1px; padding:0; }
+.titles { gap:5px 4px; padding:0; }
 .grid .titles .title {
   display: block;
   overflow: hidden;

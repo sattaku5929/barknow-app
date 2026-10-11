@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { addDays, monthDays, moveMonth, scheduleError, scheduleKinds, weekStart } from "@/lib/calendar/model";
+import { addDays, eventsOnDate, monthDays, moveMonth, scheduleError, scheduleKinds, weekStart } from "@/lib/calendar/model";
 import type { CalendarEvent, CalendarRecord, ScheduleKind } from "@/lib/calendar/model";
 import { deleteCalendarEvent, loadCalendar, saveCalendarEvent } from "@/lib/calendar/service";
 import CalendarDays from "./CalendarDays";
@@ -20,6 +20,7 @@ export default function HomeCalendar({dogId,birthday,online,today,refreshToken}:
   const [isNew,setIsNew] = useState(true);
   const [saving,setSaving] = useState(false);
   const [formError,setFormError] = useState("");
+  const [editingDate,setEditingDate] = useState<string|null>(null);
   const lock = useRef(false);
   const dialog = useRef<HTMLDialogElement>(null);
   const returnFocus = useRef<HTMLElement|null>(null);
@@ -48,13 +49,14 @@ export default function HomeCalendar({dogId,birthday,online,today,refreshToken}:
     if (lock.current) return;
     dialog.current?.close(); setDraft(null); setFormError(""); returnFocus.current?.focus();
   }
-  function open(kind:ScheduleKind, event?:CalendarEvent) {
+  function open(kind:ScheduleKind, event?:CalendarEvent, date = selected) {
     if (!dogId || !online || loading) return;
-    returnFocus.current = document.activeElement as HTMLElement;
+    if (!draft) returnFocus.current = document.activeElement as HTMLElement;
+    setEditingDate(date);
     setFormError(""); setIsNew(!event);
     setDraft(event ? {...event,start_time:event.start_time?.slice(0,5) ?? null} : {
       id:crypto.randomUUID(),dog_id:dogId,category:kind,title:scheduleKinds.find(k=>k.key===kind)?.title ?? "",
-      start_date:selected,end_date:selected,start_time:null,location:"",note:"",
+      start_date:date,end_date:date,start_time:null,location:"",note:"",
     });
   }
   async function mutate(remove = false) {
@@ -73,13 +75,20 @@ export default function HomeCalendar({dogId,birthday,online,today,refreshToken}:
   }
   return <section className="home-calendar" aria-labelledby="calendar-heading">
     <header className="calendar-heading"><div><small>OUR DAYS</small><h2 id="calendar-heading">愛犬とのカレンダー</h2></div><button className="calendar-add" type="button" disabled={!online || !dogId || loading} onClick={()=>open("other")}>＋ 予定</button></header>
-    <div className="calendar-toolbar"><strong>{selected.slice(0,4)}年 {Number(selected.slice(5,7))}月</strong><div className="calendar-mode" aria-label="表示期間">{(["week","month"] as const).map(m=><button key={m} type="button" aria-pressed={mode===m} onClick={()=>setMode(m)}>{m==="week"?"週":"月"}</button>)}</div><button type="button" onClick={()=>setSelected(today)}>今日</button></div>
-    <div className="calendar-nav"><button type="button" aria-label={mode==="week"?"前の週":"前の月"} onClick={()=>setSelected(mode==="week"?addDays(selected,-7):moveMonth(selected,-1))}>‹</button><span>{mode==="week"?`${dayLabel(start)} 〜 ${dayLabel(end)}`:"予定名をタップして確認・編集"}</span><button type="button" aria-label={mode==="week"?"次の週":"次の月"} onClick={()=>setSelected(mode==="week"?addDays(selected,7):moveMonth(selected,1))}>›</button></div>
-    <CalendarDays key={mode} dates={dates} mode={mode} selected={selected} today={today} birthday={birthday} events={events} records={records} onSelect={setSelected} onEvent={event=>open(event.category,event)} />
+    <div className="calendar-toolbar"><div className="calendar-mode" aria-label="表示期間">{(["week","month"] as const).map(m=><button key={m} type="button" aria-pressed={mode===m} onClick={()=>setMode(m)}>{m==="week"?"週":"月"}</button>)}</div><button type="button" onClick={()=>setSelected(today)}>今日</button></div>
+    <div className="calendar-nav"><button type="button" aria-label={mode==="week"?"前の週":"前の月"} onClick={()=>setSelected(mode==="week"?addDays(selected,-7):moveMonth(selected,-1))}>‹</button><span aria-live="polite">{mode==="week"?`${selected.slice(0,4)}年 ${dayLabel(start)} 〜 ${dayLabel(end)}`:`${selected.slice(0,4)}年 ${Number(selected.slice(5,7))}月`}</span><button type="button" aria-label={mode==="week"?"次の週":"次の月"} onClick={()=>setSelected(mode==="week"?addDays(selected,7):moveMonth(selected,1))}>›</button></div>
+    <CalendarDays key={mode} dates={dates} mode={mode} selected={selected} today={today} birthday={birthday} events={events} records={records} onSelect={setSelected}
+      onDateOpen={date=>{const plans=eventsOnDate(events,date);open(plans.length===1?plans[0].category:"other",plans.length===1?plans[0]:undefined,date);}}
+      onEvent={event=>open(event.category,event,event.start_date)} />
     {dates.some(date=>!holidayYearCovered(date)) && <p className="calendar-feedback">表示中の一部の日付は、祝日情報が未確認です。</p>}
     <div className="calendar-feedback" aria-live="polite">{loading ? "読み込み中…" : !dogId ? "愛犬を登録すると予定を追加できます。" : !online ? "接続後に予定と記録を確認できます。" : loadError ? <>{loadError}<button type="button" onClick={()=>setRevision(r=>r+1)}>再読み込み</button></> : notice}</div>
     {draft && <dialog ref={dialog} className="calendar-dialog" aria-labelledby="schedule-title" onCancel={e=>{e.preventDefault();close();}} onClose={()=>{if(!lock.current)setDraft(null);}}>
       <form onSubmit={(e:FormEvent)=>{e.preventDefault();void mutate();}}><header><div><small>PLAN</small><h2 id="schedule-title">{isNew?"予定を追加":"予定を編集"}</h2></div><button type="button" aria-label="閉じる" disabled={saving} onClick={close}>×</button></header>
+        {editingDate && <div className="calendar-date-editor"><strong>{dayLabel(editingDate)}</strong>
+          <div>{eventsOnDate(events,editingDate).map(event=><button type="button" key={event.id} disabled={saving} aria-pressed={draft.id===event.id}
+            onClick={()=>open(event.category,event,editingDate)}>{event.title}</button>)}
+            <button type="button" disabled={saving} aria-pressed={isNew} onClick={()=>open("other",undefined,editingDate)}>＋ この日に予定を追加</button></div>
+        </div>}
         <fieldset disabled={saving}><legend className="sr-only">予定の内容</legend>
           <div className="schedule-kind-picker">{scheduleKinds.map(k=><button type="button" key={k.key} aria-pressed={draft.category===k.key} onClick={()=>setDraft({...draft,category:k.key,title:!draft.title || scheduleKinds.some(x=>x.title===draft.title)?k.title:draft.title})}>{k.label}</button>)}</div>
           <label>予定名<input autoFocus required maxLength={100} value={draft.title} placeholder="例：代々木公園のイベント" onChange={e=>setDraft({...draft,title:e.target.value})}/></label>
