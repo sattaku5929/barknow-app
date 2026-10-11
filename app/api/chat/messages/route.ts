@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendPushNotification } from "@/lib/pushSender";
 import { authenticatedSupabase, authenticatedUser, serviceSupabase } from "@/lib/server/supabase";
+import { validChatMediaKey } from "@/lib/media-security";
+import { HeadObjectCommand } from "@aws-sdk/client-s3";
+import { r2BucketName, r2Client } from "@/lib/r2";
 
 type MessageInput = {
   owner_id?: string;
@@ -27,6 +30,24 @@ export async function POST(request: NextRequest) {
   }
   if (input.sender === "owner" && input.owner_id !== user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (input.sender !== "owner" && input.sender !== "coach") return NextResponse.json({ error: "Invalid sender" }, { status: 400 });
+  if (input.media_url || input.media_key) {
+    if (!validChatMediaKey(input.media_key) || !input.media_key.startsWith(`chat/${user.id}/`)
+      || input.media_url !== `r2://${input.media_key}` || !["image", "video"].includes(input.media_type ?? "")) {
+      return NextResponse.json({ error: "Invalid attachment" }, { status: 400 });
+    }
+    try {
+      const object = await r2Client().send(new HeadObjectCommand({ Bucket: r2BucketName(), Key: input.media_key }));
+      const allowed = input.media_type === "image" ? ["image/jpeg", "image/png", "image/webp", "image/gif"]
+        : ["video/mp4", "video/webm", "video/quicktime"];
+      const limit = input.media_type === "image" ? 10 * 1024 * 1024 : 50 * 1024 * 1024;
+      if (!allowed.includes(object.ContentType ?? "") || !object.ContentLength || object.ContentLength > limit) {
+        return NextResponse.json({ error: "Invalid attachment" }, { status: 400 });
+      }
+    } catch {
+      return NextResponse.json({ error: "添付ファイルを確認できませんでした" }, { status: 400 });
+    }
   }
 
   const client = authenticatedSupabase(accessToken);

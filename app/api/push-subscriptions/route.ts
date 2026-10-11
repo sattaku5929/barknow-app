@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticatedUser, serviceSupabase } from "@/lib/server/supabase";
 
+import { validPushSubscription } from "@/lib/push-security";
+
 export const runtime = "nodejs";
 
 type PushSubscriptionInput = {
@@ -20,15 +22,6 @@ function errorDetail(error: unknown) {
   return String(error || "Unknown error");
 }
 
-function validSubscription(value: PushSubscriptionInput | null) {
-  return Boolean(
-    value
-    && typeof value.endpoint === "string"
-    && value.endpoint.startsWith("https://")
-    && typeof value.keys?.p256dh === "string"
-    && typeof value.keys?.auth === "string",
-  );
-}
 
 async function metadataSubscription(userId: string) {
   const admin = serviceSupabase();
@@ -50,7 +43,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ subscription: subscription ?? null, storage: subscription ? "auth_metadata" : null });
   } catch (error) {
     console.error("[Web Push] subscription status failed", { userId: user.id, error });
-    return NextResponse.json({ error: errorDetail(error) }, { status: 500 });
+    return NextResponse.json({ error: "通知設定を処理できませんでした" }, { status: 500 });
   }
 }
 
@@ -59,7 +52,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: "ログイン情報を確認できませんでした" }, { status: 401 });
 
   const input = await request.json().catch(() => null) as { subscription?: PushSubscriptionInput } | null;
-  if (!validSubscription(input?.subscription ?? null)) {
+  if (!validPushSubscription(input?.subscription ?? null)) {
     return NextResponse.json({ error: "Push購読情報の形式が正しくありません" }, { status: 400 });
   }
   const subscription = input?.subscription as PushSubscriptionInput;
@@ -80,10 +73,10 @@ export async function POST(request: NextRequest) {
       user_metadata: { ...(authData.user?.user_metadata ?? {}), push_subscription: subscription },
     });
     if (metadataError) throw new Error(`${errorDetail(error)} / fallback: ${errorDetail(metadataError)}`);
-    return NextResponse.json({ ok: true, storage: "auth_metadata", warning: errorDetail(error) });
+    return NextResponse.json({ ok: true, storage: "auth_metadata" });
   } catch (error) {
     console.error("[Web Push] subscription save failed", { userId: user.id, error });
-    return NextResponse.json({ error: errorDetail(error) }, { status: 500 });
+    return NextResponse.json({ error: "通知設定を処理できませんでした" }, { status: 500 });
   }
 }
 
@@ -106,6 +99,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("[Web Push] subscription delete failed", { userId: user.id, error });
-    return NextResponse.json({ error: errorDetail(error) }, { status: 500 });
+    return NextResponse.json({ error: "通知設定を処理できませんでした" }, { status: 500 });
   }
 }

@@ -1,10 +1,13 @@
 "use client";
 
+import { PrivateChatMedia, PrivateDogImage, useChatMediaUrl } from "@/components/PrivateMedia";
+
 import { type CSSProperties, FormEvent, Fragment, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import ChatInput, { SentChatMessage } from "@/components/ChatInput";
 import { usePushNotification } from "@/hooks/usePushNotification";
 import { clearAppBadge } from "@/lib/appBadge";
+import { bindOwnerCache, OWNER_CACHE_USER_KEY } from "@/lib/owner-cache";
 import RecordedDaysSummary from "@/components/owner/RecordedDaysSummary";
 import DailyCheckForm from "@/components/observations/DailyCheckForm";
 import ObservationThemeSelector from "@/components/observations/ObservationThemeSelector";
@@ -130,19 +133,20 @@ function mapCoachMessage(item: Record<string, unknown>): CoachMessage {
 }
 
 function MessageMedia({ message, onOpen }: { message: CoachMessage; onOpen?: (message: CoachMessage) => void }) {
+  const mediaUrl = useChatMediaUrl(message.id, Boolean(message.mediaUrl && message.mediaType));
   if (!message.mediaUrl || !message.mediaType) return null;
   if (onOpen) {
     return (
       <button type="button" className={`message-media message-media-button is-${message.mediaType}`} onClick={() => onOpen(message)} aria-label={`${message.mediaName || (message.mediaType === "image" ? "画像" : "動画")}をギャラリーで開く`}>
         {message.mediaType === "image"
-          ? <img src={message.mediaUrl} alt={message.mediaName || "共有された画像"} loading="lazy" />
-          : <><video src={message.mediaUrl} muted playsInline preload="metadata">動画を再生できません。</video><span className="media-play-mark" aria-hidden="true">▶</span></>}
+          ? <img src={mediaUrl || undefined} alt={message.mediaName || "共有された画像"} loading="lazy" />
+          : <><video src={mediaUrl || undefined} muted playsInline preload="metadata">動画を再生できません。</video><span className="media-play-mark" aria-hidden="true">▶</span></>}
       </button>
     );
   }
   return message.mediaType === "image"
-    ? <a className="message-media" href={message.mediaUrl} target="_blank" rel="noreferrer"><img src={message.mediaUrl} alt={message.mediaName || "共有された画像"} loading="lazy" /></a>
-    : <div className="message-media"><video src={message.mediaUrl} controls playsInline preload="metadata">動画を再生できません。</video></div>;
+    ? <a className="message-media" href={mediaUrl || undefined} target="_blank" rel="noreferrer"><img src={mediaUrl || undefined} alt={message.mediaName || "共有された画像"} loading="lazy" /></a>
+    : <div className="message-media"><video src={mediaUrl || undefined} controls playsInline preload="metadata">動画を再生できません。</video></div>;
 }
 
 function urlsInMessage(body: string) {
@@ -2142,8 +2146,28 @@ export default function Home() {
     setCustomBehaviorOptions(initialCustomBehaviors);
     writeLocal(CUSTOM_BEHAVIORS_KEY, initialCustomBehaviors);
 
+    let verifiedSessionUserId = "";
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (verifiedSessionUserId && (event === "SIGNED_OUT" || (event === "SIGNED_IN" && session?.user.id !== verifiedSessionUserId))) {
+        clearOwnerCache();
+        setAuthenticated(false);
+        window.location.reload();
+      }
+    });
+    function resetOwnerState() {
+      setProfile(initialProfile);
+      setOwnerProfile(initialOwnerProfile);
+      setRecords([]);
+      setMessages([]);
+      setCareGoals([]);
+      setGoalCompletions([]);
+      setCustomBehaviorOptions([]);
+      setCoachingApplication(null);
+    }
     async function connect() {
       const showSignedOutState = () => {
+        clearOwnerCache();
+        resetOwnerState();
         setAuthenticated(false);
         setAnonymousUser(false);
         setCurrentUserId("");
@@ -2174,6 +2198,9 @@ export default function Home() {
         }
 
         const userId = verifiedUser.id;
+        const cacheKeys = [PROFILE_KEY, OWNER_PROFILE_KEY, RECORDS_KEY, MESSAGES_KEY, CUSTOM_BEHAVIORS_KEY, CARE_GOALS_KEY, GOAL_COMPLETIONS_KEY, REMINDER_SENT_KEY];
+        if (bindOwnerCache(window.localStorage, userId, cacheKeys)) resetOwnerState();
+        verifiedSessionUserId = userId;
         const isAnonymous = Boolean(verifiedUser.is_anonymous);
         setAuthenticated(true);
         setAnonymousUser(isAnonymous);
@@ -2379,6 +2406,7 @@ export default function Home() {
     }
 
     void connect();
+    return () => authListener.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -2530,7 +2558,7 @@ export default function Home() {
   }
 
   function clearOwnerCache() {
-    [PROFILE_KEY, OWNER_PROFILE_KEY, RECORDS_KEY, MESSAGES_KEY, CUSTOM_BEHAVIORS_KEY, CARE_GOALS_KEY, GOAL_COMPLETIONS_KEY, REMINDER_SENT_KEY]
+    [OWNER_CACHE_USER_KEY, PROFILE_KEY, OWNER_PROFILE_KEY, RECORDS_KEY, MESSAGES_KEY, CUSTOM_BEHAVIORS_KEY, CARE_GOALS_KEY, GOAL_COMPLETIONS_KEY, REMINDER_SENT_KEY]
       .forEach((key) => window.localStorage.removeItem(key));
   }
 
@@ -4019,7 +4047,7 @@ export default function Home() {
           <p className="welcome-copy">やろうと思っていたケアを、今日ひとつ。</p>
         </div>
         <button className={`avatar ${profile.avatarUrl ? "has-image" : ""}`} onClick={() => navigateOwnerView("profile")} aria-label="愛犬プロフィールを開く">
-          {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : profile.name ? profile.name.slice(0, 1) : "＋"}
+          {profile.avatarUrl ? <PrivateDogImage src={profile.avatarUrl} alt="" /> : profile.name ? profile.name.slice(0, 1) : "＋"}
         </button>
       </section>
 
@@ -4266,7 +4294,7 @@ export default function Home() {
           <OwnerHomeLifestyle />
         </div>
         <button className={`home-v3-profile ${profile.avatarUrl ? "has-image" : ""}`} onClick={() => navigateOwnerView("profile")} aria-label="愛犬プロフィールを開く">
-          {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : <span>{profile.name ? profile.name.slice(0, 1) : "＋"}</span>}
+          {profile.avatarUrl ? <PrivateDogImage src={profile.avatarUrl} alt="" /> : <span>{profile.name ? profile.name.slice(0, 1) : "＋"}</span>}
         </button>
       </section>
 
@@ -4751,14 +4779,14 @@ export default function Home() {
                 <header><div><small>SHARED MEDIA</small><h2>画像・動画</h2><p>{mediaMessages.length}件</p></div><button type="button" onClick={closeMediaGallery} aria-label="ギャラリーを閉じる">×</button></header>
                 <div className="media-gallery-stage">
                   {selectedMedia.mediaType === "image"
-                    ? <img src={selectedMedia.mediaUrl} alt={selectedMedia.mediaName || "共有された画像"} />
-                    : <video src={selectedMedia.mediaUrl} controls autoPlay playsInline preload="metadata">動画を再生できません。</video>}
+                    ? <PrivateChatMedia messageId={selectedMedia.id} type="image" alt={selectedMedia.mediaName || "共有された画像"} />
+                    : <PrivateChatMedia messageId={selectedMedia.id} type="video" controls autoPlay />}
                 </div>
                 <div className="media-gallery-meta"><strong>{selectedMedia.mediaName || (selectedMedia.mediaType === "image" ? "共有された画像" : "共有された動画")}</strong><time>{new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(selectedMedia.createdAt))}</time></div>
                 <div className="media-gallery-grid" aria-label="共有メディア一覧">
                   {mediaMessages.map((message) => (
                     <button type="button" key={message.id} className={message.id === selectedMedia.id ? "is-selected" : ""} onClick={() => setSelectedMediaId(message.id)} aria-label={`${message.mediaName || (message.mediaType === "image" ? "画像" : "動画")}を表示`}>
-                      {message.mediaType === "image" ? <img src={message.mediaUrl} alt="" loading="lazy" /> : <><video src={message.mediaUrl} muted playsInline preload="metadata" /><span aria-hidden="true">▶</span></>}
+                      {message.mediaType === "image" ? <PrivateChatMedia messageId={message.id} type="image" /> : <><PrivateChatMedia messageId={message.id} type="video" /><span aria-hidden="true">▶</span></>}
                     </button>
                   ))}
                 </div>
@@ -4776,7 +4804,7 @@ export default function Home() {
       <div className="dog-profile-summary-heading"><div><span className="card-label">DOG PROFILE</span><h1 id="dog-profile-summary-title">愛犬プロフィール</h1><p>登録した情報を確認できます。</p></div>
         <button type="button" className="dog-profile-edit-button" onClick={beginDogProfileEdit}>{profile.id ? "編集" : "登録する"}</button>
       </div>
-      <div className="dog-profile-summary-avatar">{profile.avatarUrl ? <img src={profile.avatarUrl} alt={`${profile.name || "愛犬"}のプロフィール画像`} /> : <CareIcon name="paws" />}<div><h2>{profile.name || "愛犬は未登録です"}</h2><p>{profile.breed || "犬種は未登録"}{ageLabel(profile.birthday) ? ` · ${ageLabel(profile.birthday)}` : ""}</p></div></div>
+      <div className="dog-profile-summary-avatar">{profile.avatarUrl ? <PrivateDogImage src={profile.avatarUrl} alt={`${profile.name || "愛犬"}のプロフィール画像`} /> : <CareIcon name="paws" />}<div><h2>{profile.name || "愛犬は未登録です"}</h2><p>{profile.breed || "犬種は未登録"}{ageLabel(profile.birthday) ? ` · ${ageLabel(profile.birthday)}` : ""}</p></div></div>
       <section className="profile-form-section"><h2>基本情報</h2><dl className="dog-profile-facts">
         <div><dt>名前</dt><dd>{profile.name || "未登録"}</dd></div>
         <div><dt>犬種</dt><dd>{profile.breed || "未登録"}</dd></div>
@@ -4803,7 +4831,7 @@ export default function Home() {
       <p className="lead">写真や暮らしの変化に合わせて、いつでも更新できます。</p>
       {Object.keys(dogProfileErrors).length > 0 && <p className="dog-profile-error-summary" role="alert">入力内容を確認してください。赤く表示された必須項目を修正してください。</p>}
       <section className="profile-form-section"><div className="profile-section-heading"><span>01</span><div><h2>愛犬について</h2><p>画像・基本情報・生活リズム</p></div></div>
-        <fieldset className="dog-avatar-editor"><legend>愛犬の画像</legend><div className="dog-avatar-preview">{profile.avatarUrl ? <img src={profile.avatarUrl} alt={`${profile.name || "愛犬"}のプロフィール画像`} /> : <CareIcon name="paws" />}</div><div><strong>{profile.avatarUrl ? "画像を設定済みです" : "お気に入りの1枚を設定"}</strong><p>ホーム画面やプロフィールに表示されます。</p><label>{saving ? "画像を処理中…" : profile.avatarUrl ? "画像を変更" : "画像を選択"}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadDogAvatar(file); event.currentTarget.value = ""; }} /></label></div></fieldset>
+        <fieldset className="dog-avatar-editor"><legend>愛犬の画像</legend><div className="dog-avatar-preview">{profile.avatarUrl ? <PrivateDogImage src={profile.avatarUrl} alt={`${profile.name || "愛犬"}のプロフィール画像`} /> : <CareIcon name="paws" />}</div><div><strong>{profile.avatarUrl ? "画像を設定済みです" : "お気に入りの1枚を設定"}</strong><p>ホーム画面やプロフィールに表示されます。</p><label>{saving ? "画像を処理中…" : profile.avatarUrl ? "画像を変更" : "画像を選択"}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadDogAvatar(file); event.currentTarget.value = ""; }} /></label></div></fieldset>
         <label className={`field-label dog-profile-field ${dogProfileErrors.name ? "has-error" : ""}`} data-dog-field="name">名前 <span className="required-badge">必須</span><input value={profile.name} aria-invalid={Boolean(dogProfileErrors.name)} onChange={(event) => updateDogProfileField("name", event.target.value)} placeholder="例：むぎ" />{dogProfileErrors.name && <small className="field-error" role="alert">{dogProfileErrors.name}</small>}</label>
         <label className={`field-label dog-profile-field ${dogProfileErrors.breed ? "has-error" : ""}`} data-dog-field="breed">犬種 <span className="required-badge">必須</span><input value={profile.breed} aria-invalid={Boolean(dogProfileErrors.breed)} onChange={(event) => updateDogProfileField("breed", event.target.value)} placeholder="例：トイプードル" />{dogProfileErrors.breed && <small className="field-error" role="alert">{dogProfileErrors.breed}</small>}</label>
         <label className={`field-label dog-profile-field ${dogProfileErrors.birthday ? "has-error" : ""}`} data-dog-field="birthday">誕生日 <span className="required-badge">必須</span><input type="date" max={today()} value={profile.birthday} aria-invalid={Boolean(dogProfileErrors.birthday)} onChange={(event) => updateDogProfileField("birthday", event.target.value)} />{ageLabel(profile.birthday) && <small className="age-preview">{ageLabel(profile.birthday)}</small>}{dogProfileErrors.birthday && <small className="field-error" role="alert">{dogProfileErrors.birthday}</small>}</label>
@@ -4883,7 +4911,7 @@ export default function Home() {
     <section className="settings-screen">
       <header><p className="card-label">ACCOUNT &amp; APP</p><h1>マイページ</h1></header>
       <div className="settings-user-summary">
-        <span className={profile.avatarUrl ? "has-image" : ""}>{profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : profile.name ? profile.name.slice(0, 1) : <SettingsGlyph name="dog" />}</span>
+        <span className={profile.avatarUrl ? "has-image" : ""}>{profile.avatarUrl ? <PrivateDogImage src={profile.avatarUrl} alt="" /> : profile.name ? profile.name.slice(0, 1) : <SettingsGlyph name="dog" />}</span>
         <div><strong>{profile.name ? `${profile.name}ちゃん` : "愛犬を登録してください"}</strong><small>{userEmail}</small></div>
       </div>
 
@@ -4968,7 +4996,7 @@ export default function Home() {
           {onboardingError && <p className="onboarding-error" role="alert">{onboardingError}</p>}
           <button type="submit" className="onboarding-next" disabled={saving}>{saving ? "保存中…" : "愛犬情報へ進む"}<span>→</span></button>
         </form> : <form noValidate onSubmit={saveDogOnboarding} onInput={() => { if (onboardingError) setOnboardingError(""); }}><p className="card-label">ABOUT YOUR DOG</p><h1>次に、愛犬の毎日を<br />教えてください。</h1><p className="onboarding-lead">暮らし方まで分かると、コーチが記録の変化を正しく読み取りやすくなります。</p>{Object.keys(dogProfileErrors).length > 0 && <p className="dog-profile-error-summary" role="alert">入力内容を確認してください。赤く表示された必須項目を修正してください。</p>}
-          <fieldset className="dog-avatar-editor is-onboarding"><legend>愛犬の画像（任意）</legend><div className="dog-avatar-preview">{profile.avatarUrl ? <img src={profile.avatarUrl} alt="登録する愛犬の画像" /> : <CareIcon name="paws" />}</div><div><strong>{profile.avatarUrl ? "この画像を使用します" : "愛犬の顔が見える写真がおすすめ"}</strong><p>あとから設定画面で変更できます。</p><label>{saving ? "画像を処理中…" : profile.avatarUrl ? "画像を変更" : "画像を選択"}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadDogAvatar(file); event.currentTarget.value = ""; }} /></label></div></fieldset>
+          <fieldset className="dog-avatar-editor is-onboarding"><legend>愛犬の画像（任意）</legend><div className="dog-avatar-preview">{profile.avatarUrl ? <PrivateDogImage src={profile.avatarUrl} alt="登録する愛犬の画像" /> : <CareIcon name="paws" />}</div><div><strong>{profile.avatarUrl ? "この画像を使用します" : "愛犬の顔が見える写真がおすすめ"}</strong><p>あとから設定画面で変更できます。</p><label>{saving ? "画像を処理中…" : profile.avatarUrl ? "画像を変更" : "画像を選択"}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={saving} onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadDogAvatar(file); event.currentTarget.value = ""; }} /></label></div></fieldset>
           <div className="onboarding-grid"><label className={`field-label dog-profile-field ${dogProfileErrors.name ? "has-error" : ""}`} data-dog-field="name">愛犬の名前 <span className="required-badge">必須</span><input autoFocus value={profile.name} aria-invalid={Boolean(dogProfileErrors.name)} onChange={(event) => updateDogProfileField("name", event.target.value)} placeholder="例：むぎ" />{dogProfileErrors.name && <small className="field-error" role="alert">{dogProfileErrors.name}</small>}</label><label className={`field-label dog-profile-field ${dogProfileErrors.breed ? "has-error" : ""}`} data-dog-field="breed">犬種 <span className="required-badge">必須</span><input value={profile.breed} aria-invalid={Boolean(dogProfileErrors.breed)} onChange={(event) => updateDogProfileField("breed", event.target.value)} placeholder="例：トイプードル" />{dogProfileErrors.breed && <small className="field-error" role="alert">{dogProfileErrors.breed}</small>}</label></div>
           <label className={`field-label dog-profile-field ${dogProfileErrors.birthday ? "has-error" : ""}`} data-dog-field="birthday">誕生日 <span className="required-badge">必須</span><input type="date" max={today()} value={profile.birthday} aria-invalid={Boolean(dogProfileErrors.birthday)} onChange={(event) => updateDogProfileField("birthday", event.target.value)} />{ageLabel(profile.birthday) && <small className="age-preview">{ageLabel(profile.birthday)}</small>}{dogProfileErrors.birthday && <small className="field-error" role="alert">{dogProfileErrors.birthday}</small>}</label>
           <div className="onboarding-grid"><label className={`field-label dog-profile-field ${dogProfileErrors.isFirstTimeOwner ? "has-error" : ""}`} data-dog-field="isFirstTimeOwner">犬を飼うのは初めて？ <span className="required-badge">必須</span><select className="onboarding-select" value={profile.isFirstTimeOwner} aria-invalid={Boolean(dogProfileErrors.isFirstTimeOwner)} onChange={(event) => updateDogProfileField("isFirstTimeOwner", event.target.value as DogProfile["isFirstTimeOwner"])}><option value="">選択してください</option><option value="yes">はい</option><option value="no">いいえ</option></select>{dogProfileErrors.isFirstTimeOwner && <small className="field-error" role="alert">{dogProfileErrors.isFirstTimeOwner}</small>}</label><label className={`field-label dog-profile-field ${dogProfileErrors.gender ? "has-error" : ""}`} data-dog-field="gender">性別 <span className="required-badge">必須</span><select className="onboarding-select" value={profile.gender} aria-invalid={Boolean(dogProfileErrors.gender)} onChange={(event) => updateDogProfileField("gender", event.target.value as DogProfile["gender"])}><option value="">選択してください</option><option value="male">男の子</option><option value="female">女の子</option><option value="unknown">不明・回答しない</option></select>{dogProfileErrors.gender && <small className="field-error" role="alert">{dogProfileErrors.gender}</small>}</label></div>
@@ -5134,7 +5162,7 @@ export default function Home() {
           <div className="admin-detail">
             <button className="admin-back" onClick={closeAdminCustomer}>← 担当顧客へ戻る</button>
             <section className="admin-detail-hero">
-              <div className={`admin-dog-avatar ${adminDetailDogProfile?.avatarUrl ? "has-image" : ""}`}>{adminDetailDogProfile?.avatarUrl ? <img src={adminDetailDogProfile.avatarUrl} alt="" /> : selectedAdminCustomer.dogName.slice(0, 1)}</div>
+              <div className={`admin-dog-avatar ${adminDetailDogProfile?.avatarUrl ? "has-image" : ""}`}>{adminDetailDogProfile?.avatarUrl ? <PrivateDogImage src={adminDetailDogProfile.avatarUrl} alt="" /> : selectedAdminCustomer.dogName.slice(0, 1)}</div>
               <div><p className="card-label">CUSTOMER DETAIL</p><h1>{selectedAdminCustomer.dogName}</h1><span>{selectedAdminCustomer.breed || "犬種未登録"} · 直近30日</span></div>
               {userRole === "admin" && <b className={selectedAdminCustomer.concerns7d > 0 ? "needs-care" : "stable"}>{selectedAdminCustomer.concerns7d > 0 ? "要確認" : "安定"}</b>}
             </section>
@@ -5399,7 +5427,7 @@ export default function Home() {
                 <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
               </div>
               <div className={`birthday-celebration-avatar ${profile.avatarUrl ? "has-image" : ""}`}>
-                {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : <span>{profile.name.slice(0, 1)}</span>}
+                {profile.avatarUrl ? <PrivateDogImage src={profile.avatarUrl} alt="" /> : <span>{profile.name.slice(0, 1)}</span>}
               </div>
               <p>HAPPY BIRTHDAY</p>
               <h2 id="birthday-celebration-title">{profile.name}ちゃん、<br />{dogBirthday.ageYears}歳おめでとう！</h2>

@@ -2,7 +2,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { NextRequest, NextResponse } from "next/server";
 import { authenticatedSupabase } from "@/lib/server/supabase";
-import { assertR2Configuration, R2ConfigurationError, r2BucketName, r2Client, r2PublicUrl } from "@/lib/r2";
+import { assertR2Configuration, R2ConfigurationError, r2BucketName, r2Client } from "@/lib/r2";
 
 export const runtime = "nodejs";
 
@@ -86,10 +86,11 @@ export async function POST(request: NextRequest) {
       Bucket: r2BucketName(),
       Key: key,
       ContentType: fileType,
-      CacheControl: "public, max-age=31536000, immutable",
+      ContentLength: fileSize,
+      CacheControl: "private, no-store",
     });
     const uploadUrl = await getSignedUrl(r2Client(), command, { expiresIn: 300 });
-    const publicUrl = `${r2PublicUrl()}/${key.split("/").map(encodeURIComponent).join("/")}`;
+    const publicUrl = `r2://${key}`;
     return NextResponse.json({ uploadUrl, publicUrl, key });
   } catch (error) {
     console.error("R2 presigned URL error", error);

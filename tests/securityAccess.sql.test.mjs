@@ -1,0 +1,70 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+const fixture=JSON.parse(await readFile(new URL('./fixtures/security-policies.json',import.meta.url),'utf8'));
+const migration=await readFile(new URL('../supabase/migrations/20261011145334_security_access_hardening.sql',import.meta.url),'utf8');
+const activation=await readFile(new URL('../supabase/migrations/20261011150823_private_media_activation.sql',import.meta.url),'utf8');
+const db=new PGlite();
+const ids=Array.from({length:7},(_,i)=>`00000000-0000-4000-8000-00000000000${i+1}`);
+const [owner,other,coach,unassigned,admin,dog,otherDog]=ids;
+await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;
+create schema auth;create schema storage;
+create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+grant usage on schema auth,storage to anon,authenticated,service_role;
+create table wt_user_roles(user_id uuid primary key,role text);
+create table wt_dogs(id uuid primary key,owner_id uuid);
+create table wt_coach_assignments(id uuid default gen_random_uuid(),coach_id uuid,owner_id uuid,dog_id uuid);
+create table wt_coach_messages(id uuid primary key default gen_random_uuid(),owner_id uuid,dog_id uuid,sender text,body text,media_key text,media_url text,media_type text,reply_to_message_id uuid);
+create table wt_daily_records(id uuid default gen_random_uuid(),owner_id uuid,dog_id uuid);
+create table wt_care_goals(id uuid default gen_random_uuid(),owner_id uuid,dog_id uuid);
+create table wt_care_goal_completions(id uuid default gen_random_uuid(),owner_id uuid,dog_id uuid,goal_id uuid);
+create table storage.objects(bucket_id text,name text);
+create table storage.buckets(id text primary key,public boolean);
+insert into storage.buckets values('dog-avatars',true),('coach-avatars',true);
+create function storage.foldername(text) returns text[] language sql immutable as $$select string_to_array($1,'/')$$;
+create policy "public read dog avatars" on storage.objects for select using(bucket_id='dog-avatars');
+alter table storage.objects enable row level security;
+grant select,insert,update,delete on all tables in schema public,storage to anon,authenticated,service_role;
+insert into wt_user_roles values('${owner}','owner'),('${other}','owner'),('${coach}','coach'),('${unassigned}','coach'),('${admin}','admin');
+insert into wt_dogs values('${dog}','${owner}'),('${otherDog}','${other}');
+insert into wt_coach_assignments(coach_id,owner_id,dog_id) values('${coach}','${owner}','${dog}');
+insert into wt_coach_messages(owner_id,dog_id,sender,body) values('${owner}','${dog}','owner','private A'),('${other}','${otherDog}','owner','private B');
+insert into storage.objects values('dog-avatars','${owner}/avatar.webp'),('dog-avatars','${other}/avatar.webp');`);
+for(const def of fixture.helpers)await db.exec(def);
+for(const p of fixture.policies){
+ await db.exec(`alter table public.${p.tablename} enable row level security;`);
+ const quote=s=>'"'+s.replaceAll('"','""')+'"';
+ await db.exec(`create policy ${quote(p.policyname)} on public.${p.tablename} for ${p.cmd} to ${p.roles.join(',')} ${p.qual?'using ('+p.qual+')':''} ${p.with_check?'with check ('+p.with_check+')':''};`);
+}
+await db.exec(migration);
+await db.exec(activation);
+assert.deepEqual((await db.query('select * from storage.buckets order by id')).rows,[{id:'coach-avatars',public:true},{id:'dog-avatars',public:false}]);
+const actor=async(id,role='authenticated')=>db.exec(`reset role;set role ${role};select set_config('request.jwt.claim.sub','${id}',false);`);
+await actor('', 'anon');
+await assert.rejects(db.query('select * from wt_coach_messages'),/permission denied/);
+await assert.rejects(db.query('select wt_is_admin()'),/permission denied/);
+await assert.rejects(db.query('select wt_guard_owned_dog_row()'),/permission denied/);
+for(const [id,expected]of [[owner,1],[other,1],[coach,1],[unassigned,0],[admin,2]]){
+ await actor(id);
+ assert.equal((await db.query('select * from wt_coach_messages')).rows.length,expected);
+ assert.equal((await db.query('select * from storage.objects')).rows.length,expected);
+}
+await actor(owner);
+for(const table of ['wt_daily_records','wt_care_goals','wt_care_goal_completions','wt_coach_messages']){
+ const extra=table==='wt_coach_messages'?",sender,body":'';
+ const values=table==='wt_coach_messages'?",'owner','test'":'';
+ await assert.rejects(db.exec(`insert into ${table}(owner_id,dog_id${extra}) values('${owner}','${otherDog}'${values})`),/dog does not belong/);
+}
+const key=`chat/${owner}/2026-10-11/photo.webp`;
+await db.query('insert into wt_coach_messages(owner_id,dog_id,sender,body,media_key,media_url,media_type) values($1,$2,$3,$4,$5,$6,$7)',[owner,dog,'owner','photo',key,'r2://'+key,'image']);
+await assert.rejects(db.query('insert into wt_coach_messages(owner_id,dog_id,sender,body,media_key,media_url,media_type) values($1,$2,$3,$4,$5,$6,$7)',[owner,dog,'owner','photo',key.replace(owner,other),'r2://'+key.replace(owner,other),'image']),/invalid attachment/);
+await assert.rejects(db.query('insert into wt_coach_messages(owner_id,dog_id,sender,body,media_key,media_url,media_type) values($1,$2,$3,$4,$5,$6,$7)',[owner,dog,'owner','photo',key,'javascript:alert(1)','image']),/invalid attachment/);
+await db.exec('reset role');const privateB=(await db.query("select id from wt_coach_messages where body='private B'")).rows[0].id;
+await actor(owner);
+await assert.rejects(db.query('insert into wt_coach_messages(owner_id,dog_id,sender,body,reply_to_message_id) values($1,$2,$3,$4,$5)',[owner,dog,'owner','quote',privateB]),/reply must belong/);
+assert.equal((await db.query("update wt_user_roles set role='admin' where user_id=$1 returning user_id",[owner])).rows.length,0,'owners cannot promote themselves');
+await actor(coach);
+await db.query('insert into wt_coach_messages(owner_id,dog_id,sender,body) values($1,$2,$3,$4)',[owner,dog,'coach','reply']);
+await assert.rejects(db.query('insert into wt_coach_messages(owner_id,dog_id,sender,body) values($1,$2,$3,$4)',[other,otherDog,'coach','unauthorized']),/row-level security|dog does not belong/);
+await actor(admin);assert.equal((await db.query('select wt_is_admin() as yes')).rows[0].yes,true);
+await db.close();console.log('Security SQL: anonymous denied; owner/assigned coach/admin reads preserved; foreign dog, attachment key, unsafe URL, cross-conversation reply and self-promotion rejected.');

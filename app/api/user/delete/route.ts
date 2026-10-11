@@ -2,6 +2,7 @@ import { DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { NextRequest, NextResponse } from "next/server";
 import { r2BucketName, r2Client, R2ConfigurationError } from "@/lib/r2";
 import { authenticatedUser, serviceSupabase } from "@/lib/server/supabase";
+import { validChatMediaKey } from "@/lib/media-security";
 
 export const runtime = "nodejs";
 
@@ -81,7 +82,7 @@ export async function DELETE(request: NextRequest) {
     ]);
     const conversationKeys = (mediaRows ?? [])
       .map((row) => typeof row.media_key === "string" ? row.media_key : "")
-      .filter(Boolean);
+      .filter(validChatMediaKey);
     await deleteR2Keys([...new Set([...ownedUploadKeys, ...conversationKeys])]);
   } catch (error) {
     console.error("[Account deletion] storage cleanup failed", { userId: user.id, error });
