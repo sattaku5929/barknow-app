@@ -3685,11 +3685,11 @@ export default function Home() {
     return () => { active = false; };
   }, [profile.id, connection, eventRefresh, view]);
 
-  function startEvent(theme: EventTheme) {
-    setRecordCategory(null); setEditingEvent(null); setEventTheme(theme); navigateOwnerView("record");
+  function startEvent(theme: EventTheme, destination: View = "record") {
+    setRecordCategory(null); setEditingEvent(null); setEventTheme(theme); navigateOwnerView(destination);
   }
-  function editEvent(entry: ObservationEvent) {
-    setRecordCategory(null); setEditingEvent(entry); setEventTheme(entry.themeKey); navigateOwnerView("record");
+  function editEvent(entry: ObservationEvent, destination: View = "record") {
+    setRecordCategory(null); setEditingEvent(entry); setEventTheme(entry.themeKey); navigateOwnerView(destination);
   }
 
   async function saveRecord(event: FormEvent<HTMLFormElement>) {
@@ -4238,7 +4238,7 @@ export default function Home() {
       )}
 
       <section className="home-v3-summary" aria-label="今日のサマリー">
-        <button onClick={() => openNewRecord()}>
+        <button onClick={() => document.getElementById("home-event-log")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
           <span className="home-v3-summary-icon is-log"><NavGlyph name="record" /></span>
           <span><small>今日のできごと</small><strong>{eventStatus === "ready" ? todayEvents.length : "—"}<em>LOG</em></strong></span>
           <b aria-hidden="true">›</b>
@@ -4270,17 +4270,17 @@ export default function Home() {
       <HomeCareGroups key={`home-care:${profile.id ?? "no-dog"}`} goals={careGoals} templates={CARE_GOAL_TEMPLATES} editable={connection === "online" && !!profile.id} progress={goalProgress} onComplete={async (goal) => { await completeCareGoal(goal); setCalendarRefresh(value => value + 1); }} onUndo={undoHomeCareGoal} onCreate={createHomeCareGoal} onCountChange={changeHomeCareCount} onIconChange={changeHomeCareIcon} onRemove={removeHomeCareGoal} icon={(goal) => <CareIcon name={goal.goalType} />} />
       <HomeCalendar key={`home-calendar:${profile.id ?? "no-dog"}`} dogId={profile.id} dogName={dogName} birthday={profile.birthday} online={connection === "online"} today={today()} refreshToken={`${eventRefresh}:${checkRefresh}:${calendarRefresh}:${records.length}`} onRecord={(date, kind, note) => { openNewRecord(kind); setRecordDate(date); if (kind === "win") setGoodMoment(note ?? ""); }} />
 
-      <section className="home-v3-shortcuts" aria-label="ショートカット">
-        <button onClick={() => openNewRecord()} disabled={connection !== "online" || !profile.id}>
-          <span className="home-v3-shortcut-icon"><NavGlyph name="report" /></span>
-          <span><small>QUICK LOG</small><strong>今日のできごとを残す</strong><em>散歩・食事・トイレ・睡眠など</em></span>
-          <b aria-hidden="true">›</b>
-        </button>
-        <button onClick={() => navigateOwnerView("coach")}>
-          <span className="home-v3-shortcut-icon"><NavGlyph name="coach" /></span>
-          <span><small>COACH</small><strong>コーチに相談する</strong><em>気になることをそのまま相談</em></span>
-          <b aria-hidden="true">›</b>
-        </button>
+      <section id="home-event-log" className="home-v3-event-log" aria-labelledby="home-event-log-title">
+        <header><span className="card-label">QUICK LOG</span><h2 id="home-event-log-title">今日のできごとを残す</h2></header>
+        {eventTheme ? <ObservationEventForm key={`home:${profile.id}:${editingEvent?.id ?? eventTheme}`} dogId={profile.id} theme={eventTheme} editing={editingEvent}
+          online={connection === "online"} onBack={() => { setEventTheme(null); setEditingEvent(null); }}
+          onSaved={() => { setEventRefresh(current => current + 1); setEventTheme(null); setEditingEvent(null); showNotice("記録しました"); }} />
+          : <>
+            {eventStatus === "unavailable" && <p className="observation-error" role="alert">できごとを読み込めませんでした。画面を開き直してください。</p>}
+            <ObservationEventHub selectedThemes={eventThemesSelected} events={todayEvents} compact
+              onSelect={theme => startEvent(theme, "home")} onEdit={entry => editEvent(entry, "home")}
+              disabled={connection !== "online" || !profile.id || eventStatus !== "ready"} />
+          </>}
       </section>
 
       {appVisitStats && (
