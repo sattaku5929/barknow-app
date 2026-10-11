@@ -26,7 +26,7 @@ import OwnerHomeScene from "@/components/owner/illustrations/OwnerHomeScene";
 import OwnerRecordScene from "@/components/owner/illustrations/OwnerRecordScene";
 import OwnerReportScene from "@/components/owner/illustrations/OwnerReportScene";
 import { deviceLocalDate, deviceLocalTime, loadDailyCheck } from "@/lib/observations/dailyCheck";
-import { loadEventThemes, loadEvents } from "@/lib/observations/observationEvent";
+import { eventThemes, loadEventThemes, loadEvents } from "@/lib/observations/observationEvent";
 import type { EventTheme, ObservationEvent } from "@/lib/observations/observationEvent";
 import { supabase } from "./supabase";
 
@@ -40,7 +40,7 @@ type UserRole = "owner" | "coach" | "admin";
 type AuthMode = "login" | "signup";
 type CoachingStatus = "submitted" | "offered" | "assigned" | "consulting" | "payment_pending" | "active" | "closed";
 type AdminTab = "applications" | "customers" | "accounts" | "schedule" | "coachProfile";
-type SettingsPanel = "menu" | "profile" | "owner" | "household" | "disclaimer" | "terms" | "privacy";
+type SettingsPanel = "menu" | "profile" | "profile-edit" | "owner" | "household" | "disclaimer" | "terms" | "privacy";
 
 type DogProfile = {
   id?: string;
@@ -1158,6 +1158,7 @@ export default function Home() {
   const [appVisitStats, setAppVisitStats] = useState<{ totalDays: number; currentStreak: number } | null>(null);
   const [connection, setConnection] = useState<Connection>("checking");
   const [profile, setProfile] = useState<DogProfile>(initialProfile);
+  const profileBeforeEditRef = useRef<DogProfile | null>(null);
   const dogBirthday = useMemo(() => dogBirthdayStats(profile.birthday), [profile.birthday]);
   const [dogProfileErrors, setDogProfileErrors] = useState<DogProfileErrors>({});
   const [ownerProfile, setOwnerProfile] = useState<OwnerProfile>(initialOwnerProfile);
@@ -1318,6 +1319,11 @@ export default function Home() {
   }
 
   function navigateOwnerView(nextView: View) {
+    if (nextView !== "profile" && profileBeforeEditRef.current) {
+      setProfile(profileBeforeEditRef.current);
+      profileBeforeEditRef.current = null;
+      setSettingsPanel("profile");
+    }
     if (nextView === view) return;
     if (nextView === "home") {
       returnToOwnerHome();
@@ -1337,6 +1343,24 @@ export default function Home() {
     if (nextPanel === settingsPanel) return;
     pushAppHistory({ kind: "settings-panel", nextPanel, previousPanel: settingsPanel });
     setSettingsPanel(nextPanel);
+  }
+
+  function beginDogProfileEdit() {
+    profileBeforeEditRef.current = { ...profile };
+    navigateSettingsPanel("profile-edit");
+    scrollOwnerPageToTop();
+  }
+
+  function cancelDogProfileEdit() {
+    if (profileBeforeEditRef.current) {
+      setProfile(profileBeforeEditRef.current);
+      writeLocal(PROFILE_KEY, profileBeforeEditRef.current);
+    }
+    profileBeforeEditRef.current = null;
+    setDogProfileErrors({});
+    setEventRefresh(current => current + 1);
+    closeAppHistoryLayer("settings-panel", () => setSettingsPanel("profile"));
+    scrollOwnerPageToTop();
   }
 
   const closeSettingsPanel = useCallback(() => {
@@ -1399,7 +1423,7 @@ export default function Home() {
     const initialUrl = new URL(window.location.href);
     const initialHash = initialUrl.hash.replace(/^#wan-tone-/, "");
     const validViews: View[] = ["home", "goals", "record", "report", "coach", "profile"];
-    const validPanels: SettingsPanel[] = ["menu", "profile", "owner", "household", "disclaimer", "terms", "privacy"];
+    const validPanels: SettingsPanel[] = ["menu", "profile", "profile-edit", "owner", "household", "disclaimer", "terms", "privacy"];
 
     if (validViews.includes(initialHash as View)) {
       setView(initialHash as View);
@@ -1427,6 +1451,11 @@ export default function Home() {
           setView(opening ? layer.nextView : layer.previousView);
           break;
         case "settings-panel":
+          if (!opening && layer.nextPanel === "profile-edit" && profileBeforeEditRef.current) {
+            setProfile(profileBeforeEditRef.current);
+            profileBeforeEditRef.current = null;
+            setEventRefresh(current => current + 1);
+          }
           setSettingsPanel(opening ? layer.nextPanel : layer.previousPanel);
           break;
         case "coach-tab":
@@ -2960,6 +2989,7 @@ export default function Home() {
   async function uploadDogAvatar(file: File) {
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) return showNotice("JPEG・PNG・WebP画像を選んでください");
     if (file.size > 8 * 1024 * 1024) return showNotice("画像は8MB以下にしてください");
+    if (settingsPanel === "profile-edit" && !profileBeforeEditRef.current) profileBeforeEditRef.current = { ...profile };
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) return showNotice("ログイン情報を確認できませんでした");
     setSaving(true);
@@ -2973,6 +3003,7 @@ export default function Home() {
       if (profile.id) {
         const { error: profileError } = await supabase.from("wt_dogs").update({ avatar_url: publicUrl, updated_at: new Date().toISOString() }).eq("id", profile.id).eq("owner_id", userData.user.id);
         if (profileError) throw profileError;
+        if (profileBeforeEditRef.current) profileBeforeEditRef.current = { ...profileBeforeEditRef.current, avatarUrl: publicUrl };
       }
       const nextProfile = { ...profile, avatarUrl: publicUrl };
       setProfile(nextProfile);
@@ -3256,6 +3287,7 @@ export default function Home() {
   }
 
   function updateDogProfileField<K extends DogProfileField>(field: K, value: DogProfile[K]) {
+    if (settingsPanel === "profile-edit" && !profileBeforeEditRef.current) profileBeforeEditRef.current = { ...profile };
     const nextProfile = { ...profile, [field]: value } as DogProfile;
     setProfile(nextProfile);
     setDogProfileErrors((current) => {
@@ -3380,7 +3412,10 @@ export default function Home() {
       setDogProfileErrors({});
       setConnection("online");
       showNotice("愛犬プロフィールを保存しました");
-      closeSettingsPanel();
+      profileBeforeEditRef.current = null;
+      setEventRefresh(current => current + 1);
+      closeAppHistoryLayer("settings-panel", () => setSettingsPanel("profile"));
+      scrollOwnerPageToTop();
     } catch (error) {
       console.error("[Dog profile] save failed", { error });
       showNotice("愛犬プロフィールを保存できませんでした。通信状況を確認して、もう一度お試しください。");
@@ -4735,9 +4770,35 @@ export default function Home() {
     </section>
   );
 
+  const profileSummaryView = (
+    <section className="screen-form settings-profile-editor dog-profile-summary" aria-labelledby="dog-profile-summary-title">
+      <button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
+      <div className="dog-profile-summary-heading"><div><span className="card-label">DOG PROFILE</span><h1 id="dog-profile-summary-title">愛犬プロフィール</h1><p>登録した情報を確認できます。</p></div>
+        <button type="button" className="dog-profile-edit-button" onClick={beginDogProfileEdit}>{profile.id ? "編集" : "登録する"}</button>
+      </div>
+      <div className="dog-profile-summary-avatar">{profile.avatarUrl ? <img src={profile.avatarUrl} alt={`${profile.name || "愛犬"}のプロフィール画像`} /> : <CareIcon name="paws" />}<div><h2>{profile.name || "愛犬は未登録です"}</h2><p>{profile.breed || "犬種は未登録"}{ageLabel(profile.birthday) ? ` · ${ageLabel(profile.birthday)}` : ""}</p></div></div>
+      <section className="profile-form-section"><h2>基本情報</h2><dl className="dog-profile-facts">
+        <div><dt>名前</dt><dd>{profile.name || "未登録"}</dd></div>
+        <div><dt>犬種</dt><dd>{profile.breed || "未登録"}</dd></div>
+        <div><dt>誕生日</dt><dd>{profile.birthday ? profile.birthday.replaceAll("-", "/") : "未登録"}</dd></div>
+        <div><dt>性別</dt><dd>{dogGenderLabel(profile.gender)}</dd></div>
+      </dl></section>
+      <section className="profile-form-section"><h2>暮らし・トレーニング</h2><dl className="dog-profile-facts">
+        <div><dt>犬を飼うのは初めて？</dt><dd>{profile.isFirstTimeOwner === "yes" ? "はい" : profile.isFirstTimeOwner === "no" ? "いいえ" : "未登録"}</dd></div>
+        <div><dt>しつけトレーニングの経験回数</dt><dd>{trainingExperienceLabel(profile.trainingExperience)}</dd></div>
+        <div><dt>保育園への頻度</dt><dd>{profile.daycareFrequency || "未登録"}</dd></div>
+        <div><dt>散歩の頻度</dt><dd>{profile.walkFrequency || "未登録"}</dd></div>
+      </dl></section>
+      <section className="profile-form-section"><h2>主な悩み・気になっていること</h2><p className="dog-profile-concerns">{profile.concerns || "未登録"}</p></section>
+      <section className="profile-form-section"><h2>観察テーマ</h2><p className="dog-profile-themes-note">ホームのQuick Logに表示されるテーマです。</p>
+        {eventStatus === "loading" ? <p role="status">読み込んでいます…</p> : eventStatus === "unavailable" ? <p role="alert">観察テーマを読み込めませんでした。画面を開き直してください。</p> : eventThemesSelected.length ? <ul className="dog-profile-theme-list">{eventThemesSelected.map(key => <li key={key}>{eventThemes.find(theme => theme.key === key)?.label ?? key}</li>)}</ul> : <p>観察テーマは未選択です。「編集」から選べます。</p>}
+      </section>
+    </section>
+  );
+
   const profileEditorView = (
     <form className="screen-form settings-profile-editor" noValidate onSubmit={saveDogProfile}>
-      <button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
+      <button type="button" className="settings-back" disabled={saving || observationThemesSaving} onClick={cancelDogProfileEdit}>← プロフィールに戻る</button>
       <SectionTitle eyebrow="DOG PROFILE" title="愛犬プロフィール" />
       <p className="lead">写真や暮らしの変化に合わせて、いつでも更新できます。</p>
       {Object.keys(dogProfileErrors).length > 0 && <p className="dog-profile-error-summary" role="alert">入力内容を確認してください。赤く表示された必須項目を修正してください。</p>}
@@ -4753,9 +4814,9 @@ export default function Home() {
         <label className={`field-label dog-profile-field ${dogProfileErrors.walkFrequency ? "has-error" : ""}`} data-dog-field="walkFrequency">散歩の頻度 <span className="required-badge">必須</span><select value={profile.walkFrequency} aria-invalid={Boolean(dogProfileErrors.walkFrequency)} onChange={(event) => updateDogProfileField("walkFrequency", event.target.value)}><option value="">選択してください</option><option>ほとんど行かない</option><option>週に数回</option><option>毎日1回</option><option>毎日2回</option><option>毎日3回以上</option></select>{dogProfileErrors.walkFrequency && <small className="field-error" role="alert">{dogProfileErrors.walkFrequency}</small>}</label>
         <label className={`field-label dog-profile-field ${dogProfileErrors.concerns ? "has-error" : ""}`} data-dog-field="concerns">主な悩み・気になっていること <span className="required-badge">必須</span><textarea rows={5} value={profile.concerns} aria-invalid={Boolean(dogProfileErrors.concerns)} onChange={(event) => updateDogProfileField("concerns", event.target.value)} placeholder="例：散歩中に犬を見ると吠える。来客時に落ち着けない。" />{dogProfileErrors.concerns && <small className="field-error" role="alert">{dogProfileErrors.concerns}</small>}</label>
       </section>
-      <ObservationThemeSelector dogId={profile.id} online={connection === "online"} />
+      <ObservationThemeSelector dogId={profile.id} online={connection === "online"} onSavingChange={setObservationThemesSaving} />
       <div className="privacy-card"><strong>記録について</strong><p>登録した情報は、あなたと担当コーチのサポートのために使用します。共有範囲は今後プロフィールから管理できるようにします。</p></div>
-      <button className="primary-button" disabled={saving}>{saving ? "保存中…" : "愛犬プロフィールを保存"}<span>→</span></button>
+      <button className="primary-button" disabled={saving || observationThemesSaving}>{saving || observationThemesSaving ? "保存中…" : "愛犬プロフィールを保存"}<span>→</span></button>
     </form>
   );
 
@@ -4777,7 +4838,7 @@ export default function Home() {
     </form>
   );
 
-  const settingsDocuments: Record<Exclude<SettingsPanel, "menu" | "profile" | "owner" | "household">, { eyebrow: string; title: string; sections: Array<{ heading: string; body: string }> }> = {
+  const settingsDocuments: Record<Exclude<SettingsPanel, "menu" | "profile" | "profile-edit" | "owner" | "household">, { eyebrow: string; title: string; sections: Array<{ heading: string; body: string }> }> = {
     disclaimer: {
       eyebrow: "DISCLAIMER",
       title: "免責事項",
@@ -4807,7 +4868,7 @@ export default function Home() {
     },
   };
 
-  const settingsDocumentView = settingsPanel !== "menu" && settingsPanel !== "profile" && settingsPanel !== "owner" && settingsPanel !== "household" ? (
+  const settingsDocumentView = settingsPanel !== "menu" && settingsPanel !== "profile" && settingsPanel !== "profile-edit" && settingsPanel !== "owner" && settingsPanel !== "household" ? (
     <section className="settings-document">
       <button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
       <p className="card-label">{settingsDocuments[settingsPanel].eyebrow}</p>
@@ -4850,7 +4911,7 @@ export default function Home() {
       <section className="settings-group" aria-labelledby="settings-family-title">
         <p className="settings-group-label" id="settings-family-title">プロフィールと暮らし</p>
         <div className="settings-list">
-          <button type="button" onClick={() => navigateSettingsPanel("profile")}><span className="settings-row-icon"><SettingsGlyph name="dog" /></span><span><strong>愛犬プロフィール管理</strong><small>画像・基本情報・生活リズムを編集</small></span><i aria-hidden="true">›</i></button>
+          <button type="button" onClick={() => navigateSettingsPanel("profile")}><span className="settings-row-icon"><SettingsGlyph name="dog" /></span><span><strong>愛犬プロフィール管理</strong><small>登録した情報を確認・編集</small></span><i aria-hidden="true">›</i></button>
           <button type="button" onClick={() => navigateSettingsPanel("owner")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>飼い主情報</strong><small>氏名・連絡先・住所を確認、変更</small></span><i aria-hidden="true">›</i></button>
           <button type="button" onClick={() => navigateSettingsPanel("household")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>家族・お世話する人</strong><small>できごとの担当者を登録・編集</small></span><i aria-hidden="true">›</i></button>
           <div className="settings-notification-row"><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>通知</strong><small>{isSubscribed ? "新着メッセージを通知します" : permissionStatus === "denied" ? "端末の設定で通知が拒否されています" : "新着メッセージ通知はオフです"}</small></span><button type="button" className={`settings-toggle ${isSubscribed ? "is-on" : ""}`} role="switch" aria-checked={isSubscribed} aria-label={`通知を${isSubscribed ? "オフ" : "オン"}にする`} disabled={pushBusy || subscriptionStatus === "checking" || subscriptionStatus === "unsupported"} onClick={() => void (isSubscribed ? disablePushNotifications() : enablePushNotifications())}><i></i></button></div>
@@ -4886,7 +4947,7 @@ export default function Home() {
 
   const householdView = <section className="screen-form settings-profile-editor"><button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
     <SectionTitle eyebrow="HOUSEHOLD" title="家族・お世話する人" /><HouseholdMemberManager online={connection === "online"} /></section>;
-  const profileView = settingsPanel === "menu" ? settingsMenuView : settingsPanel === "profile" ? profileEditorView : settingsPanel === "owner" ? ownerProfileEditorView : settingsPanel === "household" ? householdView : settingsDocumentView;
+  const profileView = settingsPanel === "menu" ? settingsMenuView : settingsPanel === "profile" ? profileSummaryView : settingsPanel === "profile-edit" ? profileEditorView : settingsPanel === "owner" ? ownerProfileEditorView : settingsPanel === "household" ? householdView : settingsDocumentView;
 
   const onboardingView = (
     <div className="onboarding-stage">
