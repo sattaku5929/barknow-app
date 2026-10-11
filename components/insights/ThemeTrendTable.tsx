@@ -1,11 +1,13 @@
+import type { ReactNode } from "react";
 import { eventResultLabels, themeLabel } from "@/lib/insights/presentation";
 import type { ThemeTrend } from "@/lib/insights/trendTypes";
 import styles from "./ThemeTrendTable.module.css";
 
 const results = ["success", "neutral", "concern"] as const;
 
-export default function ThemeTrendTable({ trends }: {
+export default function ThemeTrendTable({ trends, children }: {
   trends: ThemeTrend[];
+  children?: ReactNode;
 }) {
   return <div className={styles.panel}>
     <div className={styles.legend} aria-label="できごとの評価">
@@ -36,5 +38,6 @@ export default function ThemeTrendTable({ trends }: {
       })}</tbody>
     </table>
     <p className={styles.note}>棒は割合、数字は件数です。</p>
+    {children}
   </div>;
 }

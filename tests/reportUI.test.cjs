@@ -132,6 +132,7 @@ assert.equal(visibleCharts[0].node.props.days, reportDailyDays, "previous-week d
 assert.ok(visibleCharts[0].parents.every(parent => parent.type !== "details"), "Daily Check chart is in the initial summary, outside disclosures");
 const moreButtons = findNodes(reportTree, node => node.type === "button" && node.props["aria-label"] === "詳しく見る、直近7日間の全テーマの記録");
 assert.equal(moreButtons.length, 1);
+assert.ok(moreButtons[0].parents.some(parent => parent.type?.name === "ThemeTrendTable"), "details action stays inside the event table panel");
 moreButtons[0].node.props.onClick();
 assert.deepEqual(selection, { title: "最近のできごと", filter: { period: "current" }, daily: false }, "one details button opens all themes, not a single-theme filter");
 const summaryNode = findNodes(reportTree, node => node.type?.name === "InsightDashboardSummary")[0].node;
