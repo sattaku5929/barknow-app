@@ -1,0 +1,119 @@
+{
+  "project": "bkihicvavawchnkdhynj",
+  "at": "2026-10-11T12:20:00Z",
+  "snapshot": {
+    "auth": {
+      "count": 6,
+      "digest": "e78d1e067fc33e8573702756c3123b37"
+    },
+    "data": [
+      {
+        "name": "push_subscriptions",
+        "count": 0,
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "name": "wt_calendar_events",
+        "count": 12,
+        "digest": "b1f13dfd8eda79fe519871ed551af0c6"
+      },
+      {
+        "name": "wt_care_goal_completions",
+        "count": 43,
+        "digest": "262d04a60d22af1e5c7b6267720b68e3"
+      },
+      {
+        "name": "wt_care_goals",
+        "count": 19,
+        "digest": "093591162a40fe0948fc547159de5659"
+      },
+      {
+        "name": "wt_coach_assignments",
+        "count": 1,
+        "digest": "56fb3d6d942fa1188b89c3b38d6b3e0a"
+      },
+      {
+        "name": "wt_coach_messages",
+        "count": 33,
+        "digest": "d662301a5cfbe16be66474d32f97c360"
+      },
+      {
+        "name": "wt_coach_profiles",
+        "count": 1,
+        "digest": "6d0740155bd2d129388971a8e2161659"
+      },
+      {
+        "name": "wt_coaching_applications",
+        "count": 2,
+        "digest": "47a8c49f769f1d3bf01148f2d6a56b84"
+      },
+      {
+        "name": "wt_daily_checks",
+        "count": 7,
+        "digest": "eb74f92af9274b94b5723dcc8bd51d90"
+      },
+      {
+        "name": "wt_daily_records",
+        "count": 8,
+        "digest": "09b9abe9a8e9d433da0f4023749b8575"
+      },
+      {
+        "name": "wt_dog_observation_themes",
+        "count": 6,
+        "digest": "4b23695a345c31b681ad358847e109d9"
+      },
+      {
+        "name": "wt_dogs",
+        "count": 4,
+        "digest": "c07109e13e51e5ec5602564f27934ed1"
+      },
+      {
+        "name": "wt_household_members",
+        "count": 6,
+        "digest": "e6fdbaee5e464126386f63ed5888600d"
+      },
+      {
+        "name": "wt_notifications",
+        "count": 6,
+        "digest": "bb0d0ed95fc3816c8cbd6ae88b266174"
+      },
+      {
+        "name": "wt_observation_entries",
+        "count": 24,
+        "digest": "6fa587dfe9516c501d429b7c64623b27"
+      },
+      {
+        "name": "wt_observation_events",
+        "count": 17,
+        "digest": "ff5d2b3b2ef997955ed0f450902a4262"
+      },
+      {
+        "name": "wt_online_sessions",
+        "count": 0,
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "name": "wt_owner_profiles",
+        "count": 3,
+        "digest": "15560d10e21aa927861ce78ae243cd68"
+      },
+      {
+        "name": "wt_subscriptions",
+        "count": 0,
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "name": "wt_user_roles",
+        "count": 6,
+        "digest": "81f27d8087e6d21d61fb7969df316287"
+      }
+    ],
+    "policies": "67d25f56a957e00484793ae17f2ee843",
+    "functions": "97055708a3340b9fe9d6753b96990a81",
+    "auth_trigger": "670a71e1f7a87128020696293b041097"
+  },
+  "schema": {
+    "columns": "d4a85c38f101e6c63e69afeec84edb33",
+    "table_grants": "a8fe6f5cb66ec542c8a3f6c5b2a75b23"
+  }
+}
