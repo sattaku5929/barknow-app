@@ -5453,7 +5453,7 @@ export default function Home() {
     </div>
   );
 
-  if (!authReady) return <div className="auth-loading"><span className="loading-paw"><CareIcon name="paws" /></span><p>うちの子の記録を開いています…</p></div>;
+  if (!authReady) return <div className="auth-loading"><span className="loading-paw"><CareIcon name="paws" /></span><p>{currentUserId && profile.name.trim() ? `${profile.name.trim()}の記録を開いています…` : "記録を開いています…"}</p></div>;
   if (!authenticated || anonymousUser) return authView;
   if (userRole === "owner" && onboardingRequired) return onboardingView;
   if ((userRole === "coach" || userRole === "admin") && staffMode === "staff") return adminView;
