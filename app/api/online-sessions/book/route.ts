@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const { data: userData, error: userError } = await client.auth.getUser(token);
     if (userError || !userData.user) return NextResponse.json({ error: "ログインの有効期限が切れました。再度ログインしてください" }, { status: 401 });
 
-    const body = await request.json().catch(() => null) as { applicationId?: string; slotId?: string; sessionType?: "initial" | "followup" } | null;
+    const body = await request.json().catch(() => null) as { applicationId?: string; slotId?: string; sessionType?: "initial" | "followup"; allowGoogleConflict?: boolean } | null;
     if (!body?.applicationId || !body.slotId || !body.sessionType) return NextResponse.json({ error: "予約情報が不足しています" }, { status: 400 });
 
     // Active slots are readable by authenticated users through RLS. Using the
@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
 
     try {
       const busy = await googleBusyRanges(slot.coach_id, slot.starts_at, slot.ends_at);
-      if (busy.some((range) => new Date(range.start) < new Date(slot.ends_at) && new Date(range.end) > new Date(slot.starts_at))) {
-        return NextResponse.json({ error: "Google Calendarに予定があるため、この枠は利用できません" }, { status: 409 });
+      if (body.allowGoogleConflict !== true && busy.some((range) => new Date(range.start) < new Date(slot.ends_at) && new Date(range.end) > new Date(slot.starts_at))) {
+        return NextResponse.json({ error: "担当コーチのGoogleカレンダーに重なる予定があります。この時間で予約を続けますか？", code: "GOOGLE_CALENDAR_CONFLICT" }, { status: 409 });
       }
     } catch {
       // The app database remains authoritative if Google is temporarily unavailable.

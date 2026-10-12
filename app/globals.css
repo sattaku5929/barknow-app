@@ -1523,6 +1523,14 @@ body { font-size: 16px; }
   .coach-offer-actions { grid-template-columns:1fr; }
 }
 .admin-main { width:min(100%,960px); max-width:100%; min-width:0; margin:auto; overflow-x:hidden; overflow-x:clip; padding:30px 20px 60px; }
+.staff-booking-detail { scroll-margin-top:90px; overflow-wrap:anywhere; }
+.staff-booking-detail:focus { outline:2px solid var(--green); outline-offset:3px; }
+.staff-booking-detail dl > div { display:grid; grid-template-columns:90px minmax(0,1fr); gap:12px; margin:12px 0; font-size:13px; }
+.staff-booking-detail dt { color:var(--muted); }
+.staff-booking-detail dd { margin:0; }
+.staff-booking-meet { margin:18px 0; padding:16px; border-radius:14px; background:var(--mint); }
+.staff-booking-meet a { display:inline-block; padding:10px 0; color:var(--green-dark); font-weight:750; }
+.staff-booking-meet p { margin:4px 0 0; font-size:12px; }
 .admin-main > *,.staff-booking-workspace > *,.schedule-toolbar > *,.schedule-calendar,.schedule-calendar > * { min-width:0; max-width:100%; box-sizing:border-box; }
 .admin-welcome { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; padding:25px; border-radius:24px; background:linear-gradient(145deg,#174f3e,#087155); color:#fff; }
 .admin-welcome .card-label { color:rgba(255,255,255,.62); }
