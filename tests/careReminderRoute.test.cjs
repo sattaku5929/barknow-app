@@ -2,18 +2,19 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),ts=require('typescript');
 const code=ts.transpileModule(fs.readFileSync(require('node:path').join(__dirname,'../app/api/care/reminders/route.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 const id='00000000-0000-4000-8000-000000000001',token='00000000-0000-4000-8000-000000000002';
-function harness({claimed=true,delivery='sent',pushError=false,claimError=false,finishError=false}={}){
+function harness({claimed=true,delivery='sent',pushError=false,claimError=false,finishError=false,configured=true}={}){
   const state={claims:[],pushes:[],updates:[]},routeModule={exports:{}};
   const job={id,goal_id:'goal-id',owner_id:'owner-id',dog_id:'dog-id',reminder_on:'2026-10-12',title:'歯磨き',dog_name:'愛犬',claim_token:token};
   const admin={rpc:async(name,args)=>{state.claims.push({name,args});return {data:claimed?[job]:[],error:claimError?{}:null};},from:()=>({update:values=>{
     const filters=[];state.updates.push({values,filters});return {eq:(key,value)=>{filters.push([key,value]);return {eq:async(key,value)=>{filters.push([key,value]);return {error:finishError&&!!values.finished_at?{}:null};}};}};
   }})};
-  new Function('require','module','exports','console',code)(name=>name==='next/server'?{NextResponse:{json:(body,init)=>({body,status:init?.status??200})}}:name==='@/lib/pushSender'?{sendPushNotification:async(...args)=>{state.pushes.push(args);if(pushError)throw Error('secret');return delivery;}}:{serviceSupabase:()=>admin},routeModule,routeModule.exports,{error(){}});
+  new Function('require','module','exports','console','process',code)(name=>name==='next/server'?{NextResponse:{json:(body,init)=>({body,status:init?.status??200})}}:name==='@/lib/pushSender'?{sendPushNotification:async(...args)=>{state.pushes.push(args);if(pushError)throw Error('secret');return delivery;}}:{serviceSupabase:()=>admin},routeModule,routeModule.exports,{error(){}},{env:configured?{NEXT_PUBLIC_VAPID_PUBLIC_KEY:'test-public',VAPID_PRIVATE_KEY:'test-private'}:{}});
   return {state,post:(auth=`Bearer ${token}`,jobId=id)=>routeModule.exports.POST({headers:{get:()=>auth},json:async()=>({jobId,owner_id:'forged-owner',title:'forged-title'})})};
 }
 (async()=>{
   let h=harness();assert.equal((await h.post('')).status,401);assert.equal(h.state.claims.length,0);
   assert.equal((await h.post(undefined,'invalid')).status,400);
+  h=harness({configured:false});assert.equal((await h.post()).status,503);assert.equal(h.state.claims.length,0,'Missing push keys must not consume delivery attempts');
   h=harness();assert.equal((await h.post()).status,200);
   assert.deepEqual(h.state.claims[0],{name:'wt_claim_care_reminder',args:{target_job_id:id,target_delivery_token:token}});
   assert.deepEqual(h.state.pushes[0],['owner-id','WanTone｜毎日やること','愛犬の「歯磨き」の時間です。','/?view=goals',{kind:'care',tag:'care-goal-id-2026-10-12'}]);

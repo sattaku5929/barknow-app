@@ -10,6 +10,9 @@ export async function POST(request: NextRequest) {
   if (!uuid.test(token)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const input = await request.json().catch(() => null) as { jobId?: string } | null;
   if (!uuid.test(input?.jobId ?? "")) return NextResponse.json({ error: "Invalid job" }, { status: 400 });
+  if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+    return NextResponse.json({ error: "Notification unavailable" }, { status: 503 });
+  }
 
   try {
     const admin = serviceSupabase();
