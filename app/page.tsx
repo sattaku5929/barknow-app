@@ -4789,11 +4789,10 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="owner-coach-panel owner-chat-panel" role="tabpanel" aria-label="チャット">
-                  {subscriptionStatus !== "checking" && subscriptionStatus !== "unsupported" && (
-                    <section className={`chat-push-card ${isSubscribed ? "is-enabled" : ""}`} aria-live="polite">
-                      <div><strong>{isSubscribed ? "通知は有効です" : "新着メッセージを見逃さないために"}</strong><p>{isSubscribed ? "この端末で新着メッセージを受け取れます。" : "担当コーチからメッセージが届いたら、この端末へお知らせします。"}</p></div>
-                      {!isSubscribed && <button type="button" disabled={pushBusy} onClick={() => void enablePushNotifications()}>{pushBusy ? "設定中…" : "新着メッセージの通知をONにする"}</button>}
-                      {isSubscribed && <span><i aria-hidden="true">✓</i> ON</span>}
+                  {subscriptionStatus === "unsubscribed" && (
+                    <section className="chat-push-card" aria-live="polite">
+                      <div><strong>新着メッセージを見逃さないために</strong><p>担当コーチからメッセージが届いたら、この端末へお知らせします。</p></div>
+                      <button type="button" disabled={pushBusy} onClick={() => void enablePushNotifications()}>{pushBusy ? "設定中…" : "新着メッセージの通知をONにする"}</button>
                     </section>
                   )}
                   <div className="message-list" aria-live="polite" ref={ownerMessageListRef}>
