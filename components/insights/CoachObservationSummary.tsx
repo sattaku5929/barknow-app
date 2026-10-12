@@ -23,7 +23,7 @@ const outcomeLabels: Record<string, string> = { no_reaction: "反応しなかっ
 const targetLabels: Record<string, string> = { dog: "犬", person: "人", sound: "音", object: "物", owner: "飼い主", none: "対象なし", other: "その他" };
 const responseLabels: Record<string, string> = { soothed: "声をかけた", waited: "見守った", moved_away: "距離を取った", redirected: "気をそらした", other: "その他" };
 
-function EventDetail({ event, handler, onChat }: { event: CoachEvent; handler: string; onChat: (event: CoachEvent) => void }) {
+function EventDetail({ event, handler, onChat }: { event: CoachEvent; handler: string; onChat?: (event: CoachEvent) => void }) {
   const fields: [string, string][] = [];
   if (event.stateBefore) fields.push(["その前の様子", stateLabels[event.stateBefore] ?? event.stateBefore]);
   if (event.environment) fields.push(["場所・環境", environmentLabels[event.environment] ?? event.environment]);
@@ -38,12 +38,12 @@ function EventDetail({ event, handler, onChat }: { event: CoachEvent; handler: s
   return <div className="coach-event-detail">
     <p>主に対応した人：{handler}</p>
     {fields.length > 0 && <dl>{fields.map(([label, value], index) => <div key={`${label}-${index}`}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>}
-    <button type="button" onClick={() => onChat(event)}>この記録について確認する →</button>
+    {onChat && <button type="button" onClick={() => onChat(event)}>この記録について確認する →</button>}
   </div>;
 }
 
 export default function CoachObservationSummary({ dogId, ownerId, dogName, onChat }: {
-  dogId: string; ownerId: string; dogName: string; onChat: (event?: { id: string; theme: string }) => void;
+  dogId: string; ownerId: string; dogName: string; onChat?: (event?: { id: string; theme: string }) => void;
 }) {
   const [observation, setObservation] = useState<Observation | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -108,9 +108,9 @@ export default function CoachObservationSummary({ dogId, ownerId, dogName, onCha
       {selection?.daily ? <ul className="coach-event-list">{trends.daily_event_days.filter((day) => day.local_date >= (selection.filter.period === "current" ? trends.current_start : trends.previous_start) && day.local_date <= (selection.filter.period === "previous" ? trends.previous_end : trends.as_of_local_date) && day.calmness_score !== null).map((day) => <li key={day.local_date}><strong>{day.local_date}</strong><p>落ち着き {day.calmness_score} / 5 · できごと {day.event_count}件</p></li>)}</ul>
         : filtered.length ? <><ul className="coach-event-list">{filtered.map((event) => <li key={event.id}><button type="button" className="coach-event-toggle" aria-expanded={expandedEvent === event.id} onClick={() => setExpandedEvent((id) => id === event.id ? null : event.id)}>
           <span><strong>{themeLabel(event.themeKey)} · {eventResultLabels[event.result]}</strong><small>{event.localDate} {localTime(event.occurredAt)} · {event.handlerId ? members.get(event.handlerId) ?? "以前登録した担当者" : "担当者の記録なし"}</small>{event.note && <em>{event.note}</em>}</span><b aria-hidden="true">{expandedEvent === event.id ? "−" : "+"}</b></button>
-          {expandedEvent === event.id && <EventDetail event={event} handler={event.handlerId ? members.get(event.handlerId) ?? "以前登録した担当者" : "記録なし"} onChat={(selected) => onChat({ id: selected.id, theme: themeLabel(selected.themeKey) })} />}</li>)}</ul>{filtered.length === 60 && <small>直近60件を表示しています。</small>}</>
+          {expandedEvent === event.id && <EventDetail event={event} handler={event.handlerId ? members.get(event.handlerId) ?? "以前登録した担当者" : "記録なし"} onChat={onChat ? (selected) => onChat({ id: selected.id, theme: themeLabel(selected.themeKey) }) : undefined} />}</li>)}</ul>{filtered.length === 60 && <small>直近60件を表示しています。</small>}</>
           : <p className="coach-event-empty">{selection ? "条件に合う記録はありません。" : "直近7日の記録はまだありません。"}</p>}
     </div>
-    <button type="button" className="coach-chat-link" onClick={() => onChat()}>この記録について飼い主と話す →</button>
+    {onChat && <button type="button" className="coach-chat-link" onClick={() => onChat()}>この記録について飼い主と話す →</button>}
   </section>;
 }
