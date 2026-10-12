@@ -1,0 +1,103 @@
+/* Functional accents: record / planning / insights / incomplete care.
+ * Keep the brand green for chat, successful completion, and account actions.
+ * Labels, icons, and selected-state borders continue to carry meaning.
+ */
+:root {
+  --action-record: #b44c2b;
+  --action-record-soft: #fff1e9;
+  --action-record-line: #e8bea9;
+  --action-plan: #2563a6;
+  --action-plan-soft: #edf4ff;
+  --action-plan-line: #b8cfee;
+  --action-insight: #7053a3;
+  --action-insight-soft: #f3eefb;
+  --action-insight-line: #d1c3e6;
+  --action-pending: #895816;
+  --action-pending-soft: #fff4df;
+  --action-pending-line: #e7c78e;
+  --action-danger: #ad3d43;
+}
+
+/* Home shortcuts echo their destination's navigation and main action. */
+.app-stage .home-v3-summary > button:has(.is-log) { border-color: var(--action-record-line); background: var(--action-record-soft); }
+.app-stage .home-v3-summary > button:has(.is-care) { border-color: var(--action-pending-line); background: var(--action-pending-soft); }
+.app-stage .home-v3-summary > button:has(.is-week) { border-color: var(--action-insight-line); background: var(--action-insight-soft); }
+.app-stage .home-v3-summary .is-log,
+.app-stage .home-v3-summary > button:has(.is-log) > b { color: var(--action-record); }
+.app-stage .home-v3-summary .is-care,
+.app-stage .home-v3-summary > button:has(.is-care) > b { color: var(--action-pending); }
+.app-stage .home-v3-summary .is-week,
+.app-stage .home-v3-summary > button:has(.is-week) > b { color: var(--action-insight); }
+.app-stage .home-v3-daily { border-color: var(--action-record-line); background: #fffaf6; }
+.app-stage .home-v3-daily-icon { color: var(--action-record); opacity: 1; }
+.app-stage .home-v3-daily-copy > button,
+.app-stage .owner-view-record .primary-button,
+.app-stage .today-add-button,
+.app-stage .home-v3-event-log .primary-button { background: var(--action-record); color: #fff; box-shadow: 0 3px 9px #b44c2b20; }
+.app-stage .owner-view-record .event-theme-chips button,
+.app-stage .home-v3-event-log .quick-log-theme-grid > button { border-color: var(--action-record-line); background: var(--action-record-soft); color: #803b25; }
+.app-stage .home-v3-event-log .quick-log-theme-add,
+.app-stage .owner-view-record .topic-back { color: var(--action-record); }
+.app-stage .event-result-options button[data-result="success"] { --result-accent: #00684b; --result-soft: #eaf5f0; }
+.app-stage .event-result-options button[data-result="neutral"] { --result-accent: #2563a6; --result-soft: #edf4ff; }
+.app-stage .event-result-options button[data-result="concern"] { --result-accent: #895816; --result-soft: #fff4df; }
+.app-stage .event-result-options button[data-result] span { background: var(--result-soft); color: var(--result-accent); }
+.app-stage .event-result-options button[data-result].is-selected { border-color: var(--result-accent); background: var(--result-soft); color: var(--result-accent); box-shadow: inset 0 0 0 1px var(--result-accent); }
+.app-stage .owner-view-record .event-theme-chips button:hover,
+.app-stage .home-v3-event-log .quick-log-theme-grid > button:hover { border-color: var(--action-record); background: #ffe7d9; }
+
+/* Online consultation keeps its prominent card and gets a distinct blue. */
+.app-stage .owner-view-coach .owner-consultation-tabs > .owner-online-tab { border-color: var(--action-plan-line); background: var(--action-plan-soft); color: #214f82; }
+.app-stage .owner-view-coach .owner-online-tab .owner-tab-icon { background: #dce9fc; color: var(--action-plan); --flat-icon-cutout: #dce9fc; }
+.app-stage .owner-view-coach .owner-consultation-tabs > .owner-online-tab.is-active { border-color: var(--action-plan); background: var(--action-plan); color: #fff; box-shadow: 0 4px 12px #2563a629; }
+.app-stage .owner-view-coach .owner-online-tab.is-active .owner-tab-icon { background: #ffffff2e; color: #fff; --flat-icon-cutout: #4c7fb6; }
+.app-stage .owner-view-coach .owner-online-tab.is-active small { color: #edf4ff; }
+.app-stage .owner-view-coach .owner-consultation-tabs .owner-tab-booking { background: #dce9fc; color: #214f82; }
+.app-stage .owner-view-coach .owner-online-tab.is-active .owner-tab-booking { background: #fff; color: var(--action-plan); }
+.app-stage .owner-view-coach .owner-online-tab:not(.is-active):hover { border-color: var(--action-plan); box-shadow: 0 2px 9px #2563a619; }
+.app-stage .owner-view-coach .owner-session-disclosure.is-next { border: 1px solid var(--action-plan-line); background: var(--action-plan-soft); }
+.app-stage .owner-view-coach .session-when small { background: #dce9fc; color: #214f82; }
+.app-stage .owner-view-coach .owner-session-disclosure summary > a { background: var(--action-plan); color: #fff; }
+.app-stage .owner-view-coach .owner-panel-disclosure:not(.owner-history-disclosure) { border: 1px solid var(--action-plan-line); }
+.app-stage .owner-view-coach .owner-panel-disclosure:not(.owner-history-disclosure) > summary > b,
+.app-stage .owner-view-coach .owner-slot-list button > b { background: var(--action-plan-soft); color: var(--action-plan); }
+.app-stage .owner-view-coach .owner-slot-list button { border-color: var(--action-plan-line); }
+
+/* Plans and records can be distinguished in the same calendar. */
+.app-stage .calendar-add,
+.app-stage .calendar-dialog .schedule-save { background: var(--action-plan); color: #fff; }
+.app-stage .calendar-kind,
+.app-stage .calendar-feedback button,
+.app-stage .calendar-presets span,
+.app-stage .calendar-presets b { color: var(--action-plan); }
+.app-stage .calendar-kind { background: var(--action-plan-soft); }
+.app-stage .calendar-feedback button { background: var(--action-plan-soft); }
+.app-stage .calendar-record-actions button { background: var(--action-record-soft); color: var(--action-record); }
+.app-stage .plan-dot { background: var(--action-plan); }
+.app-stage .record-dot { border-color: var(--action-record); }
+.app-stage .is-selected .plan-dot { background: #fff; }
+.app-stage .is-selected .record-dot { border-color: #fff; }
+.app-stage .calendar-dialog .schedule-kind-picker button[aria-pressed=true],
+.app-stage .calendar-dialog .calendar-date-editor button[aria-pressed=true] { border-color: var(--action-plan); background: var(--action-plan-soft); color: #214f82; }
+.app-stage .calendar-dialog .schedule-delete { color: var(--action-danger); }
+
+/* Report accents do not change the existing meaning of chart series. */
+.app-stage .owner-view-report .recent-observation-trends .insight-weekly-hero { border-left-color: var(--action-insight); background: var(--action-insight-soft); }
+.app-stage .owner-view-report .insight-today-score strong,
+.app-stage .owner-view-report .insight-card-kicker { color: var(--action-insight); }
+.app-stage .owner-view-report .insight-today-score span { background: var(--action-insight-soft); color: var(--action-insight); }
+.app-stage .owner-view-report .insight-today-card { border-color: var(--action-insight-line); }
+
+/* Main navigation uses the same colors, with a filled active icon. */
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button[data-nav="report"] { --nav-accent: var(--action-insight); --nav-soft: var(--action-insight-soft); }
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button[data-nav="coach"] { --nav-accent: var(--green-dark); --nav-soft: var(--mint); }
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button[data-nav="report"] .nav-icon { color: var(--nav-accent); }
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button[data-nav].active:not(.bottom-nav-record) .nav-icon { background: var(--nav-soft, var(--mint)); color: var(--nav-accent, var(--green)); }
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button[data-nav].active:not(.bottom-nav-record) > span:last-child { color: var(--nav-accent, var(--green-dark)); }
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record[data-nav="record"] .nav-icon { background: var(--action-record); box-shadow: 0 3px 9px #b44c2b29; }
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record[data-nav="record"] > span:last-child { color: var(--action-record); }
+
+/* A visible outline remains independent of each action's color. */
+.app-stage button:focus-visible,
+.app-stage a:focus-visible,
+.app-stage summary:focus-visible { outline: 3px solid #263930; outline-offset: 3px; }

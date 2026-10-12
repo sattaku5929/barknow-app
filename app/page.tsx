@@ -5480,11 +5480,11 @@ export default function Home() {
           {view === "profile" && profileView}
         </main>
         <nav ref={bottomNavigation.navRef} style={{ "--bottom-nav-hide": bottomNavigation.progress } as CSSProperties} className={`bottom-nav ${bottomNavigation.hidden ? "bottom-nav-hidden" : ""}`} aria-label="メインメニュー" inert={bottomNavigation.hidden} onFocusCapture={bottomNavigation.show}>
-          <button className={view === "home" ? "active" : ""} aria-current={view === "home" ? "page" : undefined} onClick={() => runBottomNavAction("home", returnToOwnerHome)}><Icon><NavGlyph name="home" /></Icon><span>ホーム</span></button>
-          <button className={view === "report" ? "active" : ""} aria-current={view === "report" ? "page" : undefined} onClick={() => runBottomNavAction("report", () => navigateOwnerView("report"))}><Icon><NavGlyph name="report" /></Icon><span>変化</span></button>
-          <button className={`bottom-nav-record ${view === "record" ? "active" : ""}`} aria-current={view === "record" ? "page" : undefined} onClick={() => runBottomNavAction("record", () => openNewRecord())}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>
-          <button className={view === "coach" ? "active" : ""} aria-current={view === "coach" ? "page" : undefined} onClick={() => runBottomNavAction("coach", () => navigateOwnerView("coach"))}><Icon><NavGlyph name="coach" /></Icon><span>チャット</span></button>
-          <button className={view === "profile" ? "active" : ""} aria-current={view === "profile" ? "page" : undefined} onClick={() => runBottomNavAction("profile", openSettingsMenu)}><Icon><NavGlyph name="profile" /></Icon><span>マイページ</span></button>
+          <button className={view === "home" ? "active" : ""} data-nav="home" aria-current={view === "home" ? "page" : undefined} onClick={() => runBottomNavAction("home", returnToOwnerHome)}><Icon><NavGlyph name="home" /></Icon><span>ホーム</span></button>
+          <button className={view === "report" ? "active" : ""} data-nav="report" aria-current={view === "report" ? "page" : undefined} onClick={() => runBottomNavAction("report", () => navigateOwnerView("report"))}><Icon><NavGlyph name="report" /></Icon><span>変化</span></button>
+          <button className={`bottom-nav-record ${view === "record" ? "active" : ""}`} data-nav="record" aria-current={view === "record" ? "page" : undefined} onClick={() => runBottomNavAction("record", () => openNewRecord())}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>
+          <button className={view === "coach" ? "active" : ""} data-nav="coach" aria-current={view === "coach" ? "page" : undefined} onClick={() => runBottomNavAction("coach", () => navigateOwnerView("coach"))}><Icon><NavGlyph name="coach" /></Icon><span>チャット</span></button>
+          <button className={view === "profile" ? "active" : ""} data-nav="profile" aria-current={view === "profile" ? "page" : undefined} onClick={() => runBottomNavAction("profile", openSettingsMenu)}><Icon><NavGlyph name="profile" /></Icon><span>マイページ</span></button>
         </nav>
         {celebration && (
           <div className="celebration-backdrop" role="dialog" aria-modal="true" aria-labelledby="celebration-title" onClick={closeCelebration}>

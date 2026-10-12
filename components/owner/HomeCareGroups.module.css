@@ -81,3 +81,15 @@
 
 .planDate { font-size:11px; color:#627a66; line-height:1.4; }
 .reminder small { flex-basis:100%; font-size:11px; line-height:1.6; }
+
+/* Amber invites completion; green confirms a completed task. */
+.group { border-color:var(--action-pending-line); }
+.group .edit,.group .empty { border:1px solid var(--action-pending-line); background:var(--action-pending-soft); color:var(--action-pending); }
+.groups .items .item:not(.done) .state { border-color:var(--action-pending-line); background:var(--action-pending-soft); color:var(--action-pending); }
+.groups .items .item:not(.done) .icon { color:var(--action-pending); }
+.groups .items .done .state { border-color:#a8d1bb; background:#eaf5f0; color:#00684b; }
+.groups .items .item:not(:disabled):hover .state { box-shadow:inset 0 0 0 1px currentColor; }
+.groups .item:focus-visible,.groups .edit:focus-visible,.groups .empty:focus-visible { outline:3px solid #263930; outline-offset:3px; }
+.dialog .remove { color:var(--action-danger); }
+.groups .items .item:has(.planDate) { grid-template-areas:"icon title" ". date" ". state"; }
+.groups .items .planDate { grid-area:date; overflow-wrap:anywhere; }
