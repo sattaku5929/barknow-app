@@ -529,6 +529,7 @@ type OnlineSession = {
   ownerId: string;
   ownerEmail: string;
   ownerName: string;
+  ownerAvatarUrl?: string;
   dogName: string;
   coachId: string;
   coachName: string;
@@ -1228,6 +1229,13 @@ export default function Home() {
   const [slotCoachId, setSlotCoachId] = useState("");
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
   const [timelineWeekAnchor, setTimelineWeekAnchor] = useState(today());
+  const [timelineSlotDialogOpen, setTimelineSlotDialogOpen] = useState(false);
+  const timelineSlotDialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = timelineSlotDialogRef.current;
+    if (timelineSlotDialogOpen && dialog && !dialog.open) dialog.showModal();
+    else if (!timelineSlotDialogOpen && dialog?.open) dialog.close();
+  }, [timelineSlotDialogOpen]);
   const [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email: string; status: string; error: string; configured: boolean; configurationError: string }>({ connected: false, email: "", status: "", error: "", configured: true, configurationError: "" });
   const [scheduleMode, setScheduleMode] = useState<"day" | "week" | "month">("week");
   const [scheduleAnchor, setScheduleAnchor] = useState(today());
@@ -2067,7 +2075,15 @@ export default function Home() {
       active: Boolean(slot.active), sessionId: String(slot.session_id ?? ""),
       sessionStatus: String(slot.session_status ?? "") as AvailabilitySlot["sessionStatus"], ownerName: String(slot.owner_name ?? ""),
     })));
-    if (sessions) setOnlineSessions(sessions.map((session: Record<string, unknown>) => ({ id: String(session.session_id), ownerId: String(session.owner_id ?? ""), ownerEmail: String(session.owner_email ?? ""), ownerName: String(session.owner_name ?? session.owner_email ?? "オーナー"), dogName: String(session.dog_name ?? ""), coachId: String(session.coach_id ?? ""), coachName: String(session.coach_name ?? "コーチ"), coachAvatarUrl: String(session.coach_avatar_url ?? ""), coachHeadline: String(session.coach_headline ?? ""), sessionType: session.session_type === "followup" ? "followup" : "initial", status: String(session.status) as OnlineSession["status"], startsAt: String(session.starts_at), endsAt: String(session.ends_at), meetUrl: String(session.meet_url ?? ""), calendarSyncStatus: String(session.calendar_sync_status ?? "not_connected") as OnlineSession["calendarSyncStatus"], calendarSyncError: String(session.calendar_sync_error ?? "") })));
+    const sessionIds = (sessions ?? []).map((session: Record<string, unknown>) => String(session.session_id));
+    const { data: sessionDogs } = sessionIds.length
+      ? await supabase.from("wt_online_sessions").select("id,wt_dogs(avatar_url)").in("id", sessionIds)
+      : { data: [] };
+    const ownerAvatars = new Map((sessionDogs ?? []).map((row) => {
+      const dog = Array.isArray(row.wt_dogs) ? row.wt_dogs[0] : row.wt_dogs;
+      return [row.id, dog?.avatar_url ?? ""];
+    }));
+    if (sessions) setOnlineSessions(sessions.map((session: Record<string, unknown>) => ({ id: String(session.session_id), ownerId: String(session.owner_id ?? ""), ownerEmail: String(session.owner_email ?? ""), ownerName: String(session.owner_name ?? session.owner_email ?? "オーナー"), ownerAvatarUrl: ownerAvatars.get(String(session.session_id)) ?? "", dogName: String(session.dog_name ?? ""), coachId: String(session.coach_id ?? ""), coachName: String(session.coach_name ?? "コーチ"), coachAvatarUrl: String(session.coach_avatar_url ?? ""), coachHeadline: String(session.coach_headline ?? ""), sessionType: session.session_type === "followup" ? "followup" : "initial", status: String(session.status) as OnlineSession["status"], startsAt: String(session.starts_at), endsAt: String(session.ends_at), meetUrl: String(session.meet_url ?? ""), calendarSyncStatus: String(session.calendar_sync_status ?? "not_connected") as OnlineSession["calendarSyncStatus"], calendarSyncError: String(session.calendar_sync_error ?? "") })));
   }
 
   async function loadOwnerBookingWorkspace(application: CoachingApplication) {
@@ -3076,6 +3092,7 @@ export default function Home() {
   }
 
   function resetAvailabilityEditor() {
+    setTimelineSlotDialogOpen(false);
     setEditingSlotId(null);
     setSlotDate(today());
     setSlotTime("10:00");
@@ -3101,14 +3118,13 @@ export default function Home() {
     void loadStaffBookingWorkspace();
   }
 
-  function chooseTimelineTime(day: string, event: ReactMouseEvent<HTMLDivElement>) {
-    if (event.target !== event.currentTarget) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const minutes = Math.min(23 * 60 + 30, Math.max(0, Math.round(((event.clientY - rect.top) / rect.height * 24 * 60) / 30) * 30));
+  function chooseTimelineTime(day: string, minutes: number) {
+    setNotice("");
     setEditingSlotId(null);
     setSlotDate(day);
     setSlotTime(`${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`);
-    window.setTimeout(() => document.querySelector(".slot-create-form")?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+    setSlotDuration(30);
+    setTimelineSlotDialogOpen(true);
   }
 
   function editAvailabilitySlot(slot: AvailabilitySlot) {
@@ -5306,6 +5322,18 @@ export default function Home() {
         ))}
         {adminTab === "schedule" && (
           <div className="staff-booking-workspace">
+            <dialog ref={timelineSlotDialogRef} className="timeline-slot-dialog" onCancel={(event) => { if (saving) event.preventDefault(); }} onClose={() => setTimelineSlotDialogOpen(false)} aria-labelledby="timeline-slot-dialog-title">
+              <h2 id="timeline-slot-dialog-title">オンライン対応枠を登録</h2>
+              <p>選択した日時を確認して登録してください。日本時間で表示しています。</p>
+              {notice && <p role="alert">{notice}</p>}
+              <form onSubmit={saveAvailabilitySlot}>
+                {userRole === "admin" && <label>担当コーチ<select value={slotCoachId} onChange={(event) => setSlotCoachId(event.target.value)} required disabled={saving}><option value="">選択してください</option>{slotCoachOptions.map((coach) => <option key={coach.userId} value={coach.userId}>{coach.displayName || coach.email}</option>)}</select></label>}
+                <label>日付<input type="date" value={slotDate} min={today()} onChange={(event) => setSlotDate(event.target.value)} required disabled={saving} /></label>
+                <label>開始時間<input type="time" step="1800" value={slotTime} onChange={(event) => setSlotTime(event.target.value)} required disabled={saving} /></label>
+                <label>診断時間<select value={slotDuration} onChange={(event) => setSlotDuration(Number(event.target.value))} disabled={saving}><option value={30}>30分</option><option value={60}>60分</option></select></label>
+                <div className="timeline-dialog-actions"><button type="button" onClick={() => setTimelineSlotDialogOpen(false)} disabled={saving}>キャンセル</button><button type="submit" disabled={saving}>{saving ? "登録中…" : "登録する"}</button></div>
+              </form>
+            </dialog>
             {(userRole === "coach" || userRole === "admin") && (
               <section className="staff-schedule-panel">
                 <div className="admin-panel-heading"><div><p className="card-label">AVAILABILITY</p><h2>{editingSlotId ? "オンライン対応枠を編集" : "オンライン対応枠を登録"}</h2></div><span>日本時間</span></div>
@@ -5315,11 +5343,11 @@ export default function Home() {
                   <label>日付<input type="date" value={slotDate} min={today()} onChange={(event) => setSlotDate(event.target.value)} required /></label>
                   <label>開始時間<input type="time" step="1800" value={slotTime} onChange={(event) => setSlotTime(event.target.value)} required /></label>
                   <fieldset className="slot-duration-picker"><legend>診断時間</legend><div>{[30, 60].map((minutes) => <button type="button" key={minutes} className={slotDuration === minutes ? "is-selected" : ""} onClick={() => setSlotDuration(minutes)}>{minutes}分</button>)}</div></fieldset>
-                  <div className="slot-time-presets" aria-label="開始時間の候補">{["09:00", "10:00", "11:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"].map((time) => <button type="button" key={time} className={slotTime === time ? "is-selected" : ""} onClick={() => setSlotTime(time)}>{time}</button>)}</div>
+                  <div className="slot-time-presets" aria-label="開始時間の候補">{["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"].map((time) => <button type="button" key={time} className={slotTime === time ? "is-selected" : ""} onClick={() => setSlotTime(time)}>{time}</button>)}</div>
                   <div className="slot-form-actions"><button disabled={saving}>{saving ? "保存中…" : editingSlotId ? "変更を保存" : "空き枠を追加"}</button>{editingSlotId && <><button type="button" className="secondary" onClick={resetAvailabilityEditor}>編集をやめる</button><button type="button" className="delete-slot" onClick={() => { const slot = availableSlots.find((item) => item.id === editingSlotId); if (slot) void removeAvailabilitySlot(slot); }}>この枠を削除</button></>}</div>
                 </form>
                 <section className="availability-timeline"><div className="timeline-toolbar"><div><strong>週間タイムライン</strong><small>空白をタップして30分単位で追加</small></div><div><button onClick={() => setTimelineWeekAnchor(addToDateKey(timelineWeekAnchor, -7))}>←</button><button onClick={() => setTimelineWeekAnchor(today())}>今週</button><button onClick={() => setTimelineWeekAnchor(addToDateKey(timelineWeekAnchor, 7))}>→</button></div></div>
-                  <div className="timeline-scroll"><div className="timeline-grid"><aside><header></header>{timelineHours.map((hour) => <span key={hour}>{String(hour).padStart(2, "0")}:00</span>)}</aside>{timelineDays.map((day) => <section key={day} className={day === today() ? "is-today" : ""}><header><small>{new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(dateKeyValue(day))}</small><strong>{Number(day.slice(-2))}</strong></header><div className="timeline-day-body" onClick={(event) => chooseTimelineTime(day, event)}>{timelineHours.map((hour) => <i key={hour}></i>)}{visibleManagedSlots.filter((slot) => new Date(slot.startsAt).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }) === day).map((slot) => { const start = timeMinutesJst(slot.startsAt); const duration = Math.max(30, (new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60_000); return <button type="button" key={slot.id} className={`timeline-slot ${availabilitySlotIsLocked(slot) ? "is-booked" : ""}`} style={{ top: `${start / 1440 * 100}%`, height: `${duration / 1440 * 100}%` }} onClick={(event) => { event.stopPropagation(); if (availabilitySlotIsLocked(slot)) openStaffBooking(slot); else editAvailabilitySlot(slot); }}><b>{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(slot.startsAt))}</b><span>{availabilitySlotIsLocked(slot) ? "予約済" : "空き枠"}</span></button>; })}</div></section>)}</div></div>
+                  <div className="timeline-scroll"><div className="timeline-grid"><aside><header></header>{timelineHours.map((hour) => <span key={hour}>{String(hour).padStart(2, "0")}:00</span>)}</aside>{timelineDays.map((day) => <section key={day} className={day === today() ? "is-today" : ""}><header><small>{new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(dateKeyValue(day))}</small><strong>{Number(day.slice(-2))}</strong></header><div className="timeline-day-body">{Array.from({ length: 48 }, (_, index) => <button type="button" className="timeline-time-cell" key={index} aria-label={`${day} ${String(Math.floor(index / 2)).padStart(2, "0")}:${index % 2 ? "30" : "00"}に予約枠を登録`} onClick={() => chooseTimelineTime(day, index * 30)} />)}{visibleManagedSlots.filter((slot) => new Date(slot.startsAt).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }) === day).map((slot) => { const start = timeMinutesJst(slot.startsAt); const duration = Math.max(30, (new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60_000); return <button type="button" key={slot.id} className={`timeline-slot ${availabilitySlotIsLocked(slot) ? "is-booked" : ""}`} style={{ top: `${start / 1440 * 100}%`, height: `${duration / 1440 * 100}%` }} onClick={(event) => { event.stopPropagation(); if (availabilitySlotIsLocked(slot)) openStaffBooking(slot); else editAvailabilitySlot(slot); }}><b>{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(slot.startsAt))}</b><span>{availabilitySlotIsLocked(slot) ? "予約済" : "空き枠"}</span></button>; })}</div></section>)}</div></div>
                 </section>
                 <div className="staff-slot-list">{visibleManagedSlots.length ? visibleManagedSlots.map((slot) => <article key={slot.id} className={availabilitySlotIsLocked(slot) ? "is-booked" : "is-open"}><div className="slot-date"><span className="slot-status">{slot.sessionStatus === "completed" ? "完了済み" : slot.sessionStatus === "booked" ? "予約済み" : slot.sessionStatus === "cancelled" ? "予約取消済み" : "予約可能"}</span><strong>{formatOnlineDate(slot.startsAt)}</strong><small>{Math.round((new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60000)}分{userRole === "admin" ? ` · ${slot.coachName}` : ""}</small>{slot.ownerName && <em>{slot.ownerName}様</em>}</div><div className="slot-actions">{availabilitySlotIsLocked(slot) ? <button className="view-booking" onClick={() => openStaffBooking(slot)}>予約を確認</button> : <><button className="edit-slot" onClick={() => editAvailabilitySlot(slot)}>編集</button><button className="delete-slot" onClick={() => void removeAvailabilitySlot(slot)}>削除</button></>}</div></article>) : <p>これから予約できる空き枠はありません。</p>}</div>
               </section>
@@ -5329,7 +5357,7 @@ export default function Home() {
               {selectedStaffSession ? <>
                 <dl>
                   <div><dt>日時</dt><dd>{formatOnlineDate(selectedStaffSession.startsAt)} · {Math.round((new Date(selectedStaffSession.endsAt).getTime() - new Date(selectedStaffSession.startsAt).getTime()) / 60000)}分</dd></div>
-                  <div><dt>オーナー</dt><dd>{selectedStaffSession.ownerName || selectedStaffSession.ownerEmail}</dd></div>
+                  <div><dt>オーナー</dt><dd><span className="booking-owner-identity"><span className="booking-owner-avatar">{selectedStaffSession.ownerAvatarUrl ? <PrivateDogImage src={selectedStaffSession.ownerAvatarUrl} alt={`${selectedStaffSession.dogName}の画像`} /> : (selectedStaffSession.ownerName || selectedStaffSession.ownerEmail || "？").slice(0, 1)}</span><span>{selectedStaffSession.ownerName || selectedStaffSession.ownerEmail}</span></span></dd></div>
                   <div><dt>愛犬</dt><dd>{selectedStaffSession.dogName}</dd></div>
                   <div><dt>担当コーチ</dt><dd>{selectedStaffSession.coachName}</dd></div>
                   <div><dt>予約内容</dt><dd>{selectedStaffSession.sessionType === "initial" ? "初回" : "継続"}オンライン診断 · {selectedStaffSession.status === "booked" ? "確定" : selectedStaffSession.status === "completed" ? "完了" : "取消"}</dd></div>
@@ -5349,7 +5377,7 @@ export default function Home() {
                   <select value={scheduleOwnerFilter} onChange={(event) => setScheduleOwnerFilter(event.target.value)}><option value="all">すべてのオーナー</option>{scheduleOwners.map(([id, name]) => <option value={id} key={id}>{name}</option>)}</select>
                 </div>
               </div>
-              <div className={`schedule-calendar mode-${scheduleMode}`}>{scheduleDays.map((day) => <section key={day.key} className={day.key === today() ? "is-today" : ""}><header><strong>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric" }).format(day.date)}</strong><small>{new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(day.date)}</small><b>{day.sessions.length}</b></header><div>{day.sessions.map((session) => <article key={session.id} className={`session-${session.status}`}><time>{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(session.startsAt))}–{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(session.endsAt))}</time><strong>{session.ownerName || session.ownerEmail}</strong><p>{session.dogName}</p><div className="calendar-coach-card"><span>{session.coachAvatarUrl ? <img src={session.coachAvatarUrl} alt="" /> : session.coachName.slice(0, 1)}</span><div><small>担当コーチ</small><b>{session.coachName}</b>{session.coachHeadline && <em>{session.coachHeadline}</em>}</div></div><small>{session.sessionType === "initial" ? "初回" : "継続"} · {session.status === "booked" ? "確定" : session.status === "completed" ? "完了" : "取消"}</small><div className="calendar-event-actions">{session.meetUrl && session.status !== "cancelled" && <a href={session.meetUrl} target="_blank" rel="noreferrer">Meet</a>}{session.status === "booked" && <><button onClick={() => void updateOnlineSessionStatus(session.id, "completed")}>完了</button><button className="is-danger" onClick={() => void updateOnlineSessionStatus(session.id, "cancelled")}>取消</button></>}</div>{session.calendarSyncStatus !== "synced" && <em className={`sync-${session.calendarSyncStatus}`}>{session.calendarSyncStatus === "error" ? "Google同期エラー" : session.calendarSyncStatus === "not_connected" ? "Google未連携" : "Google同期中"}</em>}</article>)}</div></section>)}</div>
+              <div className={`schedule-calendar mode-${scheduleMode}`}>{scheduleDays.map((day) => <section key={day.key} className={day.key === today() ? "is-today" : ""}><header><strong>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric" }).format(day.date)}</strong><small>{new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(day.date)}</small><b>{day.sessions.length}</b></header><div>{day.sessions.map((session) => <article key={session.id} className={`session-${session.status}`}><time>{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(session.startsAt))}–{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(session.endsAt))}</time><div className="booking-owner-identity"><span className="booking-owner-avatar">{session.ownerAvatarUrl ? <PrivateDogImage src={session.ownerAvatarUrl} alt={`${session.dogName}の画像`} /> : (session.ownerName || session.ownerEmail || "？").slice(0, 1)}</span><strong>{session.ownerName || session.ownerEmail}</strong></div><p>{session.dogName}</p><div className="calendar-coach-card"><span>{session.coachAvatarUrl ? <img src={session.coachAvatarUrl} alt="" /> : session.coachName.slice(0, 1)}</span><div><small>担当コーチ</small><b>{session.coachName}</b>{session.coachHeadline && <em>{session.coachHeadline}</em>}</div></div><small>{session.sessionType === "initial" ? "初回" : "継続"} · {session.status === "booked" ? "確定" : session.status === "completed" ? "完了" : "取消"}</small><div className="calendar-event-actions">{session.meetUrl && session.status !== "cancelled" && <a href={session.meetUrl} target="_blank" rel="noreferrer">Meet</a>}{session.status === "booked" && <><button onClick={() => void updateOnlineSessionStatus(session.id, "completed")}>完了</button><button className="is-danger" onClick={() => void updateOnlineSessionStatus(session.id, "cancelled")}>取消</button></>}</div>{session.calendarSyncStatus !== "synced" && <em className={`sync-${session.calendarSyncStatus}`}>{session.calendarSyncStatus === "error" ? "Google同期エラー" : session.calendarSyncStatus === "not_connected" ? "Google未連携" : "Google同期中"}</em>}</article>)}</div></section>)}</div>
               {!filteredScheduleSessions.length && <section className="admin-empty compact"><h2>この期間の予約はありません</h2><p>表示期間または絞り込み条件を変更してください。</p></section>}
             </section>
           </div>
