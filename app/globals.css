@@ -1538,25 +1538,32 @@ body { font-size: 16px; }
 .admin-welcome span { display:block; margin-top:8px; color:rgba(255,255,255,.7); font-size:12px; }
 .admin-welcome > b { font-family:var(--font-display); font-size:36px; font-weight:500; }
 .admin-welcome > b small { margin-left:4px; font-family:var(--font-sans); font-size:11px; }
-.customer-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:18px; }
-.customer-card { padding:18px; border:1px solid rgba(27,61,49,.08); border-radius:20px; background:#fff; box-shadow:0 10px 26px rgba(42,74,61,.06); }
-.customer-profile { display:grid; grid-template-columns:44px 1fr auto; align-items:center; gap:11px; }
+.customer-list { display:grid; min-width:0; max-width:100%; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-top:18px; }
+.customer-card { min-width:0; max-width:100%; overflow-wrap:anywhere; padding:18px; border:1px solid rgba(27,61,49,.08); border-radius:20px; background:#fff; box-shadow:0 10px 26px rgba(42,74,61,.06); }
+.customer-card > *,.customer-profile > div { min-width:0; max-width:100%; }
+.customer-profile { display:grid; grid-template-columns:44px minmax(0,1fr) auto; align-items:center; gap:11px; }
 .customer-profile > span { display:grid; width:44px; height:44px; place-items:center; border-radius:50%; background:var(--mint); color:var(--green); font-family:var(--font-display); font-size:18px; font-weight:700; }
 .customer-profile h2 { margin:0; font-size:17px; }
 .customer-profile p { margin:3px 0 0; color:var(--muted); font-size:11px; }
 .customer-profile > b { padding:5px 8px; border-radius:8px; background:#e8f6ef; color:var(--green-dark); font-size:9px; }
-.customer-owner-summary { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:7px; margin-top:13px; padding:10px 12px; border-radius:12px; background:#f1f7f4; }
+.customer-owner-summary { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:7px; margin-top:13px; padding:10px 12px; border-radius:12px; background:#f1f7f4; }
 .customer-owner-summary small { color:var(--muted); font-size:9px; }
 .customer-owner-summary strong { min-width:0; overflow:hidden; color:var(--ink); font-size:11px; text-overflow:ellipsis; white-space:nowrap; }
 .customer-owner-summary span { color:var(--green-dark); font-size:9px; font-weight:750; white-space:nowrap; }
 .customer-card:has(.customer-profile > b:first-child) { border-color:#efd7cc; }
-.customer-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:16px; }
+.customer-stats { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:16px; }
 .customer-stats span { padding:11px; border-radius:12px; background:#f5f7f5; color:var(--muted); font-size:10px; }
 .customer-stats b { display:block; margin-bottom:3px; color:var(--ink); font-family:var(--font-display); font-size:22px; }
 .customer-message { margin-top:13px; padding:12px; border-radius:12px; background:var(--soft-blue); }
 .customer-message small { color:#477f9c; font-size:9px; font-weight:700; }
 .customer-message p { overflow:hidden; margin:5px 0 0; color:var(--ink); font-size:11px; line-height:1.55; text-overflow:ellipsis; white-space:nowrap; }
 .customer-card > button { width:100%; min-height:42px; margin-top:12px; border:0; border-radius:11px; background:var(--green); color:#fff; cursor:pointer; font-size:11px; font-weight:750; }
+@media (max-width:700px) {
+  .customer-message p { white-space:normal; overflow-wrap:anywhere; }
+  .customer-owner-summary { grid-template-columns:auto minmax(0,1fr); }
+  .customer-owner-summary > span { grid-column:2; white-space:normal; }
+  .customer-card > button { padding:10px 12px; white-space:normal; }
+}
 .admin-empty { margin-top:18px; padding:50px 24px; border-radius:22px; background:#fff; text-align:center; }
 .admin-empty > span { display:grid; width:58px; height:58px; margin:auto; place-items:center; border-radius:18px; background:var(--soft-blue); color:#477f9c; }
 .admin-empty svg { width:29px; fill:none; stroke:currentColor; stroke-width:1.6; }
@@ -1570,7 +1577,7 @@ body { font-size: 16px; }
   .auth-panel { width:100%; margin:0; align-self:center; padding:50px 55px; border-radius:0; }
 }
 @media (max-width:699px) {
-  .customer-list { grid-template-columns:1fr; }
+  .customer-list { grid-template-columns:minmax(0,1fr); }
   .admin-welcome { align-items:flex-start; }
   .admin-welcome span { max-width:240px; line-height:1.6; }
 }
