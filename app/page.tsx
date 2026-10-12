@@ -551,7 +551,6 @@ type AppHistoryLayer =
   | { kind: "admin-customer"; customer: AdminCustomer }
   | { kind: "media-gallery"; messageId: string }
   | { kind: "celebration"; value: { title: string; message: string } }
-  | { kind: "push-prompt" }
   | { kind: "account-delete" };
 
 type AppHistoryMarker = {
@@ -564,7 +563,6 @@ const OWNER_PROFILE_KEY = "wan-tone-owner-profile-v1";
 const RECORDS_KEY = "wan-tone-records-v1";
 const MESSAGES_KEY = "wan-tone-messages-v1";
 const PWA_INSTALL_DISMISSED_KEY = "wan-tone-pwa-install-dismissed-v1";
-const PUSH_PROMPT_SESSION_KEY = "wan-tone-push-prompt-shown-v1";
 const DOG_BIRTHDAY_POPUP_KEY = "wan-tone-dog-birthday-popup-v1";
 const CUSTOM_BEHAVIORS_KEY = "wan-tone-custom-behaviors-v1";
 const CARE_GOALS_KEY = "wan-tone-care-goals-v1";
@@ -1121,7 +1119,6 @@ export default function Home() {
   const pathname = usePathname();
   const { subscribeUser, permissionStatus, subscriptionStatus, isSubscribed, refreshSubscriptionStatus } = usePushNotification();
   const [pushBusy, setPushBusy] = useState(false);
-  const [showPushPrompt, setShowPushPrompt] = useState(false);
   const [showBirthdayCelebration, setShowBirthdayCelebration] = useState(false);
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
   const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
@@ -1278,9 +1275,7 @@ export default function Home() {
             ? "shared-media"
             : layer.kind === "celebration"
               ? "celebration"
-              : layer.kind === "push-prompt"
-                ? "notification"
-                : "account-delete";
+              : "account-delete";
     url.hash = `wan-tone-${suffix}`;
     window.history.pushState(
       { ...(window.history.state ?? {}), [APP_HISTORY_STATE_KEY]: marker },
@@ -1412,10 +1407,6 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [celebration, closeCelebration]);
 
-  const closePushPrompt = useCallback(() => {
-    closeAppHistoryLayer("push-prompt", () => setShowPushPrompt(false));
-  }, [closeAppHistoryLayer]);
-
   const closeDeleteAccountDialog = useCallback(() => {
     closeAppHistoryLayer("account-delete", () => setShowDeleteAccountDialog(false));
   }, [closeAppHistoryLayer]);
@@ -1487,9 +1478,6 @@ export default function Home() {
           break;
         case "celebration":
           setCelebration(opening ? layer.value : null);
-          break;
-        case "push-prompt":
-          setShowPushPrompt(opening);
           break;
         case "account-delete":
           setShowDeleteAccountDialog(opening);
@@ -1610,18 +1598,6 @@ export default function Home() {
     const frame = window.requestAnimationFrame(() => setShowBirthdayCelebration(true));
     return () => window.cancelAnimationFrame(frame);
   }, [authReady, authenticated, anonymousUser, userRole, onboardingRequired, dogBirthday, profile.id, profile.name]);
-
-  useEffect(() => {
-    if (!authReady || !authenticated || anonymousUser || userRole !== "owner" || onboardingRequired) return;
-    if (!("Notification" in window) || Notification.permission === "granted") return;
-    if (window.sessionStorage.getItem(PUSH_PROMPT_SESSION_KEY) === "1") return;
-    window.sessionStorage.setItem(PUSH_PROMPT_SESSION_KEY, "1");
-    const frame = window.requestAnimationFrame(() => {
-      pushAppHistory({ kind: "push-prompt" });
-      setShowPushPrompt(true);
-    });
-    return () => window.cancelAnimationFrame(frame);
-  }, [authReady, authenticated, anonymousUser, userRole, onboardingRequired, pushAppHistory]);
 
   useEffect(() => {
     const navigatorWithStandalone = window.navigator as Navigator & { standalone?: boolean };
@@ -2457,7 +2433,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    function checkReminders() {
+    if (!authReady || !authenticated || anonymousUser) return;
+    function checkReminders(notify = true) {
       const now = currentTime();
       const sent = readLocal<Record<string, string>>(REMINDER_SENT_KEY, {});
       const due = careGoals.filter((goal) =>
@@ -2467,17 +2444,18 @@ export default function Home() {
       const nextSent = { ...sent };
       due.forEach((goal) => {
         nextSent[goal.id] = today();
-        if ("Notification" in window && Notification.permission === "granted") {
+        if (notify && "Notification" in window && Notification.permission === "granted") {
           new Notification(`${dogName}の ${goal.title}`, { body: "今日のひと手間を、できたにしよう。" });
         }
       });
       writeLocal(REMINDER_SENT_KEY, nextSent);
-      showNotice(`そろそろ「${due[0].title}」の時間です`);
+      if (notify) showNotice(`そろそろ「${due[0].title}」の時間です`);
     }
-    checkReminders();
+    // Skip overdue reminders when logging in or loading the saved goals.
+    checkReminders(false);
     const timer = window.setInterval(checkReminders, 60_000);
     return () => window.clearInterval(timer);
-  }, [careGoals, goalCompletions, dogName]);
+  }, [authReady, authenticated, anonymousUser, careGoals, goalCompletions, dogName]);
 
   useEffect(() => {
     if (!authReady || (userRole !== "admin" && userRole !== "coach")) return;
@@ -2562,7 +2540,6 @@ export default function Home() {
     setPushBusy(true);
     try {
       const subscription = await subscribeUser();
-      if (subscription) closePushPrompt();
       showNotice(subscription ? "新着メッセージの通知をオンにしました" : permissionStatus === "denied" ? "ブラウザまたは端末の設定から通知を許可してください" : "通知の許可が必要です");
     } catch (error) {
       showNotice(error instanceof Error ? `通知を設定できませんでした（${error.message}）` : "通知を設定できませんでした");
@@ -2712,7 +2689,6 @@ export default function Home() {
       clearActiveViewMode(currentUserId);
       await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
       clearOwnerCache();
-      window.sessionStorage.removeItem(PUSH_PROMPT_SESSION_KEY);
       window.location.replace("/");
     } catch (error) {
       const message = error instanceof Error ? error.message : "アカウントを削除できませんでした";
@@ -5538,19 +5514,6 @@ export default function Home() {
               <h2 id="birthday-celebration-title">{profile.name}ちゃん、<br />{dogBirthday.ageYears}歳おめでとう！</h2>
               <span>今日は大切な記念日。<br />生まれてから <b>{dogBirthday.daysAlive.toLocaleString("ja-JP")}日目</b> になりました。</span>
               <button type="button" onClick={() => setShowBirthdayCelebration(false)}>今日も一緒に楽しもう</button>
-            </section>
-          </div>
-        )}
-        {showPushPrompt && (
-          <div className="notification-prompt-backdrop" role="dialog" aria-modal="true" aria-labelledby="notification-prompt-title">
-            <section className="notification-prompt-card">
-              <span className="notification-prompt-icon" aria-hidden="true">🔔</span>
-              <p>MESSAGE NOTIFICATION</p>
-              <h2 id="notification-prompt-title">メッセージを見逃さないために</h2>
-              <span>担当コーチから新しいメッセージが届いたとき、この端末へ通知します。</span>
-              {permissionStatus === "denied" && <small>通知が拒否されています。端末の設定からWanToneの通知を許可してください。</small>}
-              <button type="button" onClick={() => void enablePushNotifications()} disabled={pushBusy}>{pushBusy ? "設定中…" : "メッセージ通知をONにする"}</button>
-              <button type="button" className="notification-prompt-later" onClick={closePushPrompt}>あとで設定する</button>
             </section>
           </div>
         )}
