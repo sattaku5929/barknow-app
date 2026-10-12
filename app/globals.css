@@ -1621,7 +1621,10 @@ body { font-size: 16px; }
   .account-name-field span { display:grid; grid-template-columns:1fr auto; }
 }
 .admin-back { margin-bottom:14px; padding:8px 0; border:0; background:transparent; color:var(--green-dark); cursor:pointer; font-size:12px; font-weight:750; }
-.admin-detail-hero { display:grid; grid-template-columns:62px 1fr auto; align-items:center; gap:16px; padding:23px; border-radius:24px; background:linear-gradient(145deg,#174f3e,#087155); color:#fff; }
+.admin-detail { min-width:0; max-width:100%; overflow-wrap:anywhere; }
+.admin-detail > *,.admin-detail-columns > * { min-width:0; max-width:100%; }
+.admin-detail-hero { display:grid; grid-template-columns:62px minmax(0,1fr) auto; align-items:center; gap:16px; padding:23px; border-radius:24px; background:linear-gradient(145deg,#174f3e,#087155); color:#fff; }
+.admin-detail-hero > div { min-width:0; }
 .admin-dog-avatar { display:grid; width:62px; height:62px; place-items:center; border:1px solid rgba(255,255,255,.25); border-radius:21px; background:rgba(255,255,255,.13); font-family:var(--font-display); font-size:27px; font-weight:700; }
 .admin-dog-avatar.has-image { overflow:hidden; padding:0; }
 .admin-dog-avatar.has-image img { width:100%; height:100%; object-fit:cover; }
@@ -1631,7 +1634,8 @@ body { font-size: 16px; }
 .admin-detail-hero > b { padding:7px 10px; border-radius:9px; font-size:10px; }
 .admin-detail-hero > b.stable { background:#dff4e8; color:#14573f; }
 .admin-detail-hero > b.needs-care { background:#fff0e9; color:#a54d2e; }
-.admin-insight-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:16px; }
+.admin-insight-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:16px; }
+.admin-insight-grid article { min-width:0; }
 .admin-insight-grid article { padding:17px; border:1px solid rgba(27,61,49,.08); border-radius:17px; background:#fff; }
 .admin-insight-grid small { color:var(--muted); font-size:10px; }
 .admin-insight-grid strong { display:block; margin-top:7px; font-family:var(--font-display); font-size:28px; font-weight:600; }
@@ -1654,14 +1658,15 @@ body { font-size: 16px; }
 .admin-category-summary svg { width:20px; height:20px; fill:none; stroke:var(--green); stroke-width:1.7; }
 .admin-category-summary small { color:var(--muted); font-size:9px; }
 .admin-category-summary b { font-size:11px; }
-.admin-detail-columns { display:grid; grid-template-columns:1.2fr .8fr; gap:14px; }
+.admin-detail-columns { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr); gap:14px; }
 .admin-record-list,.admin-goal-list { margin-top:12px; }
-.admin-record-list article { display:grid; grid-template-columns:34px 1fr auto; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid rgba(27,61,49,.07); }
+.admin-record-list article { display:grid; grid-template-columns:34px minmax(0,1fr) auto; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid rgba(27,61,49,.07); }
+.admin-record-list article > div,.admin-goal-list article > div { min-width:0; }
 .admin-record-list svg { width:24px; height:24px; fill:none; stroke:var(--green); stroke-width:1.7; }
 .admin-record-list strong { font-size:12px; }
 .admin-record-list p { overflow:hidden; margin:3px 0 0; color:var(--muted); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
 .admin-record-list time { color:var(--muted); font-size:9px; line-height:1.5; text-align:right; }
-.admin-goal-list article { display:grid; grid-template-columns:34px 1fr auto; align-items:center; gap:9px; padding:10px 0; border-bottom:1px solid rgba(27,61,49,.07); }
+.admin-goal-list article { display:grid; grid-template-columns:34px minmax(0,1fr) auto; align-items:center; gap:9px; padding:10px 0; border-bottom:1px solid rgba(27,61,49,.07); }
 .admin-goal-list svg { width:23px; height:23px; fill:none; stroke:#a7724f; stroke-width:1.7; }
 .admin-goal-list strong { font-size:11px; }
 .admin-goal-list p { margin:3px 0 0; color:var(--muted); font-size:9px; }
@@ -1776,10 +1781,10 @@ body { font-size: 16px; }
   .admin-chat-history { height:56svh; min-height:350px; padding:15px 9px; }
 }
 @media (max-width:700px) {
-  .admin-detail-hero { grid-template-columns:52px 1fr; padding:18px; }
+  .admin-detail-hero { grid-template-columns:52px minmax(0,1fr); padding:18px; }
   .admin-dog-avatar { width:52px; height:52px; border-radius:17px; font-size:22px; }
   .admin-detail-hero > b { grid-column:1 / -1; justify-self:start; }
-  .admin-insight-grid { grid-template-columns:1fr 1fr; }
+  .admin-insight-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .admin-insight-grid article:last-child { grid-column:1 / -1; }
   .admin-category-summary { grid-template-columns:1fr 1fr; }
   .admin-detail-columns { grid-template-columns:1fr; }
@@ -2608,7 +2613,7 @@ body { font-size: 16px; }
   .account-delete-actions button:first-child { order:2; }
   .timeline-toolbar { align-items:flex-start; flex-direction:column; }
   .customer-context-grid { grid-template-columns:1fr; }
-  .customer-context-grid dl > div { grid-template-columns:74px 1fr; }
+  .customer-context-grid dl > div { grid-template-columns:74px minmax(0,1fr); }
 }
 
 /* Observation Event Log and household settings */
@@ -2751,6 +2756,18 @@ body { font-size: 16px; }
 .coach-chat-context small { color:#607868; overflow-wrap:anywhere; }.coach-chat-context button { min-height:36px; margin-left:auto; border:0; background:transparent; color:#008661; font:inherit; cursor:pointer; }
 @media (max-width:650px) { .coach-observation-summary { padding:16px; }.coach-observation-numbers { grid-template-columns:repeat(2,minmax(0,1fr)); }.coach-event-detail dl { grid-template-columns:1fr; } }
 @media (max-width:390px) { .coach-observation-summary { padding:14px; border-radius:18px; }.coach-dog-stats { grid-template-columns:1fr 1fr; } }
+
+/* Assigned-dog details and offer previews must fit their container without clipping. */
+.admin-stage .coach-observation-summary { max-width:100%; overflow-wrap:anywhere; }
+.admin-stage .coach-observation-summary > * { min-width:0; }
+.admin-stage .insight-daily-card > p { flex-wrap:wrap; }
+.admin-stage .insight-theme-heading,.admin-stage .coach-events-heading { flex-wrap:wrap; }
+.admin-stage .coach-offer-observation .customer-context-grid { grid-template-columns:minmax(0,1fr); }
+@media (max-width:650px) {
+  .admin-stage .coach-observation-summary .insight-daily-list { grid-template-columns:minmax(0,1fr); }
+  .admin-detail .admin-panel-heading { flex-wrap:wrap; }
+  .admin-detail .admin-record-list p { white-space:normal; overflow-wrap:anywhere; }
+}
 
 
 /* Recent observation dashboard */
