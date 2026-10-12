@@ -17,6 +17,7 @@ import ObservationEventHub from "@/components/observations/ObservationEventHub";
 import RecentObservationTrends from "@/components/insights/RecentObservationTrends";
 import CoachAssignedDogStats from "@/components/insights/CoachAssignedDogStats";
 import CoachObservationSummary from "@/components/insights/CoachObservationSummary";
+import CoachOfferObservation from "@/components/insights/CoachOfferObservation";
 import OwnerHomeLifestyle from "@/components/owner/OwnerHomeLifestyle";
 import HomeCalendar from "@/components/owner/HomeCalendar";
 import HomeCareGroups, { carePeriods } from "@/components/owner/HomeCareGroups";
@@ -1148,6 +1149,7 @@ export default function Home() {
   const [adminTab, setAdminTab] = useState<AdminTab>("applications");
   const [lastAdminRefresh, setLastAdminRefresh] = useState<Date | null>(null);
   const [selectedAdminCustomer, setSelectedAdminCustomer] = useState<AdminCustomer | null>(null);
+  const [expandedCoachOfferId, setExpandedCoachOfferId] = useState<string | null>(null);
   const [coachChatContext, setCoachChatContext] = useState<{ id: string; theme: string } | null>(null);
   const [adminDetailRecords, setAdminDetailRecords] = useState<DailyRecord[]>([]);
   const [adminDetailMessages, setAdminDetailMessages] = useState<CoachMessage[]>([]);
@@ -2926,6 +2928,7 @@ export default function Home() {
   }
 
   async function acceptCoachingOffer(application: AdminCoachingApplication) {
+    if (saving || !window.confirm(`${application.dogName}の担当を本当に受け入れますか？\n受け入れると飼い主へ確定通知が届き、チャットが開きます。`)) return;
     setSaving(true);
     const { error } = await supabase.rpc("wt_coach_accept_application", {
       target_application_id: application.id,
@@ -2951,6 +2954,7 @@ export default function Home() {
   }
 
   async function declineCoachingOffer(application: AdminCoachingApplication) {
+    if (saving || !window.confirm(`${application.dogName}の担当を本当に辞退しますか？\n担当依頼を管理者へ戻します。`)) return;
     setSaving(true);
     const { error } = await supabase.rpc("wt_coach_decline_application", {
       target_application_id: application.id,
@@ -5234,7 +5238,9 @@ export default function Home() {
                 <div className="application-topics">{application.concernCategories.map((concern) => <span key={concern}>{coachingConcernLabel(concern)}</span>)}</div>
                 <div className="application-goal"><small>目指したい状態</small><p>{application.desiredOutcome}</p>{application.note && <><small>補足</small><p>{application.note}</p></>}</div>
                 <p className="coach-offer-note">担当を引き受けるとownerへ確定通知が届き、チャットが開きます。</p>
+                <button type="button" className="coach-offer-summary-button" aria-expanded={expandedCoachOfferId === application.id} aria-controls={`coach-offer-observation-${application.id}`} onClick={() => setExpandedCoachOfferId((current) => current === application.id ? null : application.id)}>{expandedCoachOfferId === application.id ? "観察サマリーを閉じる" : "観察サマリーを見る →"}</button>
                 <div className="coach-offer-actions"><button className="secondary" onClick={() => void declineCoachingOffer(application)} disabled={saving}>今回は辞退</button><button onClick={() => void acceptCoachingOffer(application)} disabled={saving}>{saving ? "処理中…" : "担当を引き受ける"}<span>→</span></button></div>
+                {expandedCoachOfferId === application.id && <div id={`coach-offer-observation-${application.id}`}><CoachOfferObservation key={application.id} dogId={application.dogId} ownerId={application.ownerId} dogName={application.dogName} /></div>}
               </article>
             ))}</div>
           </section>
