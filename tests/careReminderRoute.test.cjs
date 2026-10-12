@@ -17,7 +17,7 @@ function harness({claimed=true,delivery='sent',pushError=false,claimError=false,
   h=harness({configured:false});assert.equal((await h.post()).status,503);assert.equal(h.state.claims.length,0,'Missing push keys must not consume delivery attempts');
   h=harness();assert.equal((await h.post()).status,200);
   assert.deepEqual(h.state.claims[0],{name:'wt_claim_care_reminder',args:{target_job_id:id,target_delivery_token:token}});
-  assert.deepEqual(h.state.pushes[0],['owner-id','WanTone｜毎日やること','愛犬の「歯磨き」の時間です。','/?view=goals',{kind:'care',tag:'care-goal-id-2026-10-12'}]);
+  assert.deepEqual(h.state.pushes[0],['owner-id','WanTone｜毎日やること','愛犬の「歯磨き」の時間です。','/?view=goals',{kind:'care',tag:`care-${id}`}]);
   assert.equal(h.state.updates[0].values.delivery_status,'sent');assert.ok(h.state.updates[0].values.finished_at);
   assert.deepEqual(h.state.updates[0].filters,[['id',id],['claim_token',token]]);
   h=harness({claimed:false});assert.equal((await h.post()).status,200);assert.equal(h.state.pushes.length,0);

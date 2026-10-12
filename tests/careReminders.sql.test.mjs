@@ -81,5 +81,19 @@ assert.equal((await query(`select wt_private.care_reminder_is_pending('${goal(1)
 await assert.rejects(db.exec(`update wt_care_goals set period='day'`),/check constraint/);
 await db.exec(`update wt_care_goals set reminder_date=null;`);
 assert.equal((await query(`select wt_private.care_reminder_is_pending('${goal(1)}','2026-10-19') as pending`))[0].pending,true,'Clearing the specific date restores the existing reminder behavior');
+await db.exec(await readFile(new URL('../supabase/migrations/20261012075927_care_reminder_rescheduled_times.sql',import.meta.url),'utf8'));
+// Model a previously delivered reminder, then move the same goal to the current minute.
+await db.exec(`delete from wt_care_goal_completions;update wt_care_goals set period='day',reminder_date=null,active=true,reminder_time=date_trunc('minute',now() at time zone 'Asia/Tokyo')::time;
+  update wt_care_reminder_jobs set reminder_time=(date_trunc('minute',now() at time zone 'Asia/Tokyo')-interval '10 minutes')::time,finished_at=now(),delivery_status='sent';
+  select wt_private.dispatch_care_reminders();`);
+assert.equal(await count('wt_care_reminder_jobs'),2,'Changing the time must create a new reminder even after an earlier same-day delivery');
+assert.equal(await count('net.test_requests'),2,'The newly scheduled time must dispatch');
+await db.exec('select wt_private.dispatch_care_reminders()');
+assert.equal(await count('wt_care_reminder_jobs'),2,'The same day/time slot still deduplicates');
+const slot=(await query(`select id,delivery_token from wt_care_reminder_jobs where finished_at is null`))[0];
+await db.exec('set role service_role');
+assert.equal((await query(`select * from wt_claim_care_reminder('${slot.id}','${slot.delivery_token}')`)).length,1,'The new slot can be claimed independently of the old delivery');
+await db.exec(`update wt_care_reminder_jobs set finished_at=now(),delivery_status='sent',claim_until=null;reset role;select wt_private.dispatch_care_reminders();`);
+assert.equal(await count('net.test_requests'),2,'A successfully delivered new slot does not dispatch again');
 await db.close();
 console.log('Care reminder SQL: subscription gating, JST, day/week/month completion, private RLS, capability validation, atomic claims, daily dedup, retries, archive/time-change cancellation and expiry passed.');

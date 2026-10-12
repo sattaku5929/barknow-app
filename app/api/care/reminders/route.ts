@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     try {
       const delivery = await sendPushNotification(job.owner_id, "WanTone｜毎日やること",
         `${job.dog_name}の「${job.title}」の時間です。`, "/?view=goals", {
-          kind: "care", tag: `care-${job.goal_id}-${job.reminder_on}`,
+          kind: "care", tag: `care-${job.id}`,
         });
       const { error: finishError } = await admin.from("wt_care_reminder_jobs").update({
         finished_at: new Date().toISOString(), delivery_status: delivery === "sent" ? "sent" : "skipped",
