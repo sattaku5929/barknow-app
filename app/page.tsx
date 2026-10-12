@@ -393,9 +393,9 @@ function LockedCoachingPreview({
 }) {
   return (
     <section className="free-coaching-preview" aria-label="コーチングプランの機能紹介">
-      <div className="owner-coach-tabs" role="tablist" aria-label="コーチングプランの機能">
+      <div className="owner-coach-tabs owner-consultation-tabs" role="tablist" aria-label="コーチングプランの機能">
         <button type="button" role="tab" aria-selected={tab === "chat"} className={tab === "chat" ? "is-active" : ""} onClick={() => onTabChange("chat")}><span className="owner-tab-icon"><NavGlyph name="coach" /></span><span><strong>チャット</strong><small>コーチに相談</small></span></button>
-        <button type="button" role="tab" aria-selected={tab === "sessions"} className={tab === "sessions" ? "is-active" : ""} onClick={() => onTabChange("sessions")}><span className="owner-tab-icon"><NavGlyph name="goals" /></span><span><strong>オンライン診断</strong><small>月4回のレッスン</small></span></button>
+        <button type="button" role="tab" aria-selected={tab === "sessions"} className={`owner-online-tab ${tab === "sessions" ? "is-active" : ""}`} onClick={() => onTabChange("sessions")}><span className="owner-tab-icon"><NavGlyph name="goals" /></span><span><strong>オンライン診断</strong><small>月4回のレッスン</small></span></button>
       </div>
 
       {tab === "chat" ? (
@@ -4737,9 +4737,9 @@ export default function Home() {
             </section>
           ) : (
             <>
-              <div className="owner-coach-tabs" role="tablist" aria-label="コーチメニュー">
+              <div className="owner-coach-tabs owner-consultation-tabs is-sticky" role="tablist" aria-label="コーチメニュー">
                 <button type="button" role="tab" aria-selected={ownerCoachTab === "chat"} className={ownerCoachTab === "chat" ? "is-active" : ""} onClick={() => navigateCoachTab("chat")}><span className="owner-tab-icon"><NavGlyph name="coach" /></span><span><strong>チャット</strong><small>{messages.length ? `${messages.length}件のやりとり` : "コーチに相談"}</small></span></button>
-                <button type="button" role="tab" aria-selected={ownerCoachTab === "sessions"} className={ownerCoachTab === "sessions" ? "is-active" : ""} onClick={() => navigateCoachTab("sessions")}><span className="owner-tab-icon"><NavGlyph name="goals" /></span><span><strong>オンライン診断</strong><small>{ownerBookedSessions.length ? `予約 ${ownerBookedSessions.length}件` : "予約・履歴"}</small></span></button>
+                <button type="button" role="tab" aria-selected={ownerCoachTab === "sessions"} className={`owner-online-tab ${ownerCoachTab === "sessions" ? "is-active" : ""}`} onClick={() => navigateCoachTab("sessions")}><span className="owner-tab-icon"><NavGlyph name="goals" /></span><span><strong>オンライン診断</strong><small>空き日時・予約を確認</small></span>{ownerBookedSessions.length > 0 && <span className="owner-tab-booking">予約 {ownerBookedSessions.length}件</span>}</button>
               </div>
 
               {ownerCoachTab === "sessions" ? (
