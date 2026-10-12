@@ -1231,6 +1231,7 @@ export default function Home() {
   const [googleCalendar, setGoogleCalendar] = useState<{ connected: boolean; email: string; status: string; error: string; configured: boolean; configurationError: string }>({ connected: false, email: "", status: "", error: "", configured: true, configurationError: "" });
   const [scheduleMode, setScheduleMode] = useState<"day" | "week" | "month">("week");
   const [scheduleAnchor, setScheduleAnchor] = useState(today());
+  const [selectedStaffSessionId, setSelectedStaffSessionId] = useState<string | null>(null);
   const [scheduleCoachFilter, setScheduleCoachFilter] = useState("all");
   const [scheduleOwnerFilter, setScheduleOwnerFilter] = useState("all");
   const [calendarMode, setCalendarMode] = useState<"week" | "month">("week");
@@ -2092,13 +2093,7 @@ export default function Home() {
     if (application.ownerConfirmedAt) {
       const { data: slots } = await supabase.rpc("wt_owner_available_slots", { target_application_id: application.id });
       if (slots) {
-        let mapped: AvailabilitySlot[] = slots.map((slot: Record<string, unknown>) => ({ id: String(slot.slot_id), coachId: application.assignedCoachId ?? "", coachName: profileData?.display_name ?? "担当コーチ", coachEmail: "", startsAt: String(slot.starts_at), endsAt: String(slot.ends_at), active: true, sessionId: "", sessionStatus: "", ownerName: "" }));
-        const { data: sessionData } = await supabase.auth.getSession();
-        if (mapped.length && sessionData.session?.access_token) {
-          const response = await fetch("/api/google-calendar/freebusy", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionData.session.access_token}` }, body: JSON.stringify({ applicationId: application.id, timeMin: mapped[0].startsAt, timeMax: mapped[mapped.length - 1].endsAt }) });
-          const result = await response.json().catch(() => null);
-          if (response.ok && Array.isArray(result?.busy)) mapped = mapped.filter((slot) => !result.busy.some((range: { start: string; end: string }) => new Date(range.start) < new Date(slot.endsAt) && new Date(range.end) > new Date(slot.startsAt)));
-        }
+        const mapped: AvailabilitySlot[] = slots.map((slot: Record<string, unknown>) => ({ id: String(slot.slot_id), coachId: application.assignedCoachId ?? "", coachName: profileData?.display_name ?? "担当コーチ", coachEmail: "", startsAt: String(slot.starts_at), endsAt: String(slot.ends_at), active: true, sessionId: "", sessionStatus: "", ownerName: "" }));
         setAvailableSlots(mapped);
       }
     }
@@ -3091,6 +3086,21 @@ export default function Home() {
     return Boolean(slot.sessionId && slot.sessionStatus !== "cancelled");
   }
 
+  function openStaffBooking(slot: AvailabilitySlot) {
+    if (!slot.sessionId) return;
+    setSelectedStaffSessionId(slot.sessionId);
+    setScheduleAnchor(new Date(slot.startsAt).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }));
+    setScheduleMode("day");
+    setScheduleOwnerFilter("all");
+    setScheduleCoachFilter("all");
+    window.setTimeout(() => {
+      const detail = document.getElementById("staff-booking-detail");
+      detail?.focus({ preventScroll: true });
+      detail?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+    void loadStaffBookingWorkspace();
+  }
+
   function chooseTimelineTime(day: string, event: ReactMouseEvent<HTMLDivElement>) {
     if (event.target !== event.currentTarget) return;
     const rect = event.currentTarget.getBoundingClientRect();
@@ -3155,15 +3165,21 @@ export default function Home() {
   }
 
   async function bookOnlineSession(slot: AvailabilitySlot) {
-    if (!coachingApplication) return;
+    if (!coachingApplication || saving) return;
     const hasInitial = onlineSessions.some((session) => session.sessionType === "initial" && session.status !== "cancelled");
     const sessionType = hasInitial ? "followup" : "initial";
     const label = new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", weekday: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(slot.startsAt));
     if (!window.confirm(`${label}で${sessionType === "initial" ? "初回" : "継続"}オンライン診断を予約しますか？`)) return;
     setSaving(true);
     try {
-      const response = await authorizedFetch("/api/online-sessions/book", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applicationId: coachingApplication.id, slotId: slot.id, sessionType }) });
-      const result = await response.json().catch(() => null) as { error?: string } | null;
+      const book = (allowGoogleConflict = false) => authorizedFetch("/api/online-sessions/book", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applicationId: coachingApplication.id, slotId: slot.id, sessionType, allowGoogleConflict }) });
+      let response = await book();
+      let result = await response.json().catch(() => null) as { error?: string; code?: string } | null;
+      if (response.status === 409 && result?.code === "GOOGLE_CALENDAR_CONFLICT") {
+        if (!window.confirm(`${label}は担当コーチのGoogleカレンダーに重なる予定があります。\nこの時間で予約を続けますか？`)) return;
+        response = await book(true);
+        result = await response.json().catch(() => null);
+      }
       if (!response.ok) {
         showNotice(`予約できませんでした（${result?.error ?? `サーバーエラー ${response.status}`}）`);
         return;
@@ -5151,6 +5167,8 @@ export default function Home() {
     if (mode === "owner") setView("home");
   }
 
+  const selectedStaffSession = onlineSessions.find((session) => session.id === selectedStaffSessionId);
+
   const adminView = (
     <div className="admin-stage">
       {pullRefreshIndicator}
@@ -5301,11 +5319,26 @@ export default function Home() {
                   <div className="slot-form-actions"><button disabled={saving}>{saving ? "保存中…" : editingSlotId ? "変更を保存" : "空き枠を追加"}</button>{editingSlotId && <><button type="button" className="secondary" onClick={resetAvailabilityEditor}>編集をやめる</button><button type="button" className="delete-slot" onClick={() => { const slot = availableSlots.find((item) => item.id === editingSlotId); if (slot) void removeAvailabilitySlot(slot); }}>この枠を削除</button></>}</div>
                 </form>
                 <section className="availability-timeline"><div className="timeline-toolbar"><div><strong>週間タイムライン</strong><small>空白をタップして30分単位で追加</small></div><div><button onClick={() => setTimelineWeekAnchor(addToDateKey(timelineWeekAnchor, -7))}>←</button><button onClick={() => setTimelineWeekAnchor(today())}>今週</button><button onClick={() => setTimelineWeekAnchor(addToDateKey(timelineWeekAnchor, 7))}>→</button></div></div>
-                  <div className="timeline-scroll"><div className="timeline-grid"><aside><header></header>{timelineHours.map((hour) => <span key={hour}>{String(hour).padStart(2, "0")}:00</span>)}</aside>{timelineDays.map((day) => <section key={day} className={day === today() ? "is-today" : ""}><header><small>{new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(dateKeyValue(day))}</small><strong>{Number(day.slice(-2))}</strong></header><div className="timeline-day-body" onClick={(event) => chooseTimelineTime(day, event)}>{timelineHours.map((hour) => <i key={hour}></i>)}{visibleManagedSlots.filter((slot) => new Date(slot.startsAt).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }) === day).map((slot) => { const start = timeMinutesJst(slot.startsAt); const duration = Math.max(30, (new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60_000); return <button type="button" key={slot.id} className={`timeline-slot ${availabilitySlotIsLocked(slot) ? "is-booked" : ""}`} style={{ top: `${start / 1440 * 100}%`, height: `${duration / 1440 * 100}%` }} onClick={(event) => { event.stopPropagation(); if (availabilitySlotIsLocked(slot)) { setScheduleAnchor(day); setScheduleMode("day"); } else editAvailabilitySlot(slot); }}><b>{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(slot.startsAt))}</b><span>{availabilitySlotIsLocked(slot) ? "予約済" : "空き枠"}</span></button>; })}</div></section>)}</div></div>
+                  <div className="timeline-scroll"><div className="timeline-grid"><aside><header></header>{timelineHours.map((hour) => <span key={hour}>{String(hour).padStart(2, "0")}:00</span>)}</aside>{timelineDays.map((day) => <section key={day} className={day === today() ? "is-today" : ""}><header><small>{new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(dateKeyValue(day))}</small><strong>{Number(day.slice(-2))}</strong></header><div className="timeline-day-body" onClick={(event) => chooseTimelineTime(day, event)}>{timelineHours.map((hour) => <i key={hour}></i>)}{visibleManagedSlots.filter((slot) => new Date(slot.startsAt).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" }) === day).map((slot) => { const start = timeMinutesJst(slot.startsAt); const duration = Math.max(30, (new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60_000); return <button type="button" key={slot.id} className={`timeline-slot ${availabilitySlotIsLocked(slot) ? "is-booked" : ""}`} style={{ top: `${start / 1440 * 100}%`, height: `${duration / 1440 * 100}%` }} onClick={(event) => { event.stopPropagation(); if (availabilitySlotIsLocked(slot)) openStaffBooking(slot); else editAvailabilitySlot(slot); }}><b>{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(slot.startsAt))}</b><span>{availabilitySlotIsLocked(slot) ? "予約済" : "空き枠"}</span></button>; })}</div></section>)}</div></div>
                 </section>
-                <div className="staff-slot-list">{visibleManagedSlots.length ? visibleManagedSlots.map((slot) => <article key={slot.id} className={availabilitySlotIsLocked(slot) ? "is-booked" : "is-open"}><div className="slot-date"><span className="slot-status">{slot.sessionStatus === "completed" ? "完了済み" : slot.sessionStatus === "booked" ? "予約済み" : slot.sessionStatus === "cancelled" ? "予約取消済み" : "予約可能"}</span><strong>{formatOnlineDate(slot.startsAt)}</strong><small>{Math.round((new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60000)}分{userRole === "admin" ? ` · ${slot.coachName}` : ""}</small>{slot.ownerName && <em>{slot.ownerName}様</em>}</div><div className="slot-actions">{availabilitySlotIsLocked(slot) ? <button className="view-booking" onClick={() => { setScheduleAnchor(new Date(slot.startsAt).toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" })); setScheduleMode("day"); }}>予約を確認</button> : <><button className="edit-slot" onClick={() => editAvailabilitySlot(slot)}>編集</button><button className="delete-slot" onClick={() => void removeAvailabilitySlot(slot)}>削除</button></>}</div></article>) : <p>これから予約できる空き枠はありません。</p>}</div>
+                <div className="staff-slot-list">{visibleManagedSlots.length ? visibleManagedSlots.map((slot) => <article key={slot.id} className={availabilitySlotIsLocked(slot) ? "is-booked" : "is-open"}><div className="slot-date"><span className="slot-status">{slot.sessionStatus === "completed" ? "完了済み" : slot.sessionStatus === "booked" ? "予約済み" : slot.sessionStatus === "cancelled" ? "予約取消済み" : "予約可能"}</span><strong>{formatOnlineDate(slot.startsAt)}</strong><small>{Math.round((new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60000)}分{userRole === "admin" ? ` · ${slot.coachName}` : ""}</small>{slot.ownerName && <em>{slot.ownerName}様</em>}</div><div className="slot-actions">{availabilitySlotIsLocked(slot) ? <button className="view-booking" onClick={() => openStaffBooking(slot)}>予約を確認</button> : <><button className="edit-slot" onClick={() => editAvailabilitySlot(slot)}>編集</button><button className="delete-slot" onClick={() => void removeAvailabilitySlot(slot)}>削除</button></>}</div></article>) : <p>これから予約できる空き枠はありません。</p>}</div>
               </section>
             )}
+            {selectedStaffSessionId && <section id="staff-booking-detail" className="staff-schedule-panel staff-booking-detail" tabIndex={-1} aria-labelledby="staff-booking-detail-title">
+              <div className="admin-panel-heading"><h2 id="staff-booking-detail-title">予約の詳細</h2><button type="button" className="inline-refresh" onClick={() => setSelectedStaffSessionId(null)}>閉じる</button></div>
+              {selectedStaffSession ? <>
+                <dl>
+                  <div><dt>日時</dt><dd>{formatOnlineDate(selectedStaffSession.startsAt)} · {Math.round((new Date(selectedStaffSession.endsAt).getTime() - new Date(selectedStaffSession.startsAt).getTime()) / 60000)}分</dd></div>
+                  <div><dt>オーナー</dt><dd>{selectedStaffSession.ownerName || selectedStaffSession.ownerEmail}</dd></div>
+                  <div><dt>愛犬</dt><dd>{selectedStaffSession.dogName}</dd></div>
+                  <div><dt>担当コーチ</dt><dd>{selectedStaffSession.coachName}</dd></div>
+                  <div><dt>予約内容</dt><dd>{selectedStaffSession.sessionType === "initial" ? "初回" : "継続"}オンライン診断 · {selectedStaffSession.status === "booked" ? "確定" : selectedStaffSession.status === "completed" ? "完了" : "取消"}</dd></div>
+                </dl>
+                {selectedStaffSession.meetUrl && selectedStaffSession.status !== "cancelled" ? <div className="staff-booking-meet"><a href={selectedStaffSession.meetUrl} target="_blank" rel="noreferrer">Google Meetを開く ↗</a><p>{selectedStaffSession.meetUrl}</p></div>
+                  : <p role="status">{selectedStaffSession.status === "cancelled" ? "この予約はキャンセルされています。" : selectedStaffSession.calendarSyncStatus === "error" ? "Google同期に失敗しました。更新して再確認してください。" : selectedStaffSession.calendarSyncStatus === "not_connected" ? "担当コーチのGoogleカレンダーが未連携です。" : "Meet URLを準備しています。少し待って更新してください。"}</p>}
+                <div className="calendar-event-actions"><button type="button" onClick={() => void loadStaffBookingWorkspace()}>更新</button>{selectedStaffSession.status === "booked" && <><button type="button" onClick={() => void updateOnlineSessionStatus(selectedStaffSession.id, "completed")}>完了にする</button><button type="button" className="is-danger" onClick={() => void updateOnlineSessionStatus(selectedStaffSession.id, "cancelled")}>予約を取消</button></>}</div>
+              </> : <p role="status">予約を確認しています。表示されない場合はカレンダーの「更新」を押してください。</p>}
+            </section>}
             <section className="staff-schedule-panel">
               <div className="admin-panel-heading"><div><p className="card-label">BOOKINGS</p><h2>オンライン診断カレンダー</h2></div><button className="inline-refresh" onClick={() => void loadStaffBookingWorkspace()}>更新</button></div>
               <div className="schedule-toolbar">
@@ -5316,7 +5349,7 @@ export default function Home() {
                   <select value={scheduleOwnerFilter} onChange={(event) => setScheduleOwnerFilter(event.target.value)}><option value="all">すべてのオーナー</option>{scheduleOwners.map(([id, name]) => <option value={id} key={id}>{name}</option>)}</select>
                 </div>
               </div>
-              <div className={`schedule-calendar mode-${scheduleMode}`}>{scheduleDays.map((day) => <section key={day.key} className={day.key === today() ? "is-today" : ""}><header><strong>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric" }).format(day.date)}</strong><small>{new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(day.date)}</small><b>{day.sessions.length}</b></header><div>{day.sessions.map((session) => <article key={session.id} className={`session-${session.status}`}><time>{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(session.startsAt))}–{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(session.endsAt))}</time><strong>{session.ownerName || session.ownerEmail}</strong><p>{session.dogName}</p><div className="calendar-coach-card"><span>{session.coachAvatarUrl ? <img src={session.coachAvatarUrl} alt="" /> : session.coachName.slice(0, 1)}</span><div><small>担当コーチ</small><b>{session.coachName}</b>{session.coachHeadline && <em>{session.coachHeadline}</em>}</div></div><small>{session.sessionType === "initial" ? "初回" : "継続"} · {session.status === "booked" ? "確定" : session.status === "completed" ? "完了" : "取消"}</small><div className="calendar-event-actions">{session.meetUrl && session.status === "booked" && <a href={session.meetUrl} target="_blank" rel="noreferrer">Meet</a>}{session.status === "booked" && <><button onClick={() => void updateOnlineSessionStatus(session.id, "completed")}>完了</button><button className="is-danger" onClick={() => void updateOnlineSessionStatus(session.id, "cancelled")}>取消</button></>}</div>{session.calendarSyncStatus !== "synced" && <em className={`sync-${session.calendarSyncStatus}`}>{session.calendarSyncStatus === "error" ? "Google同期エラー" : session.calendarSyncStatus === "not_connected" ? "Google未連携" : "Google同期中"}</em>}</article>)}</div></section>)}</div>
+              <div className={`schedule-calendar mode-${scheduleMode}`}>{scheduleDays.map((day) => <section key={day.key} className={day.key === today() ? "is-today" : ""}><header><strong>{new Intl.DateTimeFormat("ja-JP", { month: "numeric", day: "numeric" }).format(day.date)}</strong><small>{new Intl.DateTimeFormat("ja-JP", { weekday: "short" }).format(day.date)}</small><b>{day.sessions.length}</b></header><div>{day.sessions.map((session) => <article key={session.id} className={`session-${session.status}`}><time>{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(session.startsAt))}–{new Intl.DateTimeFormat("ja-JP", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tokyo" }).format(new Date(session.endsAt))}</time><strong>{session.ownerName || session.ownerEmail}</strong><p>{session.dogName}</p><div className="calendar-coach-card"><span>{session.coachAvatarUrl ? <img src={session.coachAvatarUrl} alt="" /> : session.coachName.slice(0, 1)}</span><div><small>担当コーチ</small><b>{session.coachName}</b>{session.coachHeadline && <em>{session.coachHeadline}</em>}</div></div><small>{session.sessionType === "initial" ? "初回" : "継続"} · {session.status === "booked" ? "確定" : session.status === "completed" ? "完了" : "取消"}</small><div className="calendar-event-actions">{session.meetUrl && session.status !== "cancelled" && <a href={session.meetUrl} target="_blank" rel="noreferrer">Meet</a>}{session.status === "booked" && <><button onClick={() => void updateOnlineSessionStatus(session.id, "completed")}>完了</button><button className="is-danger" onClick={() => void updateOnlineSessionStatus(session.id, "cancelled")}>取消</button></>}</div>{session.calendarSyncStatus !== "synced" && <em className={`sync-${session.calendarSyncStatus}`}>{session.calendarSyncStatus === "error" ? "Google同期エラー" : session.calendarSyncStatus === "not_connected" ? "Google未連携" : "Google同期中"}</em>}</article>)}</div></section>)}</div>
               {!filteredScheduleSessions.length && <section className="admin-empty compact"><h2>この期間の予約はありません</h2><p>表示期間または絞り込み条件を変更してください。</p></section>}
             </section>
           </div>
@@ -5338,7 +5371,7 @@ export default function Home() {
               <label>自己紹介<textarea rows={5} value={coachProfile.bio} onChange={(event) => setCoachProfile({ ...coachProfile, bio: event.target.value })} placeholder="オーナーへ伝えたいサポート方針など" /></label>
               <label>予備のGoogle Meet URL<input type="url" value={coachProfile.meetUrl} onChange={(event) => setCoachProfile({ ...coachProfile, meetUrl: event.target.value })} placeholder="https://meet.google.com/xxx-xxxx-xxx" /><small>Calendar未連携時に使用する予備URLです。</small></label>
             </div>
-            <section className={`google-calendar-card ${googleCalendar.connected ? "is-connected" : ""} ${!googleCalendar.configured ? "has-error" : ""}`}><div className="google-calendar-mark">G</div><div><p className="card-label">GOOGLE CALENDAR</p><h3>{googleCalendar.connected ? "カレンダー連携済み" : !googleCalendar.configured ? "連携設定を確認してください" : "Google Calendarを連携"}</h3><p>{googleCalendar.connected ? `${googleCalendar.email} · 予約時にMeet予定を自動作成します。` : "予定あり時間を予約枠から除外し、予約確定時にGoogle Meet付き予定を作成します。"}</p>{googleCalendar.configurationError && <small>設定確認：{googleCalendar.configurationError}</small>}{googleCalendar.error && <small>同期エラー：{googleCalendar.error}</small>}</div>{googleCalendar.connected ? <button type="button" className="secondary" onClick={() => void disconnectGoogleCalendar()}>連携解除</button> : <button type="button" onClick={() => void connectGoogleCalendar()} disabled={saving || !googleCalendar.configured}>Googleと連携</button>}</section>
+            <section className={`google-calendar-card ${googleCalendar.connected ? "is-connected" : ""} ${!googleCalendar.configured ? "has-error" : ""}`}><div className="google-calendar-mark">G</div><div><p className="card-label">GOOGLE CALENDAR</p><h3>{googleCalendar.connected ? "カレンダー連携済み" : !googleCalendar.configured ? "連携設定を確認してください" : "Google Calendarを連携"}</h3><p>{googleCalendar.connected ? `${googleCalendar.email} · 予約時にMeet予定を自動作成します。` : "予定の重複を予約時に確認し、予約確定時にGoogle Meet付き予定を作成します。"}</p>{googleCalendar.configurationError && <small>設定確認：{googleCalendar.configurationError}</small>}{googleCalendar.error && <small>同期エラー：{googleCalendar.error}</small>}</div>{googleCalendar.connected ? <button type="button" className="secondary" onClick={() => void disconnectGoogleCalendar()}>連携解除</button> : <button type="button" onClick={() => void connectGoogleCalendar()} disabled={saving || !googleCalendar.configured}>Googleと連携</button>}</section>
             <button className="staff-save-button" disabled={saving}>{saving ? "保存中…" : "プロフィールを保存"}</button>
           </form>
         )}
