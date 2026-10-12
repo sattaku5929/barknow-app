@@ -86,7 +86,7 @@ async function testSubscriptionSave() {
     "@/lib/push-security": { validPushSubscription: () => true },
     "@/lib/server/supabase": { authenticatedUser: async () => ({ id: "owner-id" }), serviceSupabase: () => ({ from: () => ({ upsert: async (row, options) => {
       assert.deepEqual(Object.keys(row).sort(), ["subscription", "user_id"]);
-      assert.equal(options.onConflict, "user_id");
+      assert.equal(options.onConflict, "user_id,endpoint");
       saved = row;
       return { error: null };
     } }) }) },

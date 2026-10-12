@@ -33,14 +33,19 @@ async function metadataSubscription(userId: string) {
 export async function GET(request: NextRequest) {
   const user = await authenticatedUser(request);
   if (!user) return NextResponse.json({ error: "ログイン情報を確認できませんでした" }, { status: 401 });
+  const endpoint = request.headers.get("x-push-endpoint");
+  if (!endpoint || !validPushSubscription({ endpoint, keys: { auth: "status", p256dh: "status" } })) {
+    return NextResponse.json({ error: "通知端末を確認できませんでした" }, { status: 400 });
+  }
 
   try {
     const admin = serviceSupabase();
-    const { data, error } = await admin.from("push_subscriptions").select("subscription").eq("user_id", user.id).maybeSingle();
+    const { data, error } = await admin.from("push_subscriptions").select("subscription").eq("user_id", user.id).eq("endpoint", endpoint).maybeSingle();
     if (!error && data?.subscription) return NextResponse.json({ subscription: data.subscription, storage: "table" });
     if (error) console.error("[Web Push] subscription table lookup failed", { userId: user.id, error });
     const subscription = await metadataSubscription(user.id);
-    return NextResponse.json({ subscription: subscription ?? null, storage: subscription ? "auth_metadata" : null });
+    const matching = subscription?.endpoint === endpoint ? subscription : null;
+    return NextResponse.json({ subscription: matching, storage: matching ? "auth_metadata" : null });
   } catch (error) {
     console.error("[Web Push] subscription status failed", { userId: user.id, error });
     return NextResponse.json({ error: "通知設定を処理できませんでした" }, { status: 500 });
@@ -62,7 +67,7 @@ export async function POST(request: NextRequest) {
     const { error } = await admin.from("push_subscriptions").upsert({
       user_id: user.id,
       subscription,
-    }, { onConflict: "user_id" });
+    }, { onConflict: "user_id,endpoint" });
     if (!error) return NextResponse.json({ ok: true, storage: "table" });
 
     console.error("[Web Push] subscription table save failed; using auth metadata", { userId: user.id, error });
@@ -82,16 +87,22 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const user = await authenticatedUser(request);
   if (!user) return NextResponse.json({ error: "ログイン情報を確認できませんでした" }, { status: 401 });
+  const input = await request.json().catch(() => null) as { endpoint?: string } | null;
+  const endpoint = input?.endpoint;
+  if (!endpoint || !validPushSubscription({ endpoint, keys: { auth: "status", p256dh: "status" } })) {
+    return NextResponse.json({ error: "通知端末を確認できませんでした" }, { status: 400 });
+  }
 
   try {
     const admin = serviceSupabase();
-    const { error: deleteError } = await admin.from("push_subscriptions").delete().eq("user_id", user.id);
+    const { error: deleteError } = await admin.from("push_subscriptions").delete().eq("user_id", user.id).eq("endpoint", endpoint);
     if (deleteError) throw deleteError;
 
     const { data: authData, error: readError } = await admin.auth.admin.getUserById(user.id);
     if (readError) throw readError;
     const metadata = { ...(authData.user?.user_metadata ?? {}) };
-    delete metadata.push_subscription;
+    if (metadata.push_subscription?.endpoint !== endpoint) return NextResponse.json({ ok: true });
+    metadata.push_subscription = null;
     const { error: metadataError } = await admin.auth.admin.updateUserById(user.id, { user_metadata: metadata });
     if (metadataError) throw metadataError;
 

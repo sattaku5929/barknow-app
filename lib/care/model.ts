@@ -31,11 +31,15 @@ export const careIconOptions: ReadonlyArray<{value:CareGoalType;label:string;cat
   {value:"camera",label:"写真",category:"お出かけ"},
 ];
 export function validCareIcon(value:unknown):value is CareGoalType { return careIconOptions.some(option=>option.value===value); }
-export type CareGoal = {id:string;title:string;goalType:CareGoalType;targetCount:number;period:CarePeriod;reminderTime:string|null;createdAt:string};
+export type CareGoal = {id:string;title:string;goalType:CareGoalType;targetCount:number;period:CarePeriod;reminderTime:string|null;reminderDate?:string|null;createdAt:string};
 export type CareTemplate = Omit<CareGoal,"id"|"createdAt">;
 export function careLayout(count:number) { return count <= 3 ? "cards" : count <= 8 ? "tiles" : "dense"; }
 export function validTargetCount(count:number) { return Number.isInteger(count) && count >= 1 && count <= 31; }
+export function validReminderDate(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0,10)===value;
+}
 export function careGoalError(goal:CareTemplate) {
+  if (goal.reminderDate && (goal.period!=="week" || !validReminderDate(goal.reminderDate))) return "実施予定日を確認してください。";
   if (!goal.title.trim() || goal.title.trim().length > 40) return "やることを1〜40文字で入力してください。";
   if (!validTargetCount(goal.targetCount)) return "目標回数は1〜31回の整数にしてください。";
   if (!["day","week","month"].includes(goal.period)) return "期間を確認してください。";

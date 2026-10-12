@@ -68,7 +68,7 @@ export function usePushNotification() {
       setSubscriptionStatus("unsubscribed");
       return false;
     }
-    const response = await fetch("/api/push-subscriptions", { headers: { Authorization: `Bearer ${accessToken}` } });
+    const response = await fetch("/api/push-subscriptions", { headers: { Authorization: `Bearer ${accessToken}`, "X-Push-Endpoint": browserSubscription.endpoint } });
     const result = await response.json().catch(() => null) as { subscription?: { endpoint?: string } | null } | null;
     const subscribed = response.ok && result?.subscription?.endpoint === browserSubscription.endpoint;
     setSubscriptionStatus(subscribed ? "subscribed" : "unsubscribed");

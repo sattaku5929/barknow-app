@@ -11,7 +11,7 @@ export const carePeriods = [
   { key: "month", title: "今月中にやること", label: "今月", hint: "月単位の目標はこちら。" },
 ] as const;
 
-type Props={goals:CareGoal[];templates:CareTemplate[];progress:(goal:CareGoal)=>number;onComplete:(goal:CareGoal)=>Promise<void>;onUndo:(goal:CareGoal)=>Promise<void>;onCreate:(goal:CareTemplate,id:string)=>Promise<boolean>;onCountChange:(goal:CareGoal,count:number,reminderTime?:string|null,goalType?:CareGoal["goalType"])=>Promise<void>;onIconChange:(goal:CareGoal,goalType:CareGoal["goalType"])=>Promise<void>;onRemove:(goal:CareGoal)=>Promise<void>;icon:(goal:Pick<CareGoal,"goalType">)=>ReactNode;editable:boolean};
+type Props={goals:CareGoal[];templates:CareTemplate[];progress:(goal:CareGoal)=>number;onComplete:(goal:CareGoal)=>Promise<void>;onUndo:(goal:CareGoal)=>Promise<void>;onCreate:(goal:CareTemplate,id:string)=>Promise<boolean>;onCountChange:(goal:CareGoal,count:number,reminderTime?:string|null,goalType?:CareGoal["goalType"],reminderDate?:string|null)=>Promise<void>;onIconChange:(goal:CareGoal,goalType:CareGoal["goalType"])=>Promise<void>;onRemove:(goal:CareGoal)=>Promise<void>;icon:(goal:Pick<CareGoal,"goalType">)=>ReactNode;editable:boolean};
 export default function HomeCareGroups({goals,templates,progress,onComplete,onUndo,onCreate,onCountChange,onIconChange,onRemove,icon,editable}:Props) {
   const lock = useRef(false);
   const returnFocus=useRef<HTMLElement|null>(null);
@@ -39,6 +39,7 @@ export default function HomeCareGroups({goals,templates,progress,onComplete,onUn
           return <button type="button" className={`${styles.item} ${done?styles.done:""}`} key={goal.id} disabled={busy!==null} onClick={()=>void complete(goal)}
             aria-pressed={done} aria-label={`${goal.title}：${period.label}${count}/${goal.targetCount}回、${done?(period.key==="day"?"完了":"目標達成")+"、押すと未完了に戻す":"できたを1回追加"}`}>
             <span className={styles.icon} aria-hidden="true">{icon(goal)}</span><strong>{goal.title}</strong>
+            {goal.reminderDate && <span className={styles.planDate}>予定：{Number(goal.reminderDate.slice(5,7))}/{Number(goal.reminderDate.slice(8,10))}</span>}
             <span className={styles.state}>{busy===goal.id?"保存中…":<><i aria-hidden="true">{done?"✓":"＋"}</i>{careState(period.key,count,goal.targetCount)}</>}</span>
           </button>;
         })}</div> : <button className={styles.empty} type="button" onClick={()=>edit(period.key)}>

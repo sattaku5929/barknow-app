@@ -78,3 +78,6 @@
 .iconDetails summary:focus-visible { outline:3px solid #008661; outline-offset:3px; }
 .iconOption .icon { grid-area:auto; }
 .iconOption > span:last-child { text-align:center; overflow-wrap:anywhere; }
+
+.planDate { font-size:11px; color:#627a66; line-height:1.4; }
+.reminder small { flex-basis:100%; font-size:11px; line-height:1.6; }

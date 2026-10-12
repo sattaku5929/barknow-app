@@ -9,7 +9,7 @@ await db.exec(`
   create table public.wt_dogs(id uuid primary key,owner_id uuid,name text);
   create table public.wt_care_goals(id uuid primary key,owner_id uuid,dog_id uuid,title text,active boolean,reminder_time time,period text,target_count int);
   create table public.wt_care_goal_completions(id uuid default gen_random_uuid(),goal_id uuid,owner_id uuid,dog_id uuid,completed_on date);
-  create table public.push_subscriptions(user_id uuid,subscription jsonb);
+  create table public.push_subscriptions(id uuid primary key default gen_random_uuid(),user_id uuid unique,subscription jsonb,created_at timestamptz default now());
   grant select,update on wt_dogs,wt_care_goals,wt_care_goal_completions to service_role;
   create table cron.job(jobid bigint generated always as identity,jobname text,schedule text,active boolean default true);
   create function cron.schedule(n text,s text,c text) returns bigint language plpgsql as $$declare i bigint; begin insert into cron.job(jobname,schedule) values(n,s) returning jobid into i;return i;end$$;
@@ -69,5 +69,17 @@ assert.equal((await query(`select * from wt_claim_care_reminder('${job.id}','${j
 await db.exec(`reset role;update wt_care_reminder_jobs set scheduled_at=now()-interval '6 minutes';select wt_private.dispatch_care_reminders();`);
 assert.equal((await query('select delivery_status from wt_care_reminder_jobs'))[0].delivery_status,'expired','Do not send stale notifications on a later login');
 assert.equal((await query(`select (('2026-10-12 00:00'::timestamp at time zone 'Asia/Tokyo') at time zone 'UTC')::text as utc`))[0].utc,'2026-10-11 15:00:00');
+await db.exec(await readFile(new URL('../supabase/migrations/20261012074037_weekly_care_dates_and_push_devices.sql',import.meta.url),'utf8'));
+await db.exec(`insert into push_subscriptions(user_id,subscription) values('${owner}','{"endpoint":"https://fcm.googleapis.com/desktop"}'),('${owner}','{"endpoint":"https://web.push.apple.com/phone"}');`);
+assert.equal(await count('push_subscriptions'),2,'One account keeps both desktop and iPhone');
+await assert.rejects(db.exec(`insert into push_subscriptions(user_id,subscription) values('${owner}','{"endpoint":"https://web.push.apple.com/phone"}')`),/unique constraint/);
+await db.exec(`update wt_care_goals set period='week',reminder_date='2026-10-14';`);
+assert.equal((await query(`select wt_private.care_reminder_is_pending('${goal(1)}','2026-10-13') as pending`))[0].pending,false);
+assert.equal((await query(`select wt_private.care_reminder_is_pending('${goal(1)}','2026-10-14') as pending`))[0].pending,true);
+await db.exec(`insert into wt_care_goal_completions(goal_id,owner_id,dog_id,completed_on) values('${goal(1)}','${owner}','${dog}','2026-10-14');`);
+assert.equal((await query(`select wt_private.care_reminder_is_pending('${goal(1)}','2026-10-14') as pending`))[0].pending,false,'Completed weekly goals stay quiet on their scheduled date');
+await assert.rejects(db.exec(`update wt_care_goals set period='day'`),/check constraint/);
+await db.exec(`update wt_care_goals set reminder_date=null;`);
+assert.equal((await query(`select wt_private.care_reminder_is_pending('${goal(1)}','2026-10-19') as pending`))[0].pending,true,'Clearing the specific date restores the existing reminder behavior');
 await db.close();
 console.log('Care reminder SQL: subscription gating, JST, day/week/month completion, private RLS, capability validation, atomic claims, daily dedup, retries, archive/time-change cancellation and expiry passed.');

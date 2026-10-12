@@ -2368,7 +2368,7 @@ export default function Home() {
         const [goalResult, completionResult, coachingResult] = await Promise.all([
           supabase
             .from("wt_care_goals")
-            .select("id,title,goal_type,target_count,period,reminder_time,created_at")
+            .select("id,title,goal_type,target_count,period,reminder_time,reminder_date,created_at")
             .eq("owner_id", userId)
             .eq("active", true)
             .order("created_at", { ascending: true }),
@@ -2394,6 +2394,7 @@ export default function Home() {
             targetCount: item.target_count,
             period: item.period as GoalPeriod,
             reminderTime: item.reminder_time?.slice(0, 5) ?? null,
+            reminderDate: item.reminder_date ?? null,
             createdAt: item.created_at,
           }));
           setCareGoals(remoteGoals);
@@ -2528,19 +2529,39 @@ export default function Home() {
     if (pushBusy) return;
     setPushBusy(true);
     try {
+      let endpoint = "";
       if ("serviceWorker" in navigator) {
         const registration = await navigator.serviceWorker.getRegistration("/sw.js");
         const subscription = await registration?.pushManager.getSubscription();
+        endpoint = subscription?.endpoint ?? "";
+        if (!endpoint) throw new Error("この端末の通知設定を確認できませんでした");
+        const response = await authorizedFetch("/api/push-subscriptions", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint }) });
+        const result = await response.json().catch(() => null) as { error?: string } | null;
+        if (!response.ok) throw new Error(result?.error || "通知設定を解除できませんでした");
         await subscription?.unsubscribe();
       }
-      const response = await authorizedFetch("/api/push-subscriptions", { method: "DELETE" });
-      const result = await response.json().catch(() => null) as { error?: string } | null;
-      if (!response.ok) throw new Error(result?.error || "通知設定を解除できませんでした");
       await refreshSubscriptionStatus();
       showNotice("新着メッセージの通知をオフにしました");
     } catch (error) {
       console.error("[Web Push] unsubscribe failed", error);
       showNotice(error instanceof Error ? error.message : "通知設定を解除できませんでした");
+    } finally {
+      setPushBusy(false);
+    }
+  }
+
+  async function testPushNotifications() {
+    if (pushBusy) return;
+    setPushBusy(true);
+    try {
+      const registration = await navigator.serviceWorker.getRegistration("/sw.js");
+      const subscription = await registration?.pushManager.getSubscription();
+      const response = await authorizedFetch("/api/push-test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: subscription?.endpoint }) });
+      const result = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(result?.error || "通知を送信できませんでした");
+      showNotice("テスト通知を送りました。端末に表示されるか確認してください");
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : "通知を送信できませんでした");
     } finally {
       setPushBusy(false);
     }
@@ -2751,7 +2772,7 @@ export default function Home() {
         .limit(100),
       supabase
         .from("wt_care_goals")
-        .select("id,title,goal_type,target_count,period,reminder_time,created_at")
+        .select("id,title,goal_type,target_count,period,reminder_time,reminder_date,created_at")
         .eq("dog_id", customer.dogId)
         .eq("active", true)
         .order("created_at", { ascending: true }),
@@ -2806,6 +2827,7 @@ export default function Home() {
       targetCount: item.target_count,
       period: item.period as GoalPeriod,
       reminderTime: item.reminder_time ?? null,
+      reminderDate: item.reminder_date ?? null,
       createdAt: item.created_at,
       completedCount: completionCounts.get(item.id) ?? 0,
     }));
@@ -3906,11 +3928,11 @@ export default function Home() {
     } finally { homeCareMutationRef.current = false; }
   }
 
-  async function changeHomeCareCount(goal: CareGoal, count: number, reminderTime?: string | null, goalType?: CareGoalType) {
+  async function changeHomeCareCount(goal: CareGoal, count: number, reminderTime?: string | null, goalType?: CareGoalType, reminderDate?: string | null) {
     if (homeCareMutationRef.current) throw new Error("保存中です。少しお待ちください。");
     homeCareMutationRef.current = true;
     try {
-      const saved = await changeCareCount(supabase, await homeCareScope(), goal.id, count, reminderTime, goalType);
+      const saved = await changeCareCount(supabase, await homeCareScope(), goal.id, count, reminderTime, goalType, reminderDate);
       publishCareGoals((current) => current.map((item) => item.id === saved.id ? saved : item));
     } finally { homeCareMutationRef.current = false; }
   }
@@ -3957,6 +3979,7 @@ export default function Home() {
         target_count: nextGoal.targetCount,
         period: nextGoal.period,
         reminder_time: nextGoal.reminderTime,
+        reminder_date: nextGoal.reminderDate ?? null,
       });
       if (error) throw error;
     } catch {
@@ -4038,16 +4061,12 @@ export default function Home() {
     showNotice(`「${goal.title}」を習慣から外しました`);
   }
 
-  async function updateGoalReminder(goal: CareGoal, reminderTime: string | null) {
-    const nextGoals = careGoals.map((item) => item.id === goal.id ? { ...item, reminderTime } : item);
-    setCareGoals(nextGoals);
-    writeLocal(CARE_GOALS_KEY, nextGoals);
-    if (reminderTime && "Notification" in window && Notification.permission === "default") {
-      await Notification.requestPermission();
-    }
-    if (connection === "online") {
-      const { error } = await supabase.from("wt_care_goals").update({ reminder_time: reminderTime }).eq("id", goal.id);
-      if (error) showNotice("お知らせ時間はこの端末に保存しました");
+  async function updateGoalReminder(goal: CareGoal, reminderTime: string | null, reminderDate?: string | null) {
+    try {
+      await changeHomeCareCount(goal, goal.targetCount, reminderTime, undefined, reminderDate);
+      showNotice("お知らせの設定を保存しました");
+    } catch (error) {
+      showNotice(error instanceof Error ? error.message : "お知らせの設定を保存できませんでした");
     }
   }
 
@@ -4528,6 +4547,7 @@ export default function Home() {
                     <strong>{Math.min(progress, goal.targetCount)}<small>/{goal.targetCount}</small></strong>
                   </div>
                   <div className="goal-progress"><i style={{ width: `${percent}%` }}></i></div>
+                  {goal.period === "week" && <label className="goal-reminder"><span>実施予定日</span><input type="date" value={goal.reminderDate ?? ""} onChange={(event) => void updateGoalReminder(goal, goal.reminderTime, event.target.value || null)} />{goal.reminderDate && <button type="button" onClick={() => void updateGoalReminder(goal, goal.reminderTime, null)}>解除</button>}</label>}
                   <label className="goal-reminder">
                     <span>お知らせ時間</span>
                     <input type="time" value={goal.reminderTime ?? ""} onChange={(event) => void updateGoalReminder(goal, event.target.value || null)} />
@@ -4963,6 +4983,7 @@ export default function Home() {
           <button type="button" onClick={() => navigateSettingsPanel("profile")}><span className="settings-row-icon"><SettingsGlyph name="dog" /></span><span><strong>愛犬プロフィール管理</strong><small>登録した情報を確認・編集</small></span><i aria-hidden="true">›</i></button>
           <button type="button" onClick={() => navigateSettingsPanel("owner")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>飼い主情報</strong><small>氏名・連絡先・住所を確認、変更</small></span><i aria-hidden="true">›</i></button>
           <button type="button" onClick={() => navigateSettingsPanel("household")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>家族・お世話する人</strong><small>できごとの担当者を登録・編集</small></span><i aria-hidden="true">›</i></button>
+          {isSubscribed && <button type="button" disabled={pushBusy} onClick={()=>void testPushNotifications()}><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>テスト通知を送る</strong><small>この端末に通知が届くか確認</small></span><i aria-hidden="true">›</i></button>}
           <div className="settings-notification-row"><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>通知</strong><small>{isSubscribed ? "チャットとお世話のお知らせを通知します" : permissionStatus === "denied" ? "端末の設定で通知が拒否されています" : "チャットとお世話のお知らせはオフです"}</small></span><button type="button" className={`settings-toggle ${isSubscribed ? "is-on" : ""}`} role="switch" aria-checked={isSubscribed} aria-label={`通知を${isSubscribed ? "オフ" : "オン"}にする`} disabled={pushBusy || subscriptionStatus === "checking" || subscriptionStatus === "unsupported"} onClick={() => void (isSubscribed ? disablePushNotifications() : enablePushNotifications())}><i></i></button></div>
         </div>
       </section>
