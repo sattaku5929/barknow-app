@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { sendPushNotification } from "@/lib/pushSender";
 import { authenticatedSupabase, authenticatedUser, serviceSupabase } from "@/lib/server/supabase";
 import { validChatMediaKey } from "@/lib/media-security";
@@ -88,28 +88,33 @@ export async function POST(request: NextRequest) {
   const { data, error } = await client.from("wt_coach_messages").insert(message).select("*").single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  const admin = serviceSupabase();
-  let receiverUserId = input.owner_id;
-  let senderName = "担当コーチ";
-  if (input.sender === "owner") {
-    const [{ data: assignment }, { data: ownerProfile }] = await Promise.all([
-      admin.from("wt_coach_assignments").select("coach_id").eq("owner_id", input.owner_id).eq("dog_id", input.dog_id).maybeSingle(),
-      admin.from("wt_owner_profiles").select("full_name").eq("user_id", input.owner_id).maybeSingle(),
-    ]);
-    receiverUserId = assignment?.coach_id ?? "";
-    senderName = ownerProfile?.full_name || "オーナー";
-  } else {
-    const { data: coachProfile } = await admin.from("wt_coach_profiles").select("display_name").eq("coach_id", user.id).maybeSingle();
-    senderName = coachProfile?.display_name || "担当コーチ";
-  }
-
-  if (receiverUserId && receiverUserId !== user.id) {
+  // Keep notification failures separate from the successfully saved message.
+  after(async () => {
     try {
-      await sendPushNotification(receiverUserId, "BarKnow", `${senderName}さんから新着メッセージがあります`, `/chat/${input.dog_id}`);
+      const admin = serviceSupabase();
+      let receiverUserId = input.owner_id;
+      let senderName = "担当コーチ";
+      if (input.sender === "owner") {
+        const [{ data: assignment, error: assignmentError }, { data: ownerProfile }] = await Promise.all([
+          admin.from("wt_coach_assignments").select("coach_id").eq("owner_id", input.owner_id).eq("dog_id", input.dog_id).maybeSingle(),
+          admin.from("wt_owner_profiles").select("full_name").eq("user_id", input.owner_id).maybeSingle(),
+        ]);
+        if (assignmentError) throw assignmentError;
+        receiverUserId = assignment?.coach_id ?? "";
+        senderName = ownerProfile?.full_name || "オーナー";
+      } else {
+        const { data: coachProfile } = await admin.from("wt_coach_profiles").select("display_name").eq("coach_id", user.id).maybeSingle();
+        senderName = coachProfile?.display_name || "担当コーチ";
+      }
+
+      if (receiverUserId && receiverUserId !== user.id) {
+        const recipient = input.sender === "owner" ? "coach" : "owner";
+        await sendPushNotification(receiverUserId, "WanTone｜BarKnow", `${senderName}さんから新着メッセージがあります`, `/chat/${input.dog_id}?recipient=${recipient}`);
+      }
     } catch (pushError) {
       console.error("Push notification failed", pushError);
     }
-  }
+  });
 
   return NextResponse.json({ message: data });
 }

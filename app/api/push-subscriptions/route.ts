@@ -62,7 +62,6 @@ export async function POST(request: NextRequest) {
     const { error } = await admin.from("push_subscriptions").upsert({
       user_id: user.id,
       subscription,
-      updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
     if (!error) return NextResponse.json({ ok: true, storage: "table" });
 

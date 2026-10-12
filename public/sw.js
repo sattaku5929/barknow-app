@@ -63,12 +63,15 @@ self.addEventListener("push", (event) => {
 
   event.waitUntil((async () => {
     const explicitCount = Number(payload.badgeCount);
-    await incrementAppBadge(Number.isFinite(explicitCount) && explicitCount > 0 ? explicitCount : undefined);
-    await self.registration.showNotification(payload.title || "BarKnow", {
+    await Promise.all([
+      incrementAppBadge(Number.isFinite(explicitCount) && explicitCount > 0 ? explicitCount : undefined)
+        .catch((error) => console.warn("App badge update failed", error)),
+      self.registration.showNotification(payload.title || "WanTone｜BarKnow", {
       body: payload.body || "新しいお知らせがあります",
       icon: "/icon-192.png",
       data: { url: payload.url || "/" },
-    });
+      }),
+    ]);
   })());
 });
 
@@ -80,7 +83,7 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const targetUrl = new URL(event.notification.data?.url || "/", self.location.origin).href;
   event.waitUntil((async () => {
-    await clearAppBadge();
+    await clearAppBadge().catch((error) => console.warn("App badge reset failed", error));
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     const currentWindow = windows.find((client) => new URL(client.url).origin === self.location.origin);
     if (currentWindow) {

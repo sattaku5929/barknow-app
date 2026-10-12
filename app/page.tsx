@@ -1140,6 +1140,7 @@ export default function Home() {
   const [authPassword, setAuthPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>([]);
+  const openedChatLinkRef = useRef("");
   const [adminAccounts, setAdminAccounts] = useState<AdminAccount[]>([]);
   const [adminAccountsError, setAdminAccountsError] = useState("");
   const [adminAccountFilter, setAdminAccountFilter] = useState<"all" | UserRole | "unassigned">("all");
@@ -1540,6 +1541,39 @@ export default function Home() {
   useEffect(() => {
     if (authenticated) void refreshSubscriptionStatus();
   }, [authenticated, refreshSubscriptionStatus]);
+
+  useEffect(() => {
+    if (!authReady || !authenticated || anonymousUser) return;
+    const params = new URLSearchParams(window.location.search);
+    const dogId = params.get("chatDog");
+    if (!dogId || openedChatLinkRef.current === dogId) return;
+    if (userRole === "owner" || params.get("recipient") === "owner") {
+      const frame = window.requestAnimationFrame(() => {
+        openedChatLinkRef.current = dogId;
+        setStaffMode("owner");
+        setView("coach");
+        setOwnerCoachTab("chat");
+      });
+      return () => window.cancelAnimationFrame(frame);
+    }
+    if (staffMode !== "staff") {
+      const frame = window.requestAnimationFrame(() => setStaffMode("staff"));
+      return () => window.cancelAnimationFrame(frame);
+    }
+    const customer = adminCustomers.find((item) => item.dogId === dogId);
+    if (!customer) return;
+    const frame = window.requestAnimationFrame(() => {
+      openedChatLinkRef.current = dogId;
+      setStaffMode("staff");
+      setAdminTab("customers");
+      void openAdminCustomer(customer).then(() => {
+        window.requestAnimationFrame(() => document.getElementById("coach-customer-chat")?.scrollIntoView({ block: "start" }));
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+    // The link opens once; workspace refreshes must not reopen the conversation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authReady, authenticated, anonymousUser, userRole, staffMode, adminCustomers]);
 
   useEffect(() => {
     if (!authReady || !authenticated || anonymousUser || userRole !== "owner" || onboardingRequired) return;
@@ -5195,6 +5229,12 @@ export default function Home() {
         </div>
       </header>
       <main className="admin-main">
+        {subscriptionStatus !== "unsupported" && (
+          <section className="chat-push-card" aria-label="チャット通知設定">
+            <div><strong>{isSubscribed ? "新着メッセージの通知はオンです" : "飼い主からのメッセージを通知で受け取る"}</strong><p>{permissionStatus === "denied" ? "端末またはブラウザの設定から通知を許可してください。" : "通知はこの端末に届きます。"}</p></div>
+            <button type="button" disabled={pushBusy || subscriptionStatus === "checking"} onClick={() => void (isSubscribed ? disablePushNotifications() : enablePushNotifications())}>{pushBusy || subscriptionStatus === "checking" ? "確認中…" : isSubscribed ? "通知をオフにする" : "通知をオンにする"}</button>
+          </section>
+        )}
         {selectedAdminCustomer ? (
           <div className="admin-detail">
             <button className="admin-back" onClick={closeAdminCustomer}>← 担当顧客へ戻る</button>
