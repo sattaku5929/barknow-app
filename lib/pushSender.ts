@@ -14,8 +14,8 @@ function configureVapid() {
   vapidConfigured = true;
 }
 
-export async function sendPushNotification(userId: string, title: string, body: string, url: string) {
-  configureVapid();
+export async function sendPushNotification(userId: string, title: string, body: string, url: string,
+  options?: { kind: "care"; tag: string }) {
   const admin = serviceSupabase();
   const { data, error } = await admin.from("push_subscriptions").select("subscription").eq("user_id", userId).maybeSingle();
   if (error) console.error("[Web Push] subscription table lookup failed; checking auth metadata", { userId, error });
@@ -25,10 +25,13 @@ export async function sendPushNotification(userId: string, title: string, body: 
     if (authError) throw authError;
     subscription = authData.user?.user_metadata?.push_subscription as PushSubscription | undefined;
   }
-  if (!subscription || !validPushSubscription(subscription)) return;
+  if (!subscription || !validPushSubscription(subscription)) return "unsubscribed" as const;
+  configureVapid();
 
   try {
-    await webpush.sendNotification(subscription, JSON.stringify({ title, body, url }));
+    await webpush.sendNotification(subscription, JSON.stringify({ title, body, url, ...options }),
+      options?.kind === "care" ? { TTL: 300 } : undefined);
+    return "sent" as const;
   } catch (error) {
     const statusCode = typeof error === "object" && error && "statusCode" in error ? Number(error.statusCode) : 0;
     if (statusCode === 404 || statusCode === 410) {
@@ -39,7 +42,7 @@ export async function sendPushNotification(userId: string, title: string, body: 
           user_metadata: { ...authData.user.user_metadata, push_subscription: null },
         });
       }
-      return;
+      return "expired" as const;
     }
     throw error;
   }

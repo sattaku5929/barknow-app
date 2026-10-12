@@ -100,16 +100,23 @@ async function testServiceWorker() {
   const handlers = {};
   const notifications = [];
   const navigations = [];
+  let badgeOperations = 0;
   const self = { location: { origin: "https://barknow-app.vercel.app" }, navigator: {},
     registration: { showNotification: async (...args) => notifications.push(args) },
     addEventListener: (type, handler) => { handlers[type] = handler; },
     clients: { matchAll: async () => [], openWindow: async (url) => navigations.push(url) } };
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../public/sw.js"), "utf8"), { self, indexedDB: { open: () => { throw new Error("storage unavailable"); } }, console: { warn() {} }, URL });
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../public/sw.js"), "utf8"), { self, indexedDB: { open: () => { badgeOperations++; throw new Error("storage unavailable"); } }, console: { warn() {} }, URL });
   let pending;
   handlers.push({ data: { json: () => ({ title: "WanTone", body: "New message", url: "/chat/dog-id" }) }, waitUntil: (promise) => { pending = promise; } });
   await pending;
   assert.equal(notifications.length, 1, "Badge persistence failures must not prevent notifications");
   assert.equal(notifications[0][1].data.url, "/chat/dog-id");
+  const beforeCareBadge = badgeOperations;
+  handlers.push({ data: { json: () => ({ title: "毎日やること", kind: "care", tag: "care-goal-day", url: "/?view=goals" }) }, waitUntil: (promise) => { pending = promise; } });
+  await pending;
+  assert.equal(notifications.length, 2);
+  assert.equal(badgeOperations, beforeCareBadge, "Care reminders must not inflate the unread chat badge");
+  assert.equal(notifications[1][1].tag, "care-goal-day");
   handlers.notificationclick({ notification: { close() {}, data: { url: "/chat/dog-id" } }, waitUntil: (promise) => { pending = promise; } });
   await pending;
   assert.deepEqual(navigations, ["https://barknow-app.vercel.app/chat/dog-id"]);

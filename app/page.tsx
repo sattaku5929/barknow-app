@@ -1518,9 +1518,10 @@ export default function Home() {
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      if (new URLSearchParams(window.location.search).get("view") === "coach") {
-        pushAppHistory({ kind: "owner-view", nextView: "coach", previousView: "home" });
-        setView("coach");
+      const targetView = new URLSearchParams(window.location.search).get("view");
+      if (targetView === "coach" || targetView === "goals") {
+        pushAppHistory({ kind: "owner-view", nextView: targetView, previousView: "home" });
+        setView(targetView);
       }
     });
     return () => window.cancelAnimationFrame(frame);
@@ -2431,31 +2432,6 @@ export default function Home() {
     void connect();
     return () => authListener.subscription.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    if (!authReady || !authenticated || anonymousUser) return;
-    function checkReminders(notify = true) {
-      const now = currentTime();
-      const sent = readLocal<Record<string, string>>(REMINDER_SENT_KEY, {});
-      const due = careGoals.filter((goal) =>
-        goal.reminderTime && goal.reminderTime <= now && goalProgress(goal) < goal.targetCount && sent[goal.id] !== today(),
-      );
-      if (!due.length) return;
-      const nextSent = { ...sent };
-      due.forEach((goal) => {
-        nextSent[goal.id] = today();
-        if (notify && "Notification" in window && Notification.permission === "granted") {
-          new Notification(`${dogName}の ${goal.title}`, { body: "今日のひと手間を、できたにしよう。" });
-        }
-      });
-      writeLocal(REMINDER_SENT_KEY, nextSent);
-      if (notify) showNotice(`そろそろ「${due[0].title}」の時間です`);
-    }
-    // Skip overdue reminders when logging in or loading the saved goals.
-    checkReminders(false);
-    const timer = window.setInterval(checkReminders, 60_000);
-    return () => window.clearInterval(timer);
-  }, [authReady, authenticated, anonymousUser, careGoals, goalCompletions, dogName]);
 
   useEffect(() => {
     if (!authReady || (userRole !== "admin" && userRole !== "coach")) return;
@@ -4987,7 +4963,7 @@ export default function Home() {
           <button type="button" onClick={() => navigateSettingsPanel("profile")}><span className="settings-row-icon"><SettingsGlyph name="dog" /></span><span><strong>愛犬プロフィール管理</strong><small>登録した情報を確認・編集</small></span><i aria-hidden="true">›</i></button>
           <button type="button" onClick={() => navigateSettingsPanel("owner")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>飼い主情報</strong><small>氏名・連絡先・住所を確認、変更</small></span><i aria-hidden="true">›</i></button>
           <button type="button" onClick={() => navigateSettingsPanel("household")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>家族・お世話する人</strong><small>できごとの担当者を登録・編集</small></span><i aria-hidden="true">›</i></button>
-          <div className="settings-notification-row"><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>通知</strong><small>{isSubscribed ? "新着メッセージを通知します" : permissionStatus === "denied" ? "端末の設定で通知が拒否されています" : "新着メッセージ通知はオフです"}</small></span><button type="button" className={`settings-toggle ${isSubscribed ? "is-on" : ""}`} role="switch" aria-checked={isSubscribed} aria-label={`通知を${isSubscribed ? "オフ" : "オン"}にする`} disabled={pushBusy || subscriptionStatus === "checking" || subscriptionStatus === "unsupported"} onClick={() => void (isSubscribed ? disablePushNotifications() : enablePushNotifications())}><i></i></button></div>
+          <div className="settings-notification-row"><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>通知</strong><small>{isSubscribed ? "チャットとお世話のお知らせを通知します" : permissionStatus === "denied" ? "端末の設定で通知が拒否されています" : "チャットとお世話のお知らせはオフです"}</small></span><button type="button" className={`settings-toggle ${isSubscribed ? "is-on" : ""}`} role="switch" aria-checked={isSubscribed} aria-label={`通知を${isSubscribed ? "オフ" : "オン"}にする`} disabled={pushBusy || subscriptionStatus === "checking" || subscriptionStatus === "unsupported"} onClick={() => void (isSubscribed ? disablePushNotifications() : enablePushNotifications())}><i></i></button></div>
         </div>
       </section>
 
