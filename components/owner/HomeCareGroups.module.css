@@ -82,14 +82,33 @@
 .planDate { font-size:11px; color:#627a66; line-height:1.4; }
 .reminder small { flex-basis:100%; font-size:11px; line-height:1.6; }
 
-/* Amber invites completion; green confirms a completed task. */
-.group { border-color:var(--action-pending-line); }
-.group .edit,.group .empty { border:1px solid var(--action-pending-line); background:var(--action-pending-soft); color:var(--action-pending); }
-.groups .items .item:not(.done) .state { border-color:var(--action-pending-line); background:var(--action-pending-soft); color:var(--action-pending); }
-.groups .items .item:not(.done) .icon { color:var(--action-pending); }
-.groups .items .done .state { border-color:#a8d1bb; background:#eaf5f0; color:#00684b; }
-.groups .items .item:not(:disabled):hover .state { box-shadow:inset 0 0 0 1px currentColor; }
-.groups .item:focus-visible,.groups .edit:focus-visible,.groups .empty:focus-visible { outline:3px solid #263930; outline-offset:3px; }
-.dialog .remove { color:var(--action-danger); }
+/* One surface per period. Today stays open; later goals take less space. */
+.group { padding:0; border:0; border-radius:24px; background:var(--owner-surface,#fffefb); box-shadow:var(--owner-shadow); }
+.fold { min-width:0; }
+.summary { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:72px; padding:17px 20px; list-style:none; cursor:pointer; }
+.summary::-webkit-details-marker { display:none; }
+.summary > div { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 10px; }
+.summary h2 { margin:0; font-size:16px; line-height:1.4; font-weight:750; letter-spacing:-.025em; }
+.summary small { color:#5e705a; font-size:10px; }
+.foldMark { display:grid; place-items:center; width:28px; height:28px; border-radius:50%; background:#f0f3e9; color:#6b7d60; font-size:17px; flex-shrink:0; }
+.fold[open] .foldMark { transform:rotate(180deg); }
+.foldBody { padding:0 17px 16px; }
+.header { margin:0 0 7px; gap:8px; }
+.header > span { font-size:10px; color:#5e705a; line-height:1.5; }
+.group .edit { min-height:44px; padding:7px 10px; border:0; background:#eef3e6; color:#627758; border-radius:11px; font-size:10px; }
+.group .empty { border:0; background:#f2f5ec; color:#5e7853; border-radius:13px; }
+.groups .items { gap:6px; }
+.groups .items .item { min-height:67px; padding:11px; border:0; border-radius:15px; background:#f2f5ec; grid-template-columns:23px minmax(0,1fr); grid-template-areas:"icon title" ". state"; gap:4px 6px; }
+.groups .items .item strong { color:#3d573c; font-size:11px; font-weight:650; }
+.groups .items .item .icon { color:#7b9470; width:23px; height:23px; }
+.groups .items .item .icon svg { width:21px; height:21px; }
+.groups .items .item .state { padding:0; min-height:18px; border:0; background:transparent; color:#5e705a; font-size:10px; }
+.groups .items .done { background:#e5efdf; }
+.groups .items .done .state { background:transparent; border:0; color:#3e6c35; }
+.groups .items .item:not(:disabled):hover { background:#e7efdf; }
 .groups .items .item:has(.planDate) { grid-template-areas:"icon title" ". date" ". state"; }
-.groups .items .planDate { grid-area:date; overflow-wrap:anywhere; }
+.groups .items .planDate { grid-area:date; font-size:10px; color:#5e705a; overflow-wrap:anywhere; }
+.groups :is(button,summary):focus-visible { outline:3px solid #285b3e; outline-offset:3px; }
+.dialog { background:#fffefb; border-radius:26px; }
+.dialog .remove { color:var(--action-danger,#a74a43); }
+@media(max-width:360px) { .summary { padding-inline:17px; }.foldBody { padding-inline:14px; } }

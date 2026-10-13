@@ -24,3 +24,5 @@
   .legend { column-gap:8px; font-size:10px; }
   .counts { font-size:10px; }
 }
+
+:global(.owner-stage) .panel { border:0; border-radius:23px; padding:17px; background:var(--owner-surface,#fffefb); box-shadow:var(--owner-shadow); }

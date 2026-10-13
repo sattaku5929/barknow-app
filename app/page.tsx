@@ -18,7 +18,6 @@ import RecentObservationTrends from "@/components/insights/RecentObservationTren
 import CoachAssignedDogStats from "@/components/insights/CoachAssignedDogStats";
 import CoachObservationSummary from "@/components/insights/CoachObservationSummary";
 import CoachOfferObservation from "@/components/insights/CoachOfferObservation";
-import OwnerHomeLifestyle from "@/components/owner/OwnerHomeLifestyle";
 import HomeCalendar from "@/components/owner/HomeCalendar";
 import HomeCareGroups, { carePeriods } from "@/components/owner/HomeCareGroups";
 import { careDate, careProgress, careUndoEntries, subscribeCareDate } from "@/lib/care/clock";
@@ -4325,17 +4324,14 @@ export default function Home() {
 
   const focusedHomeView = (
     <div className="home-v3">
-      <section className="home-v3-lifestyle" aria-label="Wan Toneのある暮らし">
+      <section className="home-v3-lifestyle" aria-label="愛犬との今日">
         <div className="home-v3-lifestyle-copy">
           <span>{todayLabel}</span>
-          <strong>今日も、いい時間を、<br />いっしょに。</strong>
-          <i aria-hidden="true"></i>
-        </div>
-        <div className="home-v3-lifestyle-art" aria-hidden="true">
-          <OwnerHomeLifestyle />
+          <h1>{profile.name || "愛犬"}との、今日。</h1>
+          <p>いつもの毎日を、少しずつ。</p>
         </div>
         <button className={`home-v3-profile ${profile.avatarUrl ? "has-image" : ""}`} onClick={() => navigateOwnerView("profile")} aria-label="愛犬プロフィールを開く">
-          {profile.avatarUrl ? <PrivateDogImage src={profile.avatarUrl} alt="" /> : <span>{profile.name ? profile.name.slice(0, 1) : "＋"}</span>}
+          {profile.avatarUrl ? <PrivateDogImage src={profile.avatarUrl} alt="" /> : <CareIcon name="paws" />}
         </button>
       </section>
 
@@ -4367,23 +4363,19 @@ export default function Home() {
 
       <section className="home-v3-daily" aria-labelledby="home-v3-daily-title">
         <div className="home-v3-daily-copy">
-          <span>TODAY</span>
-          <h2 id="home-v3-daily-title">今日の状態を記録しよう</h2>
+          <span>{todayCheckStatus === "recorded" ? "今日の記録は、できています" : "DAILY CHECK"}</span>
+          <h2 id="home-v3-daily-title">{todayCheckStatus === "recorded" ? "今日も、ひとつ残せたね。" : "今日の調子は、どう？"}</h2>
           <p>{!profile.id ? "愛犬を登録すると、毎日の様子を残せます。" : connection !== "online" ? "接続後に今日の状態を確認できます。" : todayCheckStatus === "recorded" ? "今日の状態は記録済みです。内容を確認できます。" : `今日の${dogName}ちゃんの様子を残してみましょう。`}</p>
           <button type="button" onClick={() => openNewRecord("daily")} disabled={connection !== "online" || !profile.id || todayCheckStatus === "loading"}>
-            {todayCheckStatus === "recorded" ? "内容を見る・編集" : "記録する"} <span aria-hidden="true">→</span>
+            {todayCheckStatus === "recorded" ? "今日の記録を見る" : "今日の状態を記録"} <span aria-hidden="true">→</span>
           </button>
         </div>
         <span className="home-v3-daily-icon" aria-hidden="true"><TopicIcon name="daily" /></span>
       </section>
 
-      <HomeCareGroups key={`home-care:${profile.id ?? "no-dog"}`} goals={careGoals} templates={CARE_GOAL_TEMPLATES} editable={connection === "online" && !!profile.id} progress={goalProgress} onComplete={async (goal) => { await completeCareGoal(goal); setCalendarRefresh(value => value + 1); }} onUndo={undoHomeCareGoal} onCreate={createHomeCareGoal} onCountChange={changeHomeCareCount} onIconChange={changeHomeCareIcon} onRemove={removeHomeCareGoal} icon={(goal) => <CareIcon name={goal.goalType} />} />
-      <HomeCalendar key={`home-calendar:${profile.id ?? "no-dog"}`} dogId={profile.id} dogName={dogName} birthday={profile.birthday} online={connection === "online"} today={today()} refreshToken={`${eventRefresh}:${checkRefresh}:${calendarRefresh}:${records.length}`} onRecord={(date, kind, note) => { openNewRecord(kind); setRecordDate(date); if (kind === "win") setGoodMoment(note ?? ""); }} />
-
       <section id="home-event-log" className="home-v3-event-log" aria-labelledby="home-event-log-title">
-        <header><span className="card-label">QUICK LOG · 観察テーマの記録</span><h2 id="home-event-log-title">今日のできごとを残す</h2>
-          <p className="quick-log-lead">毎日、選んだテーマを意識して観察しましょう。気づいた場面で、うまくできたことも気になったことも記録。</p>
-          <p className="quick-log-coaching-note">場面の記録が、コーチと変化を振り返る手がかりになります。</p>
+        <header><span className="card-label">できごとの記録</span><h2 id="home-event-log-title">気づいたことを、ひとつ。</h2>
+          <p className="quick-log-lead">テーマを選んで、今のできごとを記録。</p>
         </header>
         {eventTheme ? <ObservationEventForm key={`home:${profile.id}:${editingEvent?.id ?? eventTheme}`} dogId={profile.id} theme={eventTheme} editing={editingEvent}
           online={connection === "online"} onBack={() => { setEventTheme(null); setEditingEvent(null); }}
@@ -4398,6 +4390,9 @@ export default function Home() {
               disabled={connection !== "online" || !profile.id || eventStatus !== "ready"} />
           </>}
       </section>
+
+      <HomeCareGroups key={`home-care:${profile.id ?? "no-dog"}`} goals={careGoals} templates={CARE_GOAL_TEMPLATES} editable={connection === "online" && !!profile.id} progress={goalProgress} onComplete={async (goal) => { await completeCareGoal(goal); setCalendarRefresh(value => value + 1); }} onUndo={undoHomeCareGoal} onCreate={createHomeCareGoal} onCountChange={changeHomeCareCount} onIconChange={changeHomeCareIcon} onRemove={removeHomeCareGoal} icon={(goal) => <CareIcon name={goal.goalType} />} />
+      <HomeCalendar key={`home-calendar:${profile.id ?? "no-dog"}`} dogId={profile.id} dogName={dogName} birthday={profile.birthday} online={connection === "online"} today={today()} refreshToken={`${eventRefresh}:${checkRefresh}:${calendarRefresh}:${records.length}`} onRecord={(date, kind, note) => { openNewRecord(kind); setRecordDate(date); if (kind === "win") setGoodMoment(note ?? ""); }} />
 
       {appVisitStats && (
         <section className="home-v3-streak" aria-label="WanToneの利用記録">
@@ -5459,7 +5454,7 @@ export default function Home() {
   if ((userRole === "coach" || userRole === "admin") && staffMode === "staff") return adminView;
 
   return (
-    <div className="app-stage">
+    <div className="app-stage owner-stage">
       {pullRefreshIndicator}
       <OwnerAppBackdrop />
       <div className="app-shell">

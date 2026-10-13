@@ -2,3 +2,6 @@
 .emptyPanel { margin-top:12px; padding:12px; border:1px solid #e5ebe7; border-radius:16px; background:#fff; }
 .moreButton:hover { background:#eef6f1; }
 .moreButton:focus-visible { outline:2px solid #008661; outline-offset:3px; }
+
+:global(.owner-stage) .emptyPanel { border:0; border-radius:23px; padding:17px; background:var(--owner-surface,#fffefb); box-shadow:var(--owner-shadow); }
+:global(.owner-stage) .moreButton { background:#edf2e7; color:#597353; padding-inline:12px; border-radius:12px; }

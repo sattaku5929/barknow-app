@@ -1,103 +1,256 @@
-/* Functional accents: record / planning / insights / incomplete care.
- * Keep the brand green for chat, successful completion, and account actions.
- * Labels, icons, and selected-state borders continue to carry meaning.
+/* Owner visual system: sage, warm ivory, and deep green.
+ * Surfaces and typography establish hierarchy; decoration never catches taps.
+ * Kept after the historical stylesheets as the owner presentation authority.
  */
 :root {
-  --action-record: #b44c2b;
-  --action-record-soft: #fff1e9;
-  --action-record-line: #e8bea9;
-  --action-plan: #2563a6;
-  --action-plan-soft: #edf4ff;
-  --action-plan-line: #b8cfee;
-  --action-insight: #7053a3;
-  --action-insight-soft: #f3eefb;
-  --action-insight-line: #d1c3e6;
-  --action-pending: #895816;
-  --action-pending-soft: #fff4df;
-  --action-pending-line: #e7c78e;
-  --action-danger: #ad3d43;
+  --owner-ink: #233d33;
+  --owner-muted: #5e705a;
+  --owner-surface: #fffefb;
+  --owner-soft: #edf3ed;
+  --owner-sand: #f1ece1;
+  --owner-shadow: 0 8px 28px rgba(38,64,47,.055);
+  --action-record: #006e50;
+  --action-record-soft: #edf3ed;
+  --action-record-line: #d5e3d9;
+  --action-plan: #426b5c;
+  --action-plan-soft: #eef3ed;
+  --action-plan-line: #d6e2d8;
+  --action-insight: #48695e;
+  --action-insight-soft: #eef2e9;
+  --action-insight-line: #d9e2d4;
+  --action-pending: #6b634d;
+  --action-pending-soft: #f3eee3;
+  --action-pending-line: #e4ddcd;
+  --action-danger: #a74a43;
 }
+.app-stage.owner-stage {
+  position: relative;
+  isolation: isolate;
+  background: #f3f5ef;
+  color: var(--owner-ink);
+}
+.app-stage.owner-stage::before { display: none; }
+.app-stage.owner-stage .owner-app-backdrop {
+  position: fixed; inset: 0; z-index: 0;
+  display: block; width: 100%; height: 100svh; max-width: none;
+  transform: none; opacity: 1; overflow: hidden; pointer-events: none;
+  color: transparent;
+  background: radial-gradient(ellipse at 0 8%,#ffffffb8,transparent 60%);
+}
+.owner-ambient-orb { position:absolute; display:block; border-radius:50%; pointer-events:none; }
+.owner-ambient-orb--sage {
+  top:-180px; right:calc(50% - 470px); width:680px; height:680px;
+  background:radial-gradient(circle at 50% 50%,#c9decc70 0%,#dbe8d95c 38%,#e7eee300 71%);
+}
+.owner-ambient-orb--sand {
+  top:430px; left:calc(50% - 460px); width:600px; height:600px;
+  background:radial-gradient(circle at 50% 50%,#e5dbc766 0%,#eee7d742 40%,#eee7d700 71%);
+}
+.app-stage.owner-stage .app-shell { position:relative; z-index:1; background:transparent; max-width:760px; overflow:visible; }
+.app-stage.owner-stage .app-header {
+  min-height:calc(64px + env(safe-area-inset-top));
+  padding:12px 20px; padding-top:calc(12px + env(safe-area-inset-top));
+  border:0; background:rgba(246,248,241,.86); box-shadow:none;
+  backdrop-filter:blur(18px); z-index:40;
+}
+.app-stage.owner-stage .wordmark strong { color:#006e50; font-size:23px; font-weight:800; letter-spacing:-.045em; }
+.app-stage.owner-stage .wordmark span { font-size:8px; color:#5e705a; letter-spacing:.16em; margin-top:4px; }
+.app-stage.owner-stage .owner-admin-switch { min-height:44px; border:0; background:#e7eee4; border-radius:16px; font-size:11px; }
+.app-stage.owner-stage .app-main { padding:18px 18px calc(108px + env(safe-area-inset-bottom)); background:transparent; }
+.app-stage.owner-stage .owner-view-home.home-flat { padding:4px 0 calc(100px + env(safe-area-inset-bottom)); }
+.app-stage.owner-stage .home-v3 { max-width:660px; gap:16px; padding:0 18px 20px; }
+.app-stage.owner-stage .home-v3-lifestyle {
+  display:grid; grid-template-columns:minmax(0,1fr) 64px; align-items:center;
+  min-height:92px; gap:14px; overflow:visible; padding:8px 2px;
+}
+.app-stage.owner-stage .home-v3-lifestyle-copy { padding:0; }
+.app-stage.owner-stage .home-v3-lifestyle-copy > span { font-size:11px; color:var(--owner-muted); letter-spacing:.02em; margin-bottom:7px; }
+.home-v3-lifestyle-copy h1 { margin:0; font-size:25px; font-weight:800; letter-spacing:-.055em; line-height:1.4; overflow-wrap:anywhere; }
+.home-v3-lifestyle-copy p { margin:5px 0 0; font-size:11px; color:var(--owner-muted); line-height:1.5; }
+.app-stage.owner-stage .home-v3-profile {
+  position:static; width:64px; height:64px; border:4px solid #fffefb;
+  border-radius:24px; background:#dce9da; color:#54755d;
+  box-shadow:0 6px 20px #325c3f12; transform:rotate(4deg);
+}
+.home-v3-profile svg { width:30px; height:30px; }
+.app-stage.owner-stage .home-v3-profile img { transform:rotate(-4deg) scale(1.09); }
+.app-stage.owner-stage .home-v3-profile-nudge { border:0; background:var(--owner-surface); border-radius:20px; }
 
-/* Home shortcuts echo their destination's navigation and main action. */
-.app-stage .home-v3-summary > button:has(.is-log) { border-color: var(--action-record-line); background: var(--action-record-soft); }
-.app-stage .home-v3-summary > button:has(.is-care) { border-color: var(--action-pending-line); background: var(--action-pending-soft); }
-.app-stage .home-v3-summary > button:has(.is-week) { border-color: var(--action-insight-line); background: var(--action-insight-soft); }
-.app-stage .home-v3-summary .is-log,
-.app-stage .home-v3-summary > button:has(.is-log) > b { color: var(--action-record); }
-.app-stage .home-v3-summary .is-care,
-.app-stage .home-v3-summary > button:has(.is-care) > b { color: var(--action-pending); }
-.app-stage .home-v3-summary .is-week,
-.app-stage .home-v3-summary > button:has(.is-week) > b { color: var(--action-insight); }
-.app-stage .home-v3-daily { border-color: var(--action-record-line); background: #fffaf6; }
-.app-stage .home-v3-daily-icon { color: var(--action-record); opacity: 1; }
-.app-stage .home-v3-daily-copy > button,
-.app-stage .owner-view-record .primary-button,
-.app-stage .today-add-button,
-.app-stage .home-v3-event-log .primary-button { background: var(--action-record); color: #fff; box-shadow: 0 3px 9px #b44c2b20; }
-.app-stage .owner-view-record .event-theme-chips button,
-.app-stage .home-v3-event-log .quick-log-theme-grid > button { border-color: var(--action-record-line); background: var(--action-record-soft); color: #803b25; }
-.app-stage .home-v3-event-log .quick-log-theme-add,
-.app-stage .owner-view-record .topic-back { color: var(--action-record); }
-.app-stage .event-result-options button[data-result="success"] { --result-accent: #00684b; --result-soft: #eaf5f0; }
-.app-stage .event-result-options button[data-result="neutral"] { --result-accent: #2563a6; --result-soft: #edf4ff; }
-.app-stage .event-result-options button[data-result="concern"] { --result-accent: #895816; --result-soft: #fff4df; }
-.app-stage .event-result-options button[data-result] span { background: var(--result-soft); color: var(--result-accent); }
-.app-stage .event-result-options button[data-result].is-selected { border-color: var(--result-accent); background: var(--result-soft); color: var(--result-accent); box-shadow: inset 0 0 0 1px var(--result-accent); }
-.app-stage .owner-view-record .event-theme-chips button:hover,
-.app-stage .home-v3-event-log .quick-log-theme-grid > button:hover { border-color: var(--action-record); background: #ffe7d9; }
+/* A quiet, compact glance. The daily action receives the strongest emphasis. */
+.app-stage.owner-stage .home-v3-summary { gap:6px; padding:6px; border-radius:22px; background:#fffefbcc; box-shadow:var(--owner-shadow); }
+.app-stage.owner-stage .home-v3-summary > button {
+  min-height:78px; padding:10px 8px; gap:7px 5px;
+  border:0; border-radius:16px; background:transparent;
+  grid-template-columns:18px minmax(0,1fr);
+}
+.app-stage.owner-stage .home-v3-summary > button:hover { background:var(--owner-soft); }
+.app-stage.owner-stage .home-v3-summary-icon { width:18px; height:18px; color:#647d68; }
+.app-stage.owner-stage .home-v3-summary-icon svg { width:17px; height:17px; }
+.app-stage.owner-stage .home-v3-summary small { color:#66766b; font-size:9px; }
+.app-stage.owner-stage .home-v3-summary strong { color:var(--owner-ink); font-size:26px; font-weight:700; }
+.app-stage.owner-stage .home-v3-summary strong em { font-size:10px; }
+.app-stage.owner-stage .home-v3-summary > button > b { bottom:12px; right:8px; color:#9ba89c; font-size:15px; }
+.app-stage.owner-stage .home-v3-daily {
+  position:relative; isolation:isolate; overflow:hidden; border:0; border-radius:26px;
+  padding:21px; background:#184c3a; color:#fff; box-shadow:0 10px 28px #254c3420;
+}
+.app-stage.owner-stage .home-v3-daily::before {
+  position:absolute; z-index:-1; right:-85px; top:-100px; width:290px; height:290px;
+  border-radius:50%; content:"";
+  background:radial-gradient(circle at 45% 45%,#7caa804d,#52826126 58%,#52826100 74%);
+}
+.app-stage.owner-stage .home-v3-daily::after {
+  position:absolute; z-index:-1; right:-10px; bottom:-100px; width:180px; height:180px;
+  border-radius:50%; background:#6f997b1f; content:""; pointer-events:none;
+}
+.app-stage.owner-stage .home-v3-daily-copy > span { font-size:10px; color:#d2e1d5; letter-spacing:.1em; }
+.app-stage.owner-stage .home-v3-daily h2 { margin:8px 0 0; color:#fff; font-size:22px; font-weight:700; letter-spacing:-.04em; }
+.app-stage.owner-stage .home-v3-daily p { color:#d3e1d5; font-size:11px; line-height:1.6; margin:7px 0 17px; max-width:90%; }
+.app-stage.owner-stage .home-v3-daily-copy > button {
+  display:flex; align-items:center; justify-content:space-between; min-height:46px;
+  padding:11px 16px; border:0; border-radius:15px; background:#fffef7; color:#174c36;
+  font-size:13px; font-weight:800; box-shadow:none;
+}
+.app-stage.owner-stage .home-v3-daily-copy > button:hover { background:#edf4e8; }
+.app-stage.owner-stage .home-v3-daily-icon { color:#dce8d9; opacity:.55; top:22px; right:22px; }
 
-/* Online consultation keeps its prominent card and gets a distinct blue. */
-.app-stage .owner-view-coach .owner-consultation-tabs > .owner-online-tab { border-color: var(--action-plan-line); background: var(--action-plan-soft); color: #214f82; }
-.app-stage .owner-view-coach .owner-online-tab .owner-tab-icon { background: #dce9fc; color: var(--action-plan); --flat-icon-cutout: #dce9fc; }
-.app-stage .owner-view-coach .owner-consultation-tabs > .owner-online-tab.is-active { border-color: var(--action-plan); background: var(--action-plan); color: #fff; box-shadow: 0 4px 12px #2563a629; }
-.app-stage .owner-view-coach .owner-online-tab.is-active .owner-tab-icon { background: #ffffff2e; color: #fff; --flat-icon-cutout: #4c7fb6; }
-.app-stage .owner-view-coach .owner-online-tab.is-active small { color: #edf4ff; }
-.app-stage .owner-view-coach .owner-consultation-tabs .owner-tab-booking { background: #dce9fc; color: #214f82; }
-.app-stage .owner-view-coach .owner-online-tab.is-active .owner-tab-booking { background: #fff; color: var(--action-plan); }
-.app-stage .owner-view-coach .owner-online-tab:not(.is-active):hover { border-color: var(--action-plan); box-shadow: 0 2px 9px #2563a619; }
-.app-stage .owner-view-coach .owner-session-disclosure.is-next { border: 1px solid var(--action-plan-line); background: var(--action-plan-soft); }
-.app-stage .owner-view-coach .session-when small { background: #dce9fc; color: #214f82; }
-.app-stage .owner-view-coach .owner-session-disclosure summary > a { background: var(--action-plan); color: #fff; }
-.app-stage .owner-view-coach .owner-panel-disclosure:not(.owner-history-disclosure) { border: 1px solid var(--action-plan-line); }
-.app-stage .owner-view-coach .owner-panel-disclosure:not(.owner-history-disclosure) > summary > b,
-.app-stage .owner-view-coach .owner-slot-list button > b { background: var(--action-plan-soft); color: var(--action-plan); }
-.app-stage .owner-view-coach .owner-slot-list button { border-color: var(--action-plan-line); }
+/* Entries sit near the top, rather than below a full month of dates. */
+.app-stage.owner-stage .home-v3-event-log { position:relative; padding:20px; border:0; border-radius:25px; background:var(--owner-surface); box-shadow:var(--owner-shadow); }
+.app-stage.owner-stage .home-v3-event-log > header { margin-bottom:14px; }
+.app-stage.owner-stage .home-v3-event-log .card-label { display:block; margin:0 0 6px; color:#6b7f6c; letter-spacing:.02em; font-size:10px; }
+.app-stage.owner-stage .home-v3-event-log > header h2 { margin:0; font-size:18px; font-weight:750; letter-spacing:-.035em; }
+.app-stage.owner-stage .home-v3-event-log .quick-log-lead { margin:6px 0 0; color:#5e705a; font-size:11px; line-height:1.6; }
+.app-stage.owner-stage .home-v3-event-log .quick-log-themes-heading { position:absolute; right:15px; top:9px; margin:0; }
+.app-stage.owner-stage .home-v3-event-log .quick-log-themes-heading > div { display:none; }
+.app-stage.owner-stage .quick-log-themes-heading > button { padding:6px 10px; min-height:44px; color:#466b55; font-size:11px; }
+.app-stage.owner-stage .home-v3-event-log .observation-event-hub { gap:8px; }
+.app-stage.owner-stage .home-v3-event-log .quick-log-theme-grid { gap:8px; margin-top:0; }
+.app-stage.owner-stage .home-v3-event-log .quick-log-theme-grid > button:last-child:nth-child(odd) { grid-column:1 / -1; }
+.app-stage.owner-stage .home-v3-event-log .quick-log-theme-grid > button {
+  min-height:60px; padding:11px 12px; border:0; border-radius:15px;
+  background:#eff3eb; color:#304d39;
+}
+.app-stage.owner-stage .quick-log-theme-label { font-weight:700; }
+.app-stage.owner-stage .quick-log-theme-label small { margin-top:3px; font-size:9px; color:#5e705a; }
+.app-stage.owner-stage .quick-log-theme-add { display:grid; place-items:center; width:25px; height:25px; border-radius:50%; background:#fffefb; color:#4b7556; font-size:16px; }
+.app-stage.owner-stage .home-v3-event-log .observation-event-form { padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
+.app-stage.owner-stage .home-v3-event-log .event-more { margin-top:10px; border:0; background:transparent; }
+.app-stage.owner-stage .home-v3-event-log .event-more > summary { padding:9px 0; min-height:44px; font-size:11px; }
+.app-stage.owner-stage .event-today-list { border:0; margin-top:12px; padding-top:0; }
+.app-stage.owner-stage .event-today-list > summary { display:flex; align-items:center; justify-content:space-between; min-height:44px; font-size:11px; color:#5e705a; list-style:none; cursor:pointer; }
+.event-today-list > summary::-webkit-details-marker { display:none; }
+.event-today-list[open] > summary > span { transform:rotate(180deg); }
+.app-stage.owner-stage .event-today-list button { background:#f4f6ef; border:0; border-radius:12px; min-height:44px; font-size:11px; }
+.app-stage.owner-stage .home-v3-streak { padding:12px 8px; border:0; background:transparent; box-shadow:none; }
+.app-stage.owner-stage .home-v3-streak strong { font-size:21px; color:#517360; }
+.app-stage.owner-stage .home-v3-streak span { font-size:8px; color:#5e705a; }
+.app-stage.owner-stage .home-v3-streak p { color:#5e705a; font-size:10px; }
 
-/* Plans and records can be distinguished in the same calendar. */
-.app-stage .calendar-add,
-.app-stage .calendar-dialog .schedule-save { background: var(--action-plan); color: #fff; }
-.app-stage .calendar-kind,
-.app-stage .calendar-feedback button,
-.app-stage .calendar-presets span,
-.app-stage .calendar-presets b { color: var(--action-plan); }
-.app-stage .calendar-kind { background: var(--action-plan-soft); }
-.app-stage .calendar-feedback button { background: var(--action-plan-soft); }
-.app-stage .calendar-record-actions button { background: var(--action-record-soft); color: var(--action-record); }
-.app-stage .plan-dot { background: var(--action-plan); }
-.app-stage .record-dot { border-color: var(--action-record); }
-.app-stage .is-selected .plan-dot { background: #fff; }
-.app-stage .is-selected .record-dot { border-color: #fff; }
-.app-stage .calendar-dialog .schedule-kind-picker button[aria-pressed=true],
-.app-stage .calendar-dialog .calendar-date-editor button[aria-pressed=true] { border-color: var(--action-plan); background: var(--action-plan-soft); color: #214f82; }
-.app-stage .calendar-dialog .schedule-delete { color: var(--action-danger); }
+/* Calendar expansion leaves room for the day's tasks. Add remains one tap away. */
+.app-stage.owner-stage .home-calendar { padding:20px; border:0; border-radius:25px; background:var(--owner-surface); box-shadow:var(--owner-shadow); }
+.app-stage.owner-stage .calendar-heading small { color:#5e705a; font-size:10px; letter-spacing:.02em; }
+.app-stage.owner-stage .calendar-heading h2 { font-size:17px; margin:5px 0 0; letter-spacing:-.03em; }
+.app-stage.owner-stage .calendar-add { border:0; background:#e6eee0; color:#426343; border-radius:14px; min-height:44px; padding:0 14px; font-size:12px; }
+.calendar-browser { margin-top:14px; }
+.calendar-browser > summary { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:48px; padding:12px; border-radius:14px; background:#f3f5ee; color:#526c53; cursor:pointer; list-style:none; font-size:12px; }
+.calendar-browser > summary::-webkit-details-marker { display:none; }
+.calendar-fold-label { display:flex; align-items:center; gap:7px; color:#5e705a; font-size:10px; }
+.calendar-fold-label b { font-weight:500; }.calendar-fold-label i { font-size:18px; font-style:normal; }
+.calendar-browser[open] .calendar-fold-label i { transform:rotate(180deg); }
+.calendar-browser .when-open,.calendar-browser[open] .when-closed { display:none; }.calendar-browser[open] .when-open { display:inline; }
+.app-stage.owner-stage .calendar-nav button { border:0; background:#edf2e9; }
+.app-stage.owner-stage .calendar-kind { color:#466d56; background:#edf2e7; }
+.app-stage.owner-stage .calendar-dialog { border-radius:26px; background:#fffefb; }
+.app-stage.owner-stage .schedule-save { background:#006e50; }
+.app-stage.owner-stage .schedule-delete { color:var(--action-danger); }
 
-/* Report accents do not change the existing meaning of chart series. */
-.app-stage .owner-view-report .recent-observation-trends .insight-weekly-hero { border-left-color: var(--action-insight); background: var(--action-insight-soft); }
-.app-stage .owner-view-report .insight-today-score strong,
-.app-stage .owner-view-report .insight-card-kicker { color: var(--action-insight); }
-.app-stage .owner-view-report .insight-today-score span { background: var(--action-insight-soft); color: var(--action-insight); }
-.app-stage .owner-view-report .insight-today-card { border-color: var(--action-insight-line); }
+/* The same quiet surfaces and strong actions across every owner destination. */
+.app-stage.owner-stage .owner-scene-panel { display:none; }
+.app-stage.owner-stage .section-title { margin-bottom:12px; }
+.app-stage.owner-stage .section-title h1,.app-stage.owner-stage .section-title h2 { font-size:25px; font-weight:750; letter-spacing:-.045em; line-height:1.45; }
+.app-stage.owner-stage .section-title > span::after { display:none; }
+.app-stage.owner-stage .section-title > span { color:#5e705a; font-size:10px; letter-spacing:.06em; }
+.app-stage.owner-stage .lead { margin-top:8px; font-size:12px; line-height:1.7; color:#5e705a; }
+.app-stage.owner-stage .primary-button { border:0; background:#006e50; color:#fff; border-radius:16px; box-shadow:0 5px 14px #305d3d12; min-height:48px; }
+.app-stage.owner-stage .primary-button:hover { background:#005d43; }
+.app-stage.owner-stage .topic-screen::before { display:none; }
+.app-stage.owner-stage .event-theme-chips button { border:0; background:#edf2e8; color:#3c6246; border-radius:15px; min-height:48px; }
+.app-stage.owner-stage .event-theme-chips.is-secondary button { background:#fffefbcc; color:#65745f; }
+.app-stage.owner-stage .event-result-options button { border:0; border-radius:18px; background:#fffefb; box-shadow:var(--owner-shadow); }
+.app-stage.owner-stage .event-result-options button[data-result="success"] { --result-accent:#00684b; --result-soft:#e5f0e5; }
+.app-stage.owner-stage .event-result-options button[data-result="neutral"] { --result-accent:#56685c; --result-soft:#eef1e9; }
+.app-stage.owner-stage .event-result-options button[data-result="concern"] { --result-accent:#80613b; --result-soft:#f3ebda; }
+.app-stage.owner-stage .event-result-options button[data-result] span { background:var(--result-soft); color:var(--result-accent); }
+.app-stage.owner-stage .event-result-options button[data-result].is-selected { background:var(--result-soft); color:var(--result-accent); box-shadow:inset 0 0 0 2px var(--result-accent); }
+.app-stage.owner-stage .screen-form,.app-stage.owner-stage .profile-form-section,.app-stage.owner-stage .household-manager { border:0; border-radius:24px; background:var(--owner-surface); box-shadow:var(--owner-shadow); }
+.app-stage.owner-stage .screen-form { padding:20px; }
+.app-stage.owner-stage .screen-form .selected-topic { border:0; background:#eef3e8; border-radius:18px; }
+.app-stage.owner-stage .topic-back { min-height:44px; }
+.app-stage.owner-stage .field-label input,.app-stage.owner-stage .field-label textarea,.app-stage.owner-stage .field-label select { background:#f5f7f1; border-color:#e4e9df; border-radius:13px; }
+.app-stage.owner-stage .settings-list { border:0; border-radius:22px; padding:4px 12px; background:var(--owner-surface); box-shadow:var(--owner-shadow); }
+.app-stage.owner-stage .settings-list > button,.app-stage.owner-stage .settings-list > a,.app-stage.owner-stage .settings-notification-row { border:0; min-height:68px; }
+.app-stage.owner-stage .settings-row-icon { border-radius:14px; background:#edf2e7; color:#66806a; }
+.app-stage.owner-stage .settings-account-actions .settings-row-icon { background:#f6ece5; color:var(--action-danger); }
+.app-stage.owner-stage .profile-section-heading > span { background:#edf2e7; color:#54735a; }
 
-/* Main navigation uses the same colors, with a filled active icon. */
-.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button[data-nav="report"] { --nav-accent: var(--action-insight); --nav-soft: var(--action-insight-soft); }
-.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button[data-nav="coach"] { --nav-accent: var(--green-dark); --nav-soft: var(--mint); }
-.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button[data-nav="report"] .nav-icon { color: var(--nav-accent); }
-.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button[data-nav].active:not(.bottom-nav-record) .nav-icon { background: var(--nav-soft, var(--mint)); color: var(--nav-accent, var(--green)); }
-.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button[data-nav].active:not(.bottom-nav-record) > span:last-child { color: var(--nav-accent, var(--green-dark)); }
-.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record[data-nav="record"] .nav-icon { background: var(--action-record); box-shadow: 0 3px 9px #b44c2b29; }
-.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record[data-nav="record"] > span:last-child { color: var(--action-record); }
+/* Consultation: equal hit areas, one clear active destination, visible booking count. */
+.app-stage.owner-stage .owner-view-coach .coach-screen { gap:14px; }
+.app-stage.owner-stage .owner-view-coach .owner-consultation-tabs { padding:6px; gap:7px; border:0; border-radius:23px; background:#fffefbf2; box-shadow:var(--owner-shadow); }
+.app-stage.owner-stage .owner-view-coach .owner-consultation-tabs.is-sticky { top:calc(74px + env(safe-area-inset-top)); }
+.app-stage.owner-stage .owner-view-coach .owner-consultation-tabs > button { border:0; min-height:91px; padding:12px; border-radius:18px; background:#eef3ea; color:#416447; gap:8px; box-shadow:none; }
+.app-stage.owner-stage .owner-view-coach .owner-consultation-tabs > .owner-online-tab { background:#f0eee3; color:#62634e; }
+.app-stage.owner-stage .owner-view-coach .owner-consultation-tabs strong { font-size:14px; font-weight:750; }
+.app-stage.owner-stage .owner-view-coach .owner-consultation-tabs small { color:#5e705a; font-size:9px; }
+.app-stage.owner-stage .owner-view-coach .owner-consultation-tabs .owner-tab-icon { width:27px; height:27px; border-radius:10px; background:#ffffffa6; color:#6c866c; --flat-icon-cutout:#f8faf4; }
+.app-stage.owner-stage .owner-view-coach .owner-consultation-tabs > button.is-active { background:#1d5740; color:#fff; box-shadow:0 4px 12px #3156411a; }
+.app-stage.owner-stage .owner-view-coach .owner-consultation-tabs > button.is-active small { color:#d5e5d3; }
+.app-stage.owner-stage .owner-view-coach .owner-consultation-tabs > button.is-active .owner-tab-icon { background:#ffffff24; color:#fff; --flat-icon-cutout:#3c6f59; }
+.app-stage.owner-stage .owner-view-coach .owner-consultation-tabs .owner-tab-booking { top:13px; right:10px; border:0; background:#e4e7d4; color:#5b674d; font-size:8px; padding:4px 6px; }
+.app-stage.owner-stage .owner-view-coach .owner-consultation-tabs > button.is-active .owner-tab-booking { background:#dcebd8; color:#31573a; }
+.app-stage.owner-stage .owner-view-coach .owner-coach-panel { border:0; margin-top:0; padding:18px; border-radius:25px; background:var(--owner-surface); box-shadow:var(--owner-shadow); }
+.app-stage.owner-stage .owner-view-coach .owner-session-disclosure.is-next { border:0; background:#e8eee1; }
+.app-stage.owner-stage .owner-view-coach .owner-session-disclosure summary > a { border:0; background:#006e50; color:#fff; border-radius:12px; }
+.app-stage.owner-stage .owner-view-coach .session-when small { background:#dce7d2; color:#527046; }
+.app-stage.owner-stage .owner-view-coach .owner-panel-disclosure { border:0; background:#f4f5ee; }
+.app-stage.owner-stage .owner-view-coach .owner-slot-list button { border:0; background:#fffefb; border-radius:15px; }
+.app-stage.owner-stage .owner-view-coach .owner-slot-list button > b { color:#416d4c; }
+.app-stage.owner-stage .owner-view-coach .owner-chat-panel .message-list { border:0; background:#f2f5ee; box-shadow:none; border-radius:20px; height:clamp(340px,56svh,600px); min-height:340px; }
+.app-stage.owner-stage .chat-push-card { border:0; background:#eef3e9; }
+.app-stage.owner-stage .chat-push-card button { min-height:44px; }
 
-/* A visible outline remains independent of each action's color. */
-.app-stage button:focus-visible,
-.app-stage a:focus-visible,
-.app-stage summary:focus-visible { outline: 3px solid #263930; outline-offset: 3px; }
+/* Report: retain charts and their meanings, reduce decorative framing. */
+.app-stage.owner-stage .owner-view-report .report-screen { gap:16px; }
+.app-stage.owner-stage .owner-view-report .recent-observation-trends .insight-today-card,
+.app-stage.owner-stage .owner-view-report .insight-week-summary-grid article,
+.app-stage.owner-stage .owner-view-report .insight-discovery-overview .insight-card,
+.app-stage.owner-stage .owner-view-report .insight-at-a-glance .insight-weekly-hero { border:0; border-radius:23px; background:var(--owner-surface); box-shadow:var(--owner-shadow); }
+.app-stage.owner-stage .owner-view-report .recent-observation-trends .insight-weekly-hero { border:0; background:#e9efdf; border-radius:23px; }
+.app-stage.owner-stage .owner-view-report .insight-today-score strong { color:#426544; }
+.app-stage.owner-stage .owner-view-report .insight-today-score span { background:#edf3e6; color:#56704c; }
+.app-stage.owner-stage .owner-view-report .insight-card-kicker { color:#668064; }
+.app-stage.owner-stage .owner-view-report .insight-intro { padding-top:0; }
+
+/* Preserve the established safe-area geometry of the navigation. */
+.app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] { border:0; background:rgba(255,254,250,.96); box-shadow:0 -5px 28px #34533808; backdrop-filter:blur(18px); border-radius:23px 23px 0 0; }
+.app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) .nav-icon { color:#7b8875; }
+.app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record).active .nav-icon { background:#e8efdf; color:#42663e; }
+.app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) > span:last-child { color:#5e705a; }
+.app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record).active > span:last-child { color:#3f643d; }
+.app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon { background:#006e50; color:#fff; box-shadow:0 4px 14px #244e3824; }
+.app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record > span:last-child { color:#006e50; }
+.app-stage.owner-stage :is(button,a,summary,input,textarea,select):focus-visible { outline:3px solid #285b3e; outline-offset:3px; }
+@media(max-width:360px) {
+  .app-stage.owner-stage .home-v3 { padding-inline:12px; }
+  .app-stage.owner-stage .app-main:not(.home-flat) { padding-inline:12px; }
+  .home-v3-lifestyle-copy h1 { font-size:23px; }
+  .app-stage.owner-stage .home-v3-event-log { padding:17px; }
+  .app-stage.owner-stage .home-v3-summary small { font-size:8px; }
+}
+@media(min-width:700px) {
+  .app-stage.owner-stage .app-main { padding-inline:28px; }
+  .app-stage.owner-stage .home-v3 { gap:18px; }
+  .app-stage.owner-stage .home-v3-daily { padding:24px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .app-stage.owner-stage button { transition:none; }
+}

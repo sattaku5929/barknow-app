@@ -21,3 +21,5 @@
 .values th,.values td { padding:8px 5px; border-bottom:1px solid #edf1ee; text-align:center; white-space:nowrap; }
 .values th:first-child { text-align:left; }
 @media (min-width:650px) { .legend { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+
+:global(.owner-stage) .weekNavigation button { border:0; background:#edf2e7; color:#53764c; border-radius:13px; }

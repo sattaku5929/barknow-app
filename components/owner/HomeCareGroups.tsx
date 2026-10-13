@@ -31,9 +31,13 @@ export default function HomeCareGroups({goals,templates,progress,onComplete,onUn
       const doneCount = items.filter((goal) => progress(goal) >= goal.targetCount).length;
       const layout=careLayout(items.length);
       return <section id={`home-care-${period.key}`} className={styles.group} key={period.key} data-care-period={period.key} aria-labelledby={`care-${period.key}-title`}>
-        <header className={styles.header}><div><h2 id={`care-${period.key}-title`}>{period.title}</h2>{items.length>0 && <span className={styles.total}>{doneCount} / {items.length} {period.key==="day"?"完了":"達成"}</span>}</div>
-          <button type="button" className={styles.edit} disabled={busy!==null} aria-label={`${period.title}の目標・お知らせを設定`} onClick={()=>edit(period.key)}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="m15 5 4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15l-1 5Z"/></svg>設定</button>
-        </header>
+        <details className={styles.fold} open={period.key === "day"}>
+          <summary className={styles.summary}>
+            <div><h2 id={`care-${period.key}-title`}>{period.title}</h2><small>{items.length ? `${doneCount} / ${items.length} ${period.key === "day" ? "完了" : "達成"}` : "やることを追加できます"}</small></div>
+            <span className={styles.foldMark} aria-hidden="true">⌄</span>
+          </summary>
+          <div className={styles.foldBody}>
+            <div className={styles.header}><span>タップして、できたを記録</span><button type="button" className={styles.edit} disabled={busy!==null} aria-label={`${period.title}の目標・お知らせを設定`} onClick={()=>edit(period.key)}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="m15 5 4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15l-1 5Z"/></svg>設定</button></div>
         {items.length ? <div className={`${styles.items} ${styles[layout]} ${items.length===1?styles.single:""}`} data-care-layout={layout}>{items.map((goal) => {
           const count = progress(goal); const done = count >= goal.targetCount;
           return <button type="button" className={`${styles.item} ${done?styles.done:""}`} key={goal.id} disabled={busy!==null} onClick={()=>void complete(goal)}
@@ -45,6 +49,8 @@ export default function HomeCareGroups({goals,templates,progress,onComplete,onUn
         })}</div> : <button className={styles.empty} type="button" onClick={()=>edit(period.key)}>
           ＋ {period.key==="day"?"毎日":period.label}のやることを追加
         </button>}
+          </div>
+        </details>
       </section>;
     })}
     {error && <p role="alert" className={styles.error}>{error}</p>}

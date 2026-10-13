@@ -24,8 +24,8 @@ export default function ObservationEventHub({ selectedThemes, events, onSelect, 
     })}</div>
     {compact ? secondary.length > 0 && <details className="event-more"><summary>{personalized ? "ほかのできごとを記録" : "ほかのテーマから選ぶ"}</summary><div className="event-theme-chips is-secondary">{secondary.map((theme) => <button key={theme.key} type="button" disabled={disabled} onClick={() => onSelect(theme.key)}>{theme.label}</button>)}</div></details>
       : <><p className="event-more-title">ほかのテーマ</p><div className="event-theme-chips is-secondary">{secondary.map((theme) => <button key={theme.key} type="button" disabled={disabled} onClick={() => onSelect(theme.key)}>{theme.label}</button>)}</div></>}
-    {events.length > 0 && <div className="event-today-list"><h3>今日のできごと · {events.length}件</h3>{events.map((entry) => <button key={entry.id} type="button" onClick={() => onEdit(entry)}>
+    {events.length > 0 && <details className="event-today-list"><summary>今日のできごと · {events.length}件<span aria-hidden="true">⌄</span></summary>{events.map((entry) => <button key={entry.id} type="button" onClick={() => onEdit(entry)}>
       <span>{eventThemes.find((item) => item.key === entry.themeKey)?.label ?? "できごと"} · {entry.result === "success" ? "うまくできた" : entry.result === "neutral" ? "いつも通り" : "気になった"}</span><span>編集 ›</span>
-    </button>)}</div>}
+    </button>)}</details>}
   </div>;
 }
