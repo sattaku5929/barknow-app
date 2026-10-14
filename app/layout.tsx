@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Noto_Sans_JP } from "next/font/google";
+import { Fraunces, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import "./bottom-nav.css";
 import "./report-dashboard.css";
@@ -9,6 +9,13 @@ const notoSansJP = Noto_Sans_JP({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700", "800"],
   variable: "--font-noto-jp",
+  display: "swap",
+});
+
+const editorial = Fraunces({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-editorial",
   display: "swap",
 });
 
@@ -29,7 +36,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ja">
-      <body className={notoSansJP.variable}>{children}</body>
+      <body className={`${notoSansJP.variable} ${editorial.variable}`}>{children}</body>
     </html>
   );
 }

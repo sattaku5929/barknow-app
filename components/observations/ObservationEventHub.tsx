@@ -18,7 +18,7 @@ export default function ObservationEventHub({ selectedThemes, events, onSelect, 
     {personalized && themesLoaded && primary.length === 0 && <p className="quick-log-empty">観察テーマを選ぶと、ここからすぐに記録できます。「変更」から設定しましょう。</p>}
     <div className={`event-theme-chips${personalized ? " quick-log-theme-grid" : ""}`}>{primary.map((theme) => {
       const count = events.filter(entry => entry.themeKey === theme.key).length;
-      return <button key={theme.key} type="button" disabled={disabled} onClick={() => onSelect(theme.key)} aria-label={personalized ? `${theme.label}を記録${count ? `・今日${count}件` : ""}` : undefined}>
+      return <button key={theme.key} data-theme={theme.key} type="button" disabled={disabled} onClick={() => onSelect(theme.key)} aria-label={personalized ? `${theme.label}を記録${count ? `・今日${count}件` : ""}` : undefined}>
         {personalized ? <><span className="quick-log-theme-label">{theme.label}<small>{count ? `今日 ${count}件` : "気づいたときに記録"}</small></span><span className="quick-log-theme-add" aria-hidden="true">＋</span></> : <>{theme.label}<span aria-hidden="true">＋</span></>}
       </button>;
     })}</div>

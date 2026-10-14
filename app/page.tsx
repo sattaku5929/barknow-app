@@ -19,6 +19,7 @@ import CoachAssignedDogStats from "@/components/insights/CoachAssignedDogStats";
 import CoachObservationSummary from "@/components/insights/CoachObservationSummary";
 import CoachOfferObservation from "@/components/insights/CoachOfferObservation";
 import HomeCalendar from "@/components/owner/HomeCalendar";
+import OwnerDailyEmblem from "@/components/owner/OwnerDailyEmblem";
 import HomeCareGroups, { carePeriods } from "@/components/owner/HomeCareGroups";
 import { careDate, careProgress, careUndoEntries, subscribeCareDate } from "@/lib/care/clock";
 import type { CareGoal as EditableCareGoal, CareTemplate, CareGoalType } from "@/lib/care/model";
@@ -4370,7 +4371,7 @@ export default function Home() {
             {todayCheckStatus === "recorded" ? "今日の記録を見る" : "今日の状態を記録"} <span aria-hidden="true">→</span>
           </button>
         </div>
-        <span className="home-v3-daily-icon" aria-hidden="true"><TopicIcon name="daily" /></span>
+        <span className="home-v3-daily-icon" aria-hidden="true"><OwnerDailyEmblem /></span>
       </section>
 
       <section id="home-event-log" className="home-v3-event-log" aria-labelledby="home-event-log-title">
