@@ -299,7 +299,7 @@ function ChatMessageRow({
     <div className="chat-message-meta">
       {showReadReceipt && isSelf && <small className={`chat-read-status ${message.readAt ? "is-read" : "is-unread"}`}>{message.readAt ? "既読" : "未読"}</small>}
       <time dateTime={message.createdAt}>{time}</time>
-      <button type="button" className="message-reply-action" onClick={() => { onReply(message); setReplyMenuOpen(false); }} aria-label="このメッセージに引用返信">↩ 引用返信</button>
+      <button type="button" className="message-reply-action" onClick={() => { onReply(message); setReplyMenuOpen(false); }} aria-label="このメッセージに返信"><span aria-hidden="true">↩</span></button>
     </div>
   );
 
