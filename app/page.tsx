@@ -299,7 +299,9 @@ function ChatMessageRow({
     <div className="chat-message-meta">
       {showReadReceipt && isSelf && <small className={`chat-read-status ${message.readAt ? "is-read" : "is-unread"}`}>{message.readAt ? "既読" : "未読"}</small>}
       <time dateTime={message.createdAt}>{time}</time>
-      <button type="button" className="message-reply-action" onClick={() => { onReply(message); setReplyMenuOpen(false); }} aria-label="このメッセージに返信"><span aria-hidden="true">↩</span></button>
+      <button type="button" className="message-reply-action" onClick={() => { onReply(message); setReplyMenuOpen(false); }} aria-label="このメッセージに返信">
+        <svg className="chat-reply-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9 5-6 6 6 6" /><path d="M3 11h9a8 8 0 0 1 8 8" /></svg>
+      </button>
     </div>
   );
 
