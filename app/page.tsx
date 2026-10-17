@@ -1153,6 +1153,10 @@ export default function Home() {
   const [adminDetailMessages, setAdminDetailMessages] = useState<CoachMessage[]>([]);
   const [adminReplyTo, setAdminReplyTo] = useState<CoachMessage | null>(null);
   const adminMessageListRef = useRef<HTMLDivElement>(null);
+  const attachAdminMessageList = useCallback((list: HTMLDivElement | null) => {
+    adminMessageListRef.current = list;
+    if (list) list.scrollTo({ top: list.scrollHeight, behavior: "instant" });
+  }, []);
   const [adminDetailGoals, setAdminDetailGoals] = useState<AdminGoalProgress[]>([]);
   const [adminDetailOwnerProfile, setAdminDetailOwnerProfile] = useState<OwnerProfile | null>(null);
   const [adminDetailDogProfile, setAdminDetailDogProfile] = useState<DogProfile | null>(null);
@@ -1214,6 +1218,10 @@ export default function Home() {
   const [ownerCoachTab, setOwnerCoachTab] = useState<"sessions" | "chat">("chat");
   const [ownerReplyTo, setOwnerReplyTo] = useState<CoachMessage | null>(null);
   const ownerMessageListRef = useRef<HTMLDivElement>(null);
+  const attachOwnerMessageList = useCallback((list: HTMLDivElement | null) => {
+    ownerMessageListRef.current = list;
+    if (list) list.scrollTo({ top: list.scrollHeight, behavior: "instant" });
+  }, []);
   const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
   const [selectedMediaId, setSelectedMediaId] = useState("");
   const [assignedCoachProfile, setAssignedCoachProfile] = useState<CoachProfile | null>(null);
@@ -4795,7 +4803,7 @@ export default function Home() {
                       <button type="button" disabled={pushBusy} onClick={() => void enablePushNotifications()}>{pushBusy ? "設定中…" : "新着メッセージの通知をONにする"}</button>
                     </section>
                   )}
-                  <div className="message-list" aria-live="polite" ref={ownerMessageListRef}>
+                  <div className="message-list" aria-live="polite" ref={attachOwnerMessageList}>
                     {chronologicalMessages.length
                       ? <ChatMessageTimeline messages={chronologicalMessages} selfSender="owner" onReply={setOwnerReplyTo} onOpenMedia={openMediaGallery} />
                       : <div className="coach-empty"><div className="coach-avatar"><NavGlyph name="coach" /></div><h3>担当コーチへ、最初のメッセージを。</h3><p>例：いちばん困っているのは散歩中の引っ張りです。記録のどこを見ればよいですか？</p></div>}
@@ -5261,7 +5269,7 @@ export default function Home() {
                 <section id="coach-customer-chat" className="admin-panel admin-chat-panel">
                   <div className="admin-panel-heading"><div><p className="card-label">CHAT</p><h2>飼い主との会話</h2></div><span>{adminDetailMessages.length}件</span></div>
                   {coachChatContext && <p className="coach-chat-context">{coachChatContext.theme}の記録について確認する <small>記録ID: {coachChatContext.id}</small><button type="button" onClick={() => setCoachChatContext(null)}>解除</button></p>}
-                  <div className="admin-chat-history" ref={adminMessageListRef}>{adminDetailMessages.length ? <ChatMessageTimeline messages={adminDetailMessages} selfSender="coach" onReply={setAdminReplyTo} showReadReceipt /> : <p className="admin-muted">まだ相談はありません。コーチから声をかけることもできます。</p>}</div>
+                  <div className="admin-chat-history" ref={attachAdminMessageList}>{adminDetailMessages.length ? <ChatMessageTimeline messages={adminDetailMessages} selfSender="coach" onReply={setAdminReplyTo} showReadReceipt /> : <p className="admin-muted">まだ相談はありません。コーチから声をかけることもできます。</p>}</div>
                   <ChatInput ownerId={selectedAdminCustomer.ownerId} dogId={selectedAdminCustomer.dogId} sender="coach" placeholder={`${selectedAdminCustomer.dogName}の飼い主へメッセージ`} onSent={addAdminMessage} replyTo={adminReplyTo} onCancelReply={() => setAdminReplyTo(null)} />
                 </section>
               </>
