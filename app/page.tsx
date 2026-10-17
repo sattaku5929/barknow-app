@@ -1703,7 +1703,7 @@ export default function Home() {
     if (ownerCoachTab !== "chat") return;
     const frame = window.requestAnimationFrame(() => {
       const list = ownerMessageListRef.current;
-      list?.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
+      list?.scrollTo({ top: list.scrollHeight, behavior: "instant" });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [ownerCoachTab, messages]);
@@ -1712,7 +1712,7 @@ export default function Home() {
     if (!selectedAdminCustomer) return;
     const frame = window.requestAnimationFrame(() => {
       const list = adminMessageListRef.current;
-      list?.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
+      list?.scrollTo({ top: list.scrollHeight, behavior: "instant" });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [selectedAdminCustomer, adminDetailMessages]);
