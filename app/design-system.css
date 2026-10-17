@@ -162,12 +162,13 @@ body .app-stage.owner-stage .owner-view-coach .owner-session-disclosure.is-next 
 body .app-stage.owner-stage .owner-view-coach .owner-session-disclosure summary > a { background:#008661; color:#fff; }
 body .app-stage.owner-stage .owner-view-coach .session-when small { background:#ddeee8; color:#00684b; }
 body .app-stage.owner-stage .owner-view-coach .owner-chat-panel .message-list,body .admin-chat-history { background:#f9fafb; border:1px solid #e5e7eb; border-radius:16px; box-shadow:none; }
-body .chat-message-row.is-self .message { background:#ddeee8; color:#202824; }
-body .chat-message-row.is-self .message-quote { background:#ffffffa6; color:#39443e; border-left-color:#008661; }
-body .chat-message-row.is-self .message-quote small { color:#00684b; }
-body .chat-message-row.is-self .message-link-preview { background:#ffffffa6; color:#202824; }
-body .chat-message-row.is-self .message-link-preview :is(small,em) { color:#68736d; }
-body .chat-message-row.is-self .message-link-preview > b { background:#fff; color:#008661; }
+body :is(.app-stage,.admin-stage) .chat-message-row.is-self .message { background:#008661; color:#fff; }
+body :is(.app-stage,.admin-stage) .chat-message-row.is-self .message :is(p,.message-inline-link) { color:#fff; }
+body :is(.app-stage,.admin-stage) .chat-message-row.is-self .message-quote { background:rgba(0,0,0,.1); color:#fff; border-left-color:#fff; }
+body :is(.app-stage,.admin-stage) .chat-message-row.is-self .message-quote small { color:#fff; }
+body :is(.app-stage,.admin-stage) .chat-message-row.is-self .message-link-preview { background:rgba(0,0,0,.1); color:#fff; }
+body :is(.app-stage,.admin-stage) .chat-message-row.is-self .message-link-preview :is(small,em) { color:#fff; }
+body :is(.app-stage,.admin-stage) .chat-message-row.is-self .message-link-preview > b { background:rgba(255,255,255,.15); color:#fff; }
 body .chat-message-row.is-received .message { border:1px solid #e5e7eb; box-shadow:none; }
 body .app-stage.owner-stage .chat-push-card { background:#f5faf7; border:1px solid #ddeee8; }
 
