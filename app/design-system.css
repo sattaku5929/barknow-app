@@ -1,0 +1,247 @@
+/* Shared presentation contract for owner, coach, administration and public pages.
+   Keep this stylesheet last. Layout geometry and semantic chart colours remain local. */
+:root {
+  --green: #008661;
+  --green-dark: #00684b;
+  --mint: #ddeee8;
+  --warm: #f9fafb;
+  --ink: #202824;
+  --muted: #68736d;
+  --line: #e5e7eb;
+  --soft-sand: #f9fafb;
+  --soft-blue: #f9fafb;
+  --soft-lilac: #f9fafb;
+  --surface-soft: #f9fafb;
+  --surface-green: #f5faf7;
+  --shadow-card: 0 2px 15px -3px rgba(0,0,0,.05);
+  --wt-bg-app: #f9fafb;
+  --wt-bg-surface: #fff;
+  --wt-bg-subtle: #f9fafb;
+  --wt-bg-warm: #f9fafb;
+  --wt-brand: #008661;
+  --wt-brand-dark: #00684b;
+  --wt-text-primary: #202824;
+  --wt-text-secondary: #68736d;
+  --wt-text-muted: #68736d;
+  --wt-border-soft: #e5e7eb;
+  --wt-border-strong: #d8ddda;
+  --wt-radius-sm: 12px;
+  --wt-radius-md: 16px;
+  --wt-radius-lg: 16px;
+  --wt-radius-xl: 20px;
+  --wt-shadow-soft: var(--shadow-card);
+  --wt-shadow-float: 0 6px 24px -8px rgba(0,0,0,.09);
+}
+html { background:#fff; color-scheme:light; scroll-padding-top:90px; }
+body {
+  /* next/font puts its variable on body; resolve dependent font tokens here. */
+  --font-sans:var(--font-noto-jp),"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  --font-display:var(--font-sans);
+  --font-editorial:var(--font-sans);
+  font-family:var(--font-sans);
+  font-weight:400;
+  background:#fff;
+  color:var(--ink);
+  line-height:1.75;
+  letter-spacing:.025em;
+  text-rendering:optimizeLegibility;
+}
+button,input,textarea,select,summary { font-family:inherit; }
+button,a,summary { -webkit-tap-highlight-color:transparent; }
+button:not(:disabled),summary { cursor:pointer; }
+input,textarea,select { accent-color:var(--green); }
+::selection { background:#ddeee8; color:#202824; }
+:is(button,a,summary,input,textarea,select):focus-visible { outline:2px solid #008661; outline-offset:4px; }
+:is(h1,h2,h3,h4) { font-family:var(--font-sans); font-weight:500; letter-spacing:.06em; }
+button:disabled { cursor:not-allowed; }
+
+/* Consistent quiet canvases. White content is separated by space and fine edges. */
+body :is(.app-stage,.admin-stage,.auth-stage,.auth-loading,.onboarding-stage) { background:#f9fafb; color:var(--ink); font-family:var(--font-sans); }
+body .app-stage.owner-stage .app-shell { background:#fff; box-shadow:none; }
+body .app-stage.owner-stage { --wt-text-primary:#202824; --wt-text-secondary:#68736d; --wt-text-muted:#68736d; }
+body .app-stage.owner-stage .owner-app-backdrop { display:none; }
+body :is(.app-stage,.admin-stage,.auth-stage,.onboarding-stage)::before { display:none; }
+body .app-stage.owner-stage .app-header,body .admin-header {
+  background:rgba(255,255,255,.96);
+  border-bottom:1px solid #e5e7eb;
+  box-shadow:none;
+}
+body .app-stage.owner-stage .wordmark strong { font-family:var(--font-sans); font-size:23px; font-weight:500; letter-spacing:.045em; color:#008661; }
+body .app-stage.owner-stage .wordmark span { color:#68736d; font-weight:400; letter-spacing:.16em; }
+body .app-stage.owner-stage .app-main { background:#fff; padding-top:32px; }
+body .app-stage.owner-stage .owner-view-home.home-flat { padding-top:14px; }
+body :is(.section-title,.admin-welcome,.auth-heading) :is(h1,h2) { color:#202824; font-weight:400; letter-spacing:.07em; line-height:1.6; }
+body .app-stage .section-title h2 { font-size:clamp(23px,6vw,29px); }
+body .section-title > span::after { display:none; }
+body :is(.lead,.welcome-copy,.admin-welcome > div > span) { color:#68736d; line-height:1.9; }
+body :is(.eyebrow,.card-label,.section-title > span) { font-weight:500; letter-spacing:.16em; }
+body :is(.app-stage.owner-stage,.admin-stage,.auth-stage,.onboarding-stage) :is(.primary-button,.auth-submit,.onboarding-next,.schedule-save,.staff-save-button) {
+  min-height:50px; border:1px solid transparent; border-radius:12px;
+  background:#008661; color:#fff; box-shadow:none; font-weight:500; letter-spacing:.05em;
+}
+body :is(.app-stage.owner-stage,.admin-stage,.auth-stage,.onboarding-stage) :is(.primary-button,.auth-submit,.onboarding-next,.schedule-save):not(:disabled):hover { background:#00684b; }
+body :is(.app-stage.owner-stage,.admin-stage,.auth-stage,.onboarding-stage) :is(.field-label,.auth-form label,.staff-profile-fields label) { font-weight:500; color:#39443e; }
+body :is(.app-stage.owner-stage,.admin-stage,.auth-stage,.onboarding-stage) :is(.field-label,.auth-form,.staff-profile-fields,.onboarding-card) :is(input,textarea,select):not([type="checkbox"],[type="radio"],[type="file"]) {
+  min-height:48px; border:1px solid #d8ddda; border-radius:12px; background:#fff;
+  color:#202824; font-size:16px; box-shadow:none;
+}
+body :is(.app-stage.owner-stage,.admin-stage,.auth-stage,.onboarding-stage) :is(.field-label,.auth-form,.staff-profile-fields,.onboarding-card) :is(input,textarea,select):focus { border-color:#008661; box-shadow:0 0 0 3px #0086610d; }
+body :is(.app-stage.owner-stage,.admin-stage,.auth-stage,.onboarding-stage) .field-label.has-error :is(input,textarea,select) { border-color:#b85f5f; background:#fffafa; }
+body :is(.app-stage.owner-stage,.admin-stage,.auth-stage,.onboarding-stage) .field-label.has-error :is(input,textarea,select):focus { border-color:#b85f5f; box-shadow:0 0 0 3px #b85f5f12; }
+body :is(.app-stage.owner-stage,.admin-stage,.auth-stage,.onboarding-stage) :is(.screen-form,.profile-form-section,.household-manager,.settings-list,.home-calendar,.owner-coach-panel,.staff-schedule-panel,.staff-profile-form,.admin-panel,.admin-detail-hero,.admin-empty,.onboarding-card) {
+  border:1px solid #e5e7eb; border-radius:16px; background:#fff;
+  box-shadow:var(--shadow-card);
+}
+body :is(.app-stage.owner-stage,.admin-stage,.auth-stage,.onboarding-stage) :is(.settings-list strong,.profile-form-section h2,.household-manager h2,.selected-topic h2,.admin-panel h2,.staff-panel-heading h2) { font-weight:500; color:#202824; }
+body :is(.app-stage.owner-stage,.admin-stage,.auth-stage,.onboarding-stage) :is(.owner-admin-switch,.settings-row-icon,.profile-section-heading > span,.topic-mark,.coach-avatar) { background:#f5faf7; color:#008661; box-shadow:none; }
+body .app-stage .topic-grid > button { border:1px solid #e5e7eb; border-radius:16px; background:#fff; box-shadow:none; }
+body .app-stage .topic-grid > button:hover { border-color:#008661; background:#f5faf7; transform:none; }
+body .app-stage .topic-grid strong { font-weight:500; }
+body .app-stage .topic-screen::before { display:none; }
+
+/* Home: a spacious greeting, a compact overview, one unmistakable daily action. */
+body .app-stage.owner-stage .home-v3 { gap:20px; padding-inline:22px; }
+body .app-stage.owner-stage .home-v3-lifestyle { min-height:112px; padding-block:12px; }
+body .home-v3-lifestyle-copy h1 { font-weight:400; font-size:clamp(23px,6vw,29px); letter-spacing:.06em; line-height:1.65; }
+body .home-v3-lifestyle-copy p { margin-top:8px; font-size:12px; }
+body .app-stage.owner-stage .home-v3-profile { border:1px solid #e5e7eb; border-radius:50%; background:#f5faf7; color:#008661; transform:none; box-shadow:none; }
+body .app-stage.owner-stage .home-v3-profile img { transform:none; }
+body .app-stage.owner-stage .home-v3-summary { gap:0; padding-block:8px 16px; border-bottom:1px solid #e5e7eb; }
+body .app-stage.owner-stage .home-v3-summary > button { min-height:76px; border:0; border-radius:0; background:transparent; padding-inline:12px; }
+body .app-stage.owner-stage .home-v3-summary > button + button { border-left:1px solid #e5e7eb; }
+body .app-stage.owner-stage .home-v3-summary strong { font-family:var(--font-sans); font-weight:300; font-size:29px; color:#202824; }
+body .app-stage.owner-stage .home-v3-summary :is(small,em) { color:#68736d; font-weight:400; }
+body .app-stage.owner-stage .home-v3-summary-icon { color:#008661; }
+body .app-stage.owner-stage .home-v3-daily {
+  padding:26px 24px; border:1px solid #e0ebe5; border-radius:16px;
+  background:#f5faf7; box-shadow:none;
+}
+body .app-stage.owner-stage .home-v3-daily::before,body .app-stage.owner-stage .home-v3-daily::after { display:none; }
+body .app-stage.owner-stage .home-v3-daily h2 { padding:0; font-size:22px; font-weight:400; letter-spacing:.06em; color:#202824; }
+body .app-stage.owner-stage .home-v3-daily-copy > span { color:#008661; font-weight:500; }
+body .app-stage.owner-stage .home-v3-daily p { max-width:none; color:#68736d; line-height:1.8; font-size:12px; }
+body .app-stage.owner-stage .home-v3-daily-copy > button { min-height:50px; border-radius:12px; background:#008661; color:#fff; font-weight:500; box-shadow:none; }
+body .app-stage.owner-stage .home-v3-daily-copy > button:not(:disabled):hover { background:#00684b; }
+body .app-stage.owner-stage .home-v3-event-log { border:1px solid #e5e7eb; border-radius:16px; padding:24px 20px; background:#fff; box-shadow:var(--shadow-card); }
+body .app-stage.owner-stage .home-v3-event-log h2 { font-weight:500; letter-spacing:.05em; }
+body .app-stage.owner-stage .home-v3-event-log .quick-log-theme-grid > button[data-theme] { border:1px solid #e5e7eb; border-radius:12px; background:#fff; color:#202824; min-height:66px; }
+body .app-stage.owner-stage .home-v3-event-log .quick-log-theme-grid > button[data-theme]:hover { background:#f5faf7; border-color:#a3ceba; }
+body .app-stage.owner-stage .quick-log-theme-label { font-weight:500; }
+body .app-stage.owner-stage .quick-log-theme-label small { color:#68736d; }
+body .app-stage.owner-stage .quick-log-theme-add { background:#f5faf7; color:#008661; }
+body .app-stage.owner-stage .home-v3-streak strong { font-family:var(--font-sans); font-weight:300; color:#008661; }
+body .calendar-browser > summary { background:#f9fafb; color:#39443e; border-radius:12px; }
+body .app-stage.owner-stage .goal-overview { background:#f9fafb; color:#202824; border:1px solid #e5e7eb; border-radius:16px; box-shadow:none; }
+body .app-stage.owner-stage .goal-overview::after { display:none; }
+body .app-stage.owner-stage .goal-overview :is(span,p) { color:#68736d; }
+body .app-stage.owner-stage .goal-overview strong { color:#008661; font-weight:300; }
+body .app-stage.owner-stage :is(.active-goals,.goal-suggestions,.custom-goal-form,.active-goal,.goal-template-grid > button) { border:1px solid #e5e7eb; border-radius:16px; background:#fff; box-shadow:none; }
+body .app-stage.owner-stage .goal-progress i { background:#008661; }
+body .app-stage.owner-stage .goal-done { min-height:44px; background:#008661; }
+body .app-stage.owner-stage :is(.coaching-intro,.coaching-pending,.free-coaching-preview) { border:1px solid #e5e7eb; border-radius:16px; background:#fff; box-shadow:none; }
+body .app-stage.owner-stage .coaching-intro::after { display:none; }
+body .app-stage.owner-stage .coaching-intro-icon { background:#f5faf7; color:#008661; box-shadow:none; }
+body .app-stage.owner-stage .calendar-add { background:#fff; border:1px solid #a3ceba; color:#008661; border-radius:12px; }
+body .app-stage.owner-stage .calendar-heading h2 { font-weight:500; letter-spacing:.05em; }
+
+/* Consultation keeps both destinations in view, with a strong active edge. */
+body .app-stage.owner-stage .owner-view-coach .owner-consultation-tabs { padding:0; gap:12px; border-radius:0; background:rgba(255,255,255,.98); box-shadow:none; }
+body .app-stage.owner-stage .owner-view-coach .owner-consultation-tabs > button {
+  min-height:92px; padding:14px 12px; border:1px solid #e5e7eb; border-radius:12px;
+  background:#fff; color:#68736d; box-shadow:none;
+}
+body .app-stage.owner-stage .owner-view-coach .owner-consultation-tabs > button.is-active { border-color:#008661; background:#f5faf7; color:#00684b; box-shadow:inset 0 -3px #008661; }
+body .app-stage.owner-stage .owner-view-coach .owner-consultation-tabs strong { font-weight:500; }
+body .app-stage.owner-stage .owner-view-coach .owner-consultation-tabs button small { color:#68736d; }
+body .app-stage.owner-stage .owner-view-coach .owner-consultation-tabs button .owner-tab-icon { background:transparent; color:#008661; --flat-icon-cutout:#fff; }
+body .app-stage.owner-stage .owner-view-coach .owner-consultation-tabs > button.is-active small { color:#68736d; }
+body .app-stage.owner-stage .owner-view-coach .owner-consultation-tabs > button.is-active .owner-tab-icon { background:transparent; color:#008661; --flat-icon-cutout:#f5faf7; }
+body .app-stage.owner-stage .owner-view-coach .owner-consultation-tabs button .owner-tab-booking { background:#ddeee8; color:#00684b; font-weight:500; }
+body .app-stage.owner-stage .owner-view-coach .owner-coach-panel { padding:22px 18px; border:1px solid #e5e7eb; border-radius:16px; background:#fff; }
+body .app-stage.owner-stage .owner-view-coach .owner-session-disclosure.is-next { background:#f5faf7; border:1px solid #ddeee8; }
+body .app-stage.owner-stage .owner-view-coach .owner-session-disclosure summary > a { background:#008661; color:#fff; }
+body .app-stage.owner-stage .owner-view-coach .session-when small { background:#ddeee8; color:#00684b; }
+body .app-stage.owner-stage .owner-view-coach .owner-chat-panel .message-list,body .admin-chat-history { background:#f9fafb; border:1px solid #e5e7eb; border-radius:16px; box-shadow:none; }
+body .chat-message-row.is-self .message { background:#ddeee8; color:#202824; }
+body .chat-message-row.is-self .message-quote { background:#ffffffa6; color:#39443e; border-left-color:#008661; }
+body .chat-message-row.is-self .message-quote small { color:#00684b; }
+body .chat-message-row.is-self .message-link-preview { background:#ffffffa6; color:#202824; }
+body .chat-message-row.is-self .message-link-preview :is(small,em) { color:#68736d; }
+body .chat-message-row.is-self .message-link-preview > b { background:#fff; color:#008661; }
+body .chat-message-row.is-received .message { border:1px solid #e5e7eb; box-shadow:none; }
+body .app-stage.owner-stage .chat-push-card { background:#f5faf7; border:1px solid #ddeee8; }
+
+/* Charts retain their status colours; their frames share the application's tone. */
+body .app-stage.owner-stage .owner-view-report :is(.insight-today-card,.insight-week-summary-grid article,.insight-discovery-overview .insight-card,.insight-at-a-glance .insight-weekly-hero,.recent-observation-trends .insight-weekly-hero) { background:#fff; border:1px solid #e5e7eb; border-radius:16px; box-shadow:var(--shadow-card); }
+body .app-stage.owner-stage .owner-view-report .insight-week-summary-grid article strong { font-family:var(--font-sans); font-weight:300; color:#202824; }
+body .app-stage.owner-stage .owner-view-report :is(.insight-today-score strong,.insight-card-kicker) { color:#008661; }
+body .app-stage.owner-stage .owner-view-report .insight-today-score span { background:#ddeee8; color:#00684b; }
+body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] { background:rgba(255,255,255,.97); border-top:1px solid #e5e7eb; border-radius:0; box-shadow:0 -2px 15px -3px rgba(0,0,0,.03); }
+body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) .nav-icon { color:#68736d; }
+body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record).active .nav-icon { background:#ddeee8; color:#008661; }
+body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) > span:last-child { color:#68736d; font-weight:400; }
+body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.active > span:last-child { color:#008661; font-weight:500; }
+body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon { background:#008661; box-shadow:0 2px 12px #00866118; }
+
+/* Authentication and registration use the same light editorial canvas. */
+body .auth-brand { background:#fff; color:#202824; padding-top:48px; }
+body .auth-brand::after { display:none; }
+body .auth-brand > p { color:#008661; font-weight:500; letter-spacing:.18em; }
+body .auth-brand h1 { font-size:clamp(27px,6vw,36px); font-weight:300; letter-spacing:.08em; line-height:1.7; }
+body .auth-brand > span { color:#68736d; }
+body .auth-paw { color:#008661; border-color:#e5e7eb; }
+body .auth-panel { margin-top:0; padding-top:32px; border-top:1px solid #e5e7eb; border-radius:0; background:#fff; }
+body .auth-switch { background:#f9fafb; border:1px solid #e5e7eb; border-radius:12px; }
+body .auth-switch button { min-height:46px; font-weight:500; }
+body .auth-switch button.is-selected { color:#008661; background:#fff; box-shadow:var(--shadow-card); }
+body .onboarding-stage { padding-top:32px; }
+body .onboarding-card { padding:clamp(24px,5vw,44px); }
+body .onboarding-card h1 { font-weight:400; letter-spacing:.06em; line-height:1.65; }
+body .onboarding-progress > span { background:#f9fafb; border:1px solid #e5e7eb; color:#68736d; font-weight:500; }
+body .onboarding-progress > span.is-current { border-color:#008661; background:#fff; color:#008661; }
+body .onboarding-progress > span.is-done { background:#ddeee8; border-color:#ddeee8; color:#00684b; }
+body .onboarding-progress > i { height:1px; background:#e5e7eb; }
+
+/* Coach and administration share the same typography, cards and clear navigation. */
+body .admin-main { padding-top:36px; }
+body .admin-header strong { font-weight:500; letter-spacing:.05em; }
+body .admin-header button { min-height:44px; border-radius:12px; }
+body .admin-header .mode-switch { background:#fff; color:#008661; border:1px solid #a3ceba; font-weight:500; }
+body .admin-welcome { padding:28px 24px; border:1px solid #e5e7eb; border-radius:16px; background:#fff; color:#202824; }
+body .admin-welcome .card-label { color:#008661; }
+body .admin-welcome h1 { font-size:clamp(26px,5vw,34px); }
+body .admin-welcome > b { font-weight:300; color:#008661; }
+body .admin-tabs { padding:4px; gap:4px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; box-shadow:none; }
+body .admin-tabs button { min-height:48px; border:0; border-radius:8px; background:#fff; color:#68736d; font-weight:500; }
+body .admin-tabs button.is-selected { background:#f5faf7; color:#008661; box-shadow:inset 0 -2px #008661; }
+body :is(.admin-panel,.staff-schedule-panel,.staff-profile-form) { padding:24px; }
+body :is(.customer-card,.application-card,.staff-profile-preview,.google-calendar-card,.schedule-toolbar,.admin-inbox-status) { border:1px solid #e5e7eb; border-radius:16px; background:#fff; box-shadow:none; }
+body .staff-profile-preview-card { background:#f9fafb; box-shadow:none; }
+body .schedule-calendar > section { border-color:#e5e7eb; background:#fff; border-radius:12px; }
+body .schedule-calendar > section.is-today { border-color:#008661; background:#f5faf7; }
+body .schedule-calendar article { box-shadow:none; border:1px solid #e5e7eb; border-left:2px solid #008661; }
+body .staff-slot-list article.is-open { border-left-width:2px; }
+body .staff-session-list > article { border-left-width:2px; }
+body :is(.admin-reply button,.staff-session-actions a,.google-calendar-card > button:not(.secondary)) { background:#008661; font-weight:500; }
+body :is(.admin-reply textarea,.schedule-navigation input,.schedule-filters select) { font-size:16px; border-color:#d8ddda; }
+body :is(.staff-session-actions a,.staff-session-actions button,.staff-slot-list .slot-actions button,.schedule-navigation button) { min-height:44px; }
+body :is(.calendar-dialog,.schedule-dialog,.booking-dialog,.staff-booking-detail) { border-radius:16px; background:#fff; box-shadow:var(--wt-shadow-float); }
+
+@media(min-width:700px) {
+  body .app-stage.owner-stage .home-v3 { gap:24px; padding-inline:32px; }
+  body .app-stage.owner-stage .app-main { padding-top:40px; }
+  body .auth-stage { min-height:100svh; display:grid; grid-template-columns:1fr 1fr; align-items:center; max-width:1120px; margin:auto; background:#fff; }
+  body .auth-brand { padding:64px 48px; }
+  body .auth-panel { width:100%; max-width:460px; padding:48px 32px; border-top:0; border-left:1px solid #e5e7eb; }
+}
+@media(max-width:360px) {
+  body .app-stage.owner-stage .home-v3 { padding-inline:16px; gap:16px; }
+  body .app-stage.owner-stage .home-v3-daily { padding:22px 18px; }
+  body .app-stage.owner-stage .home-v3-summary > button { padding-inline:7px; }
+  body .app-stage.owner-stage .home-v3-daily h2 { font-size:20px; }
+  body .app-stage.owner-stage .home-v3-event-log { padding:20px 16px; }
+  body :is(.admin-panel,.staff-schedule-panel,.staff-profile-form) { padding:18px 14px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  *,*::before,*::after { scroll-behavior:auto!important; transition:none!important; }
+}

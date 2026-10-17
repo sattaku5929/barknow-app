@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "愛犬の毎日を記録し、担当コーチへ相談できるケアアプリです。",
     start_url: "/",
     display: "standalone",
-    background_color: "#fcfbf8",
-    theme_color: "#008661",
+    background_color: "#FFFFFF",
+    theme_color: "#FFFFFF",
     icons: [
       { src: "/icon.png", sizes: "4267x4267", type: "image/png", purpose: "any" },
     ],
