@@ -2256,10 +2256,11 @@ export default function Home() {
             : role;
         setStaffMode(validViewMode === "owner" ? "owner" : "staff");
 
-        if (role === "admin" || role === "coach") {
-          if (role === "coach") setAdminTab("customers");
+        if (role === "coach") {
+          setAdminTab("customers");
           await loadAdminWorkspace();
         }
+        // Admin workspace data is loaded only after verified TOTP (AAL2).
 
         const [dogResult, recordResult, messageResult, onboardingResult] = await Promise.all([
           supabase.from("wt_dogs").select("id,name,breed,birthday,avatar_url").eq("owner_id", userId).maybeSingle(),
@@ -5461,7 +5462,7 @@ export default function Home() {
   if (!authReady) return <div className="auth-loading"><span className="loading-paw"><CareIcon name="paws" /></span><p>{currentUserId && profile.name.trim() ? `${profile.name.trim()}の記録を開いています…` : "記録を開いています…"}</p></div>;
   if (!authenticated || anonymousUser) return authView;
   if (userRole === "owner" && onboardingRequired) return onboardingView;
-  if ((userRole === "coach" || userRole === "admin") && staffMode === "staff") return userRole === "admin" ? <AdminMfaGate>{adminView}</AdminMfaGate> : adminView;
+  if ((userRole === "coach" || userRole === "admin") && staffMode === "staff") return userRole === "admin" ? <AdminMfaGate onVerified={() => void loadAdminWorkspace()}>{adminView}</AdminMfaGate> : adminView;
 
   return (
     <div className="app-stage owner-stage">
