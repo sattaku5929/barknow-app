@@ -1,5 +1,6 @@
 "use client";
 
+import AdminMfaGate from "@/components/admin/AdminMfaGate";
 import { PrivateChatMedia, PrivateDogImage, useChatMediaUrl } from "@/components/PrivateMedia";
 
 import { type CSSProperties, FormEvent, Fragment, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -5460,7 +5461,7 @@ export default function Home() {
   if (!authReady) return <div className="auth-loading"><span className="loading-paw"><CareIcon name="paws" /></span><p>{currentUserId && profile.name.trim() ? `${profile.name.trim()}の記録を開いています…` : "記録を開いています…"}</p></div>;
   if (!authenticated || anonymousUser) return authView;
   if (userRole === "owner" && onboardingRequired) return onboardingView;
-  if ((userRole === "coach" || userRole === "admin") && staffMode === "staff") return adminView;
+  if ((userRole === "coach" || userRole === "admin") && staffMode === "staff") return userRole === "admin" ? <AdminMfaGate>{adminView}</AdminMfaGate> : adminView;
 
   return (
     <div className="app-stage owner-stage">
