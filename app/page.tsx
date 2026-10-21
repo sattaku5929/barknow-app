@@ -1133,6 +1133,7 @@ export default function Home() {
   const [anonymousUser, setAnonymousUser] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>("owner");
   const [staffMode, setStaffMode] = useState<"owner" | "staff">("staff");
+  const [adminMfaReady, setAdminMfaReady] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [authEmail, setAuthEmail] = useState("");
@@ -2247,6 +2248,7 @@ export default function Home() {
           if (!roleResult.error && (roleResult.data?.role === "admin" || roleResult.data?.role === "coach")) role = roleResult.data.role;
         }
         setUserRole(role);
+        setAdminMfaReady(false);
 
         const savedViewMode = readActiveViewMode(userId);
         const validViewMode = role === "owner"
@@ -2446,10 +2448,10 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!authReady || (userRole !== "admin" && userRole !== "coach")) return;
+    if (!authReady || (userRole !== "coach" && !(userRole === "admin" && adminMfaReady))) return;
     const timer = window.setInterval(() => void loadAdminWorkspace(), 30_000);
     return () => window.clearInterval(timer);
-  }, [authReady, userRole]);
+  }, [authReady, userRole, adminMfaReady]);
 
   useEffect(() => {
     if (!authReady || !authenticated) return;
@@ -5462,7 +5464,7 @@ export default function Home() {
   if (!authReady) return <div className="auth-loading"><span className="loading-paw"><CareIcon name="paws" /></span><p>{currentUserId && profile.name.trim() ? `${profile.name.trim()}の記録を開いています…` : "記録を開いています…"}</p></div>;
   if (!authenticated || anonymousUser) return authView;
   if (userRole === "owner" && onboardingRequired) return onboardingView;
-  if ((userRole === "coach" || userRole === "admin") && staffMode === "staff") return userRole === "admin" ? <AdminMfaGate onVerified={() => void loadAdminWorkspace()}>{adminView}</AdminMfaGate> : adminView;
+  if ((userRole === "coach" || userRole === "admin") && staffMode === "staff") return userRole === "admin" ? <AdminMfaGate onVerified={() => { setAdminMfaReady(true); void loadAdminWorkspace(); }}>{adminView}</AdminMfaGate> : adminView;
 
   return (
     <div className="app-stage owner-stage">
