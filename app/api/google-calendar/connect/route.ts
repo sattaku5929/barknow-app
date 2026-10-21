@@ -7,8 +7,9 @@ export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await authenticatedUser(request);
-    if (!user || !(await requireStaffRole(user.id))) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const staff = await authenticatedStaffRole(request);
+    const user = staff?.user;
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
     const configuration = googleOAuthConfiguration(request.nextUrl.origin);
     if (!clientId || !configuration.configured) return NextResponse.json({ error: configuration.error || "Google OAuthの設定が完了していません" }, { status: 503 });
