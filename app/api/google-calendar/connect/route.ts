@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { googleOAuthConfiguration } from "@/lib/server/google-calendar";
-import { authenticatedUser, requireStaffRole, serviceSupabase } from "@/lib/server/supabase";
+import { authenticatedStaffRole, serviceSupabase } from "@/lib/server/supabase";
 
 export const runtime = "nodejs";
 
