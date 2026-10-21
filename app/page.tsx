@@ -1,5 +1,6 @@
 "use client";
 
+import AdminMfaGate from "@/components/admin/AdminMfaGate";
 import { PrivateChatMedia, PrivateDogImage, useChatMediaUrl } from "@/components/PrivateMedia";
 
 import { type CSSProperties, FormEvent, Fragment, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -1132,6 +1133,7 @@ export default function Home() {
   const [anonymousUser, setAnonymousUser] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>("owner");
   const [staffMode, setStaffMode] = useState<"owner" | "staff">("staff");
+  const [adminMfaReady, setAdminMfaReady] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [authEmail, setAuthEmail] = useState("");
@@ -2246,6 +2248,7 @@ export default function Home() {
           if (!roleResult.error && (roleResult.data?.role === "admin" || roleResult.data?.role === "coach")) role = roleResult.data.role;
         }
         setUserRole(role);
+        setAdminMfaReady(false);
 
         const savedViewMode = readActiveViewMode(userId);
         const validViewMode = role === "owner"
@@ -2255,10 +2258,11 @@ export default function Home() {
             : role;
         setStaffMode(validViewMode === "owner" ? "owner" : "staff");
 
-        if (role === "admin" || role === "coach") {
-          if (role === "coach") setAdminTab("customers");
+        if (role === "coach") {
+          setAdminTab("customers");
           await loadAdminWorkspace();
         }
+        // Admin workspace data is loaded only after verified TOTP (AAL2).
 
         const [dogResult, recordResult, messageResult, onboardingResult] = await Promise.all([
           supabase.from("wt_dogs").select("id,name,breed,birthday,avatar_url").eq("owner_id", userId).maybeSingle(),
@@ -2444,10 +2448,10 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (!authReady || (userRole !== "admin" && userRole !== "coach")) return;
+    if (!authReady || (userRole !== "coach" && !(userRole === "admin" && adminMfaReady))) return;
     const timer = window.setInterval(() => void loadAdminWorkspace(), 30_000);
     return () => window.clearInterval(timer);
-  }, [authReady, userRole]);
+  }, [authReady, userRole, adminMfaReady]);
 
   useEffect(() => {
     if (!authReady || !authenticated) return;
@@ -5460,7 +5464,7 @@ export default function Home() {
   if (!authReady) return <div className="auth-loading"><span className="loading-paw"><CareIcon name="paws" /></span><p>{currentUserId && profile.name.trim() ? `${profile.name.trim()}の記録を開いています…` : "記録を開いています…"}</p></div>;
   if (!authenticated || anonymousUser) return authView;
   if (userRole === "owner" && onboardingRequired) return onboardingView;
-  if ((userRole === "coach" || userRole === "admin") && staffMode === "staff") return adminView;
+  if ((userRole === "coach" || userRole === "admin") && staffMode === "staff") return userRole === "admin" ? <AdminMfaGate onVerified={() => { setAdminMfaReady(true); void loadAdminWorkspace(); }}>{adminView}</AdminMfaGate> : adminView;
 
   return (
     <div className="app-stage owner-stage">
