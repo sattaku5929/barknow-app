@@ -1,0 +1,31 @@
+name: Admin AAL2 API checks
+
+on:
+  pull_request:
+    paths:
+      - "lib/server/supabase.ts"
+      - "app/api/google-calendar/**"
+      - "app/api/upload-url/**"
+      - "tests/adminAal2Api.test.cjs"
+      - "package.json"
+      - ".github/workflows/admin-aal2-api.yml"
+  workflow_dispatch:
+
+jobs:
+  admin-aal2-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: AAL1/AAL2 role guard regression checks
+        run: node tests/adminAal2Api.test.cjs
+      - name: TypeScript validation
+        run: npx tsc --noEmit
+      - name: Changed code lint
+        run: npx eslint lib/server/supabase.ts app/api/google-calendar/connect/route.ts app/api/google-calendar/status/route.ts app/api/google-calendar/sync/route.ts app/api/upload-url/route.ts tests/adminAal2Api.test.cjs
+      - run: git diff --check

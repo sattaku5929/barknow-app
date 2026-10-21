@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test:security": "node tests/securityAccess.sql.test.mjs && node tests/securityRoutes.test.cjs && node tests/signupNotificationRoute.test.cjs",
+    "test:security": "node tests/securityAccess.sql.test.mjs && node tests/securityRoutes.test.cjs && node tests/signupNotificationRoute.test.cjs && node tests/adminAal2Api.test.cjs",
     "dev": "next dev",
     "build": "next build",
     "test:insights": "node --experimental-strip-types --test tests/insightRules.test.mjs && node tests/observationTrends.sql.test.mjs && node tests/observationEventIntensity.sql.test.mjs",
