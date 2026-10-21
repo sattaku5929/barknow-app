@@ -14,7 +14,7 @@ export default function SecuritySmoke() {
     try {
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
-      if (!token) throw new Error("ログインが必要です");
+      if (!token) { setMessage("このPreviewではまだログインしていません。下の「ログイン画面を開く」からログイン後、このページへ戻ってください。"); return; }
       const assurance = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (assurance.error) throw new Error("認証状態を確認できません");
       const response = await fetch("/api/google-calendar/status", {
@@ -40,6 +40,8 @@ export default function SecuritySmoke() {
       </button>
       {result && <div aria-live="polite"><p>認証レベル: {result.aal}</p><p>HTTPステータス: {result.status}</p></div>}
       {message && <p role="alert">{message}</p>}
+      <a href="/" style={{ display: "block", marginTop: 20, padding: 14, borderRadius: 12, border: "1px solid #008661", color: "#008661", textAlign: "center", textDecoration: "none" }}>ログイン画面を開く</a>
+      <p>ログイン・2段階認証が終わったら、Safariでこの認証テスト画面に戻ってください。</p>
       <p>認証コードやトークンは共有しないでください。</p>
     </section>
   </main>;
