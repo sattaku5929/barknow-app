@@ -48,7 +48,9 @@ export default function AdminMfaGate({ children, onVerified }: { children: React
     const result = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: "WanTone Admin" });
     setBusy(false);
     if (result.error || !result.data.totp) {
-      setMessage("登録を開始できませんでした。時間をおいて再試行してください。");
+      const detail = result.error?.message ?? "QRコードの生成に失敗しました";
+      const code = result.error?.code ? ` (${result.error.code})` : "";
+      setMessage(`登録できませんでした: ${detail}${code}`);
       return;
     }
     setFactorId(result.data.id);
