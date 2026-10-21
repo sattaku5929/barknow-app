@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/app/supabase";
 
 type Stage = "checking" | "enroll" | "verify" | "ready" | "error";
 
-export default function AdminMfaGate({ children }: { children: React.ReactNode }) {
+export default function AdminMfaGate({ children, onVerified }: { children: React.ReactNode; onVerified?: () => void }) {
+  const notified = useRef(false);
   const [stage, setStage] = useState<Stage>("checking");
   const [factorId, setFactorId] = useState("");
   const [qr, setQr] = useState("");
@@ -77,6 +78,13 @@ export default function AdminMfaGate({ children }: { children: React.ReactNode }
     setBusy(false);
     await check();
   }
+
+  useEffect(() => {
+    if (stage === "ready" && !notified.current) {
+      notified.current = true;
+      onVerified?.();
+    }
+  }, [stage, onVerified]);
 
   if (stage === "ready") return <>{children}</>;
   return (
