@@ -16,12 +16,12 @@ function compile(file, mocks) {
 const uid = "00000000-0000-4000-8000-000000000001";
 const token = (aal, sub=uid) => "header." + Buffer.from(JSON.stringify({ aal, sub })).toString("base64url") + ".signature";
 const request = t => ({ headers: { get: name => name === "authorization" ? "Bearer " + t : null } });
-function harness(role, userId=uid) {
+function harness(role, userId=uid, authError=false) {
   return compile("lib/server/supabase.ts", {
     "@supabase/supabase-js": {
       createClient: (_url, key) => key === "service-key"
         ? { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { role } }) }) }) }) }
-        : { auth: { getUser: async () => ({ data: { user: { id: userId } }, error: null }) } },
+        : { auth: { getUser: async () => authError ? { data: { user: null }, error: { message: "Invalid JWT" } } : { data: { user: { id: userId } }, error: null } } },
     },
     "next/server": {},
   });
@@ -35,6 +35,8 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = "service-key";
   assert.equal((await admin.authenticatedStaffRole(request(token("aal2"))))?.role, "admin", "AAL2 admin allowed");
   assert.equal(await admin.authenticatedStaffRole(request(token("aal2", "another-user"))), null, "JWT subject mismatch denied");
   assert.equal(await admin.authenticatedStaffRole(request("malformed")), null, "malformed token denied");
+  const rejectedToken = harness("admin", uid, true);
+  assert.equal(await rejectedToken.authenticatedStaffRole(request(token("aal2"))), null, "Supabase Auth rejection must deny AAL2 access");
   const coach = harness("coach");
   assert.equal((await coach.authenticatedStaffRole(request(token("aal1"))))?.role, "coach", "coach AAL1 preserved");
   const owner = harness("owner");
