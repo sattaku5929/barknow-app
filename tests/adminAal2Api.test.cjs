@@ -6,12 +6,12 @@ const ts = require("typescript");
 function compile(file, mocks) {
   const source = fs.readFileSync(path.join(__dirname, "..", file), "utf8");
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  const module = { exports: {} };
+  const loaded = { exports: {} };
   new Function("require", "module", "exports", "Buffer", code)(name => {
     if (!(name in mocks)) throw new Error("Unexpected import " + name);
     return mocks[name];
-  }, module, module.exports, Buffer);
-  return module.exports;
+  }, loaded, loaded.exports, Buffer);
+  return loaded.exports;
 }
 const uid = "00000000-0000-4000-8000-000000000001";
 const token = (aal, sub=uid) => "header." + Buffer.from(JSON.stringify({ aal, sub })).toString("base64url") + ".signature";
