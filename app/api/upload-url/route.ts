@@ -1,7 +1,7 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { NextRequest, NextResponse } from "next/server";
-import { authenticatedSupabase } from "@/lib/server/supabase";
+import { authenticatedStaffRole, authenticatedSupabase } from "@/lib/server/supabase";
 import { assertR2Configuration, R2ConfigurationError, r2BucketName, r2Client } from "@/lib/r2";
 
 export const runtime = "nodejs";
@@ -69,7 +69,8 @@ export async function POST(request: NextRequest) {
       ]);
       if (roleError) throw roleError;
       if (assignmentError) throw assignmentError;
-      if (role?.role !== "admin" && !(role?.role === "coach" && assignment)) {
+      const adminAllowed = role?.role === "admin" && (await authenticatedStaffRole(request))?.role === "admin";
+      if (!adminAllowed && !(role?.role === "coach" && assignment)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }
