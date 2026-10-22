@@ -3,7 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/app/supabase";
 
 export default function SecuritySmoke() {
-  const [result, setResult] = useState<{ aal: string; status: number } | null>(null);
+  const [result, setResult] = useState<{ aal: string; status: number; diagnostic: string } | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -22,7 +22,8 @@ export default function SecuritySmoke() {
         headers: { Authorization: "Bearer " + token },
         cache: "no-store",
       });
-      setResult({ aal: assurance.data.currentLevel ?? "unknown", status: response.status });
+      const body = await response.json().catch(() => ({}));
+      setResult({ aal: assurance.data.currentLevel ?? "unknown", status: response.status, diagnostic: typeof body.diagnostic === "string" ? body.diagnostic : "none" });
     } catch {
       setMessage("テストを実行できませんでした。ログインと通信状態を確認してください。");
     } finally {
@@ -38,7 +39,7 @@ export default function SecuritySmoke() {
       <button disabled={busy} onClick={() => void check()} style={{ width: "100%", background: "#008661", color: "white", border: 0, borderRadius: 12, padding: 16 }}>
         {busy ? "確認中…" : "認証テストを実行"}
       </button>
-      {result && <div aria-live="polite"><p>認証レベル: {result.aal}</p><p>HTTPステータス: {result.status}</p></div>}
+      {result && <div aria-live="polite"><p>認証レベル: {result.aal}</p><p>HTTPステータス: {result.status}</p><p>診断コード: {result.diagnostic}</p></div>}
       {message && <p role="alert">{message}</p>}
       <a href="/" style={{ display: "block", marginTop: 20, padding: 14, borderRadius: 12, border: "1px solid #008661", color: "#008661", textAlign: "center", textDecoration: "none" }}>ログイン画面を開く</a>
       <p>ログイン・2段階認証が終わったら、Safariでこの認証テスト画面に戻ってください。</p>
