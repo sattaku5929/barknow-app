@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/app/supabase";
 
 export default function SecuritySmoke() {
@@ -41,7 +42,7 @@ export default function SecuritySmoke() {
       </button>
       {result && <div aria-live="polite"><p>認証レベル: {result.aal}</p><p>HTTPステータス: {result.status}</p><p>診断コード: {result.diagnostic}</p></div>}
       {message && <p role="alert">{message}</p>}
-      <a href="/" style={{ display: "block", marginTop: 20, padding: 14, borderRadius: 12, border: "1px solid #008661", color: "#008661", textAlign: "center", textDecoration: "none" }}>ログイン画面を開く</a>
+      <Link href="/" style={{ display: "block", marginTop: 20, padding: 14, borderRadius: 12, border: "1px solid #008661", color: "#008661", textAlign: "center", textDecoration: "none" }}>ログイン画面を開く</Link>
       <p>ログイン・2段階認証が終わったら、Safariでこの認証テスト画面に戻ってください。</p>
       <p>認証コードやトークンは共有しないでください。</p>
     </section>
