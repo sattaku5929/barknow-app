@@ -6,6 +6,10 @@ export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   // Temporary read-only Preview diagnostic. Never return raw errors or secrets.
+  const requiredAuthConfig = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"];
+  if (requiredAuthConfig.some((key) => !process.env[key])) {
+    return NextResponse.json({ error: "Unavailable", diagnostic: "supabase_env_missing" }, { status: 503 });
+  }
   let staff;
   try {
     staff = await authenticatedStaffRole(request);
