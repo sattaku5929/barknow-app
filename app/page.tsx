@@ -1138,6 +1138,7 @@ export default function Home() {
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>([]);
   const openedChatLinkRef = useRef("");
@@ -2647,7 +2648,7 @@ export default function Home() {
                 : normalized.includes("already registered") || normalized.includes("already been registered")
                   ? "このメールアドレスは登録済みです。「ログイン」からお進みください。"
                   : normalized.includes("password")
-                    ? "パスワードは8文字以上で設定してください。"
+                    ? "パスワードの条件を確認してください。8文字以上で設定し、必要に応じて別のパスワードをお試しください。"
                     : normalized.includes("invalid email")
                       ? "メールアドレスの形式を確認してください。"
                       : `登録できませんでした（${message}）`,
@@ -2663,10 +2664,10 @@ export default function Home() {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(authEmail.trim(), { redirectTo: window.location.origin });
+    const { error } = await supabase.auth.resetPasswordForEmail(authEmail.trim(), { redirectTo: `${window.location.origin}/auth/reset-password` });
     setSaving(false);
     if (error) setAuthError("再設定メールを送れませんでした。Supabase設定を確認してください。");
-    else showNotice("パスワード再設定メールを送りました");
+    else { setAuthError(""); showNotice("登録済みのメールアドレスであれば、再設定用のメールをお送りします。受信箱をご確認ください。"); }
   }
 
   async function signOut() {
@@ -5083,7 +5084,8 @@ export default function Home() {
         )}
         <form className="auth-form" onSubmit={submitAuth}>
           <label>メールアドレス<input type="email" inputMode="email" autoComplete="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" required /></label>
-          <label>パスワード<input type="password" autoComplete={authMode === "login" && !anonymousUser ? "current-password" : "new-password"} minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="8文字以上" required /></label>
+          <label>パスワード<input type={showAuthPassword ? "text" : "password"} autoComplete={authMode === "login" && !anonymousUser ? "current-password" : "new-password"} minLength={authMode === "login" && !anonymousUser ? undefined : 8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder={authMode === "login" && !anonymousUser ? "パスワードを入力" : "8文字以上"} required /></label>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 500 }}><input type="checkbox" checked={showAuthPassword} onChange={(event) => setShowAuthPassword(event.target.checked)} />パスワードを表示する</label>
           {authError && <p className="auth-error" role="alert">{authError}</p>}
           <button className="auth-submit" disabled={saving}>{saving ? "確認中…" : anonymousUser ? "今のデータを引き継ぐ" : authMode === "login" ? "ログインする" : "アカウントを作る"}<span>→</span></button>
         </form>
