@@ -62,7 +62,11 @@ export async function POST(request: NextRequest) {
   try {
     const contract = await verifiedContract(user.id);
     if (!contract?.eligible) return response({ error: "管理対象の有料契約がありません" }, 403);
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://barknow-app.vercel.app").replace(/\/$/, "");
+    // The Stripe return URL must be controlled by the server, not supplied by the browser.
+    const previewHost = process.env.VERCEL_URL?.trim();
+    const appUrl = (process.env.VERCEL_ENV === "preview" && previewHost && /^[a-z0-9.-]+\.vercel\.app$/i.test(previewHost)
+      ? `https://${previewHost}`
+      : process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://barknow-app.vercel.app").replace(/\/$/, "");
     const portal = await stripeClient().billingPortal.sessions.create({
       customer: contract.customerId,
       return_url: appUrl + "/",
