@@ -63,10 +63,8 @@ test("read receipts are user-specific and cannot be spoofed", async () => {
 test("admin can manage drafts and publication, owner cannot publish", async () => {
   await adminSql("update public.wt_announcements set is_published=true where id=$1", [draftId]);
   await act(owner);
-  await assert.rejects(db.query("update public.wt_announcements set is_published=true where id=$1", [futureId]), /permission|row-level|violates/).catch(async () => {
-    assert.equal((await db.query("select count(*)::int as n from public.wt_announcements where id=$1",[futureId])).rows[0].n,0);
-  });
+  await db.query("update public.wt_announcements set is_published=true where id=$1", [futureId]);
+  assert.equal((await db.query("select count(*)::int as n from public.wt_announcements where id=$1",[futureId])).rows[0].n,0);
   await act(admin);
   assert.equal((await db.query("select count(*)::int as n from public.wt_announcements")).rows[0].n,3);
 });
-await db.close();
