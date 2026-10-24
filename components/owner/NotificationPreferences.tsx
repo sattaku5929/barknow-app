@@ -47,7 +47,7 @@ export default function NotificationPreferences({
     setLoading(false);
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, [load]);
 
   async function toggle(key: PreferenceKey) {
     if (saving || loading || (key === "chat" && !hasCoach)) return;
