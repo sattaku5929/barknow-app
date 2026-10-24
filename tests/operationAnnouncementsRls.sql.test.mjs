@@ -3,7 +3,7 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 
-const migration = await readFile(new URL("../supabase/migrations/20261024110000_admin_announcements.sql", import.meta.url), "utf8");
+const migration = await readFile(new URL("../supabase/migrations/20261024112304_admin_announcements.sql", import.meta.url), "utf8");
 const [admin, owner, coach, other] = [
   "11111111-1111-4111-8111-111111111111",
   "22222222-2222-4222-8222-222222222222",
