@@ -80,7 +80,7 @@ async function sendCoachingNotifications({
   }
 }
 
-function planStatus(stripeStatus: Stripe.Subscription.Status) {
+function planStatus(stripeStatus: Stripe.Subscription["status"]) {
   if (stripeStatus === "active" || stripeStatus === "trialing") return "active_member";
   if (stripeStatus === "past_due" || stripeStatus === "unpaid") return "past_due";
   if (stripeStatus === "canceled" || stripeStatus === "incomplete_expired") return "canceled";
