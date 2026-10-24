@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { supabase } from "@/app/supabase";
+import PasswordVisibilityButton from "@/components/auth/PasswordVisibilityButton";
 
 type RecoveryState = "checking" | "ready" | "invalid" | "complete";
 
@@ -10,6 +11,7 @@ export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -75,10 +77,15 @@ export default function ResetPasswordPage() {
         {state === "ready" && <form onSubmit={(event) => void submit(event)} style={{ display: "grid", gap: 14 }}>
           <p style={{ margin: "4px 0", fontSize: 14, color: "#56675f" }}>新しいパスワードを入力してください（8文字以上）。</p>
           <label htmlFor="new-password" style={{ fontWeight: 700 }}>新しいパスワード</label>
-          <input id="new-password" type={showPassword ? "text" : "password"} autoComplete="new-password" minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} style={{ padding: 13, fontSize: 16, border: "1px solid #a4bcb1", borderRadius: 10, width: "100%", boxSizing: "border-box" }} />
+          <div style={{ position: "relative" }}>
+            <input id="new-password" type={showPassword ? "text" : "password"} autoComplete="new-password" minLength={8} required value={password} onChange={(event) => setPassword(event.target.value)} style={{ padding: "13px 56px 13px 13px", fontSize: 16, border: "1px solid #a4bcb1", borderRadius: 10, width: "100%", boxSizing: "border-box" }} />
+            <PasswordVisibilityButton visible={showPassword} onToggle={() => setShowPassword((current) => !current)} label="新しいパスワード" />
+          </div>
           <label htmlFor="confirm-password" style={{ fontWeight: 700 }}>新しいパスワード（確認）</label>
-          <input id="confirm-password" type={showPassword ? "text" : "password"} autoComplete="new-password" minLength={8} required value={confirm} onChange={(event) => setConfirm(event.target.value)} style={{ padding: 13, fontSize: 16, border: "1px solid #a4bcb1", borderRadius: 10, width: "100%", boxSizing: "border-box" }} />
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}><input type="checkbox" checked={showPassword} onChange={(event) => setShowPassword(event.target.checked)} />パスワードを表示する</label>
+          <div style={{ position: "relative" }}>
+            <input id="confirm-password" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" minLength={8} required value={confirm} onChange={(event) => setConfirm(event.target.value)} style={{ padding: "13px 56px 13px 13px", fontSize: 16, border: "1px solid #a4bcb1", borderRadius: 10, width: "100%", boxSizing: "border-box" }} />
+            <PasswordVisibilityButton visible={showConfirmPassword} onToggle={() => setShowConfirmPassword((current) => !current)} label="確認用パスワード" />
+          </div>
           {error && <p role="alert" style={{ color: "#a13b32", fontSize: 14 }}>{error}</p>}
           <button type="submit" disabled={saving} style={{ padding: 15, border: 0, borderRadius: 12, background: "#008661", color: "#fff", fontSize: 16, fontWeight: 700, opacity: saving ? .6 : 1 }}>{saving ? "更新しています…" : "新しいパスワードに変更する"}</button>
         </form>}
