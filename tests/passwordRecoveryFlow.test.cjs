@@ -5,9 +5,14 @@ const path = require("node:path");
 
 const main = fs.readFileSync(path.join(__dirname, "../app/page.tsx"), "utf8");
 const reset = fs.readFileSync(path.join(__dirname, "../app/auth/reset-password/page.tsx"), "utf8");
+const forgot = fs.readFileSync(path.join(__dirname, "../app/auth/forgot-password/page.tsx"), "utf8");
 
-test("reset email links to a dedicated password-change page", () => {
-  assert.match(main, /resetPasswordForEmail\(authEmail\.trim\(\), \{ redirectTo: `\$\{window\.location\.origin\}\/auth\/reset-password` \}/);
+test("forgot link navigates to separate email form", () => {
+  assert.match(main, /router\.push\("\/auth\/forgot-password"\)/);
+  assert.match(forgot, /type="email"/);
+  assert.match(forgot, /resetPasswordForEmail\(email\.trim\(\)/);
+  assert.match(forgot, /\/auth\/reset-password/);
+  assert.match(forgot, /再設定メールを送信する/);
 });
 test("recovery page requires recovery session and authenticated update", () => {
   assert.match(reset, /PASSWORD_RECOVERY/);
