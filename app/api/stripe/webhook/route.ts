@@ -80,6 +80,13 @@ async function sendCoachingNotifications({
   }
 }
 
+function planStatus(stripeStatus: Stripe.Subscription.Status) {
+  if (stripeStatus === "active" || stripeStatus === "trialing") return "active_member";
+  if (stripeStatus === "past_due" || stripeStatus === "unpaid") return "past_due";
+  if (stripeStatus === "canceled" || stripeStatus === "incomplete_expired") return "canceled";
+  return "inactive";
+}
+
 export async function POST(request: NextRequest) {
   const signature = request.headers.get("stripe-signature");
   if (!signature) return NextResponse.json({ error: "Stripe signature is missing" }, { status: 400 });
@@ -91,6 +98,36 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[Stripe webhook] signature verification failed", error);
     return NextResponse.json({ error: "Invalid Stripe signature" }, { status: 400 });
+  }
+
+  if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
+    // Webhook signature was verified above; still check the customer and subscription IDs
+    // already linked to a WanTone user before changing any entitlement.
+    const incoming = event.data.object as Stripe.Subscription;
+    try {
+      const live = await stripeClient().subscriptions.retrieve(incoming.id);
+      const customerId = typeof live.customer === "string" ? live.customer : live.customer.id;
+      const admin = serviceSupabase();
+      const { error } = await admin.from("wt_subscriptions")
+        .update({ plan_status: planStatus(live.status), updated_at: new Date().toISOString() })
+        .eq("stripe_subscription_id", incoming.id)
+        .eq("stripe_customer_id", customerId);
+      if (error) throw error;
+      return NextResponse.json({ received: true });
+    } catch (error) {
+      // Stripe may no longer return a hard-deleted subscription.
+      if (event.type === "customer.subscription.deleted") {
+        const customerId = typeof incoming.customer === "string" ? incoming.customer : incoming.customer.id;
+        const admin = serviceSupabase();
+        const { error: updateError } = await admin.from("wt_subscriptions")
+          .update({ plan_status: "canceled", updated_at: new Date().toISOString() })
+          .eq("stripe_subscription_id", incoming.id)
+          .eq("stripe_customer_id", customerId);
+        if (!updateError) return NextResponse.json({ received: true });
+      }
+      console.error("[Stripe webhook] subscription state sync failed", { eventId: event.id, error });
+      return NextResponse.json({ error: "Subscription state sync failed" }, { status: 500 });
+    }
   }
 
   if (event.type !== "checkout.session.completed") {
@@ -112,9 +149,10 @@ export async function POST(request: NextRequest) {
     const { data: existing } = await admin.from("wt_subscriptions").select("stripe_event_id").eq("user_id", userId).maybeSingle();
     if (existing?.stripe_event_id === event.id) return NextResponse.json({ received: true, duplicate: true });
 
+    const liveSubscription = session.subscription ? await stripeClient().subscriptions.retrieve(stripeId(session.subscription)!) : null;
     const { error } = await admin.from("wt_subscriptions").upsert({
       user_id: userId,
-      plan_status: "active_member",
+      plan_status: liveSubscription ? planStatus(liveSubscription.status) : "inactive",
       stripe_customer_id: stripeId(session.customer),
       stripe_subscription_id: stripeId(session.subscription),
       stripe_checkout_session_id: session.id,
