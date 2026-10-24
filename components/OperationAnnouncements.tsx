@@ -106,10 +106,10 @@ export default function OperationAnnouncements({ role, userId, management = fals
   return (
     <section className={management ? "operation-announcements is-management" : "operation-announcements"} aria-label="運営からのお知らせ">
       <div className="operation-announcements-head">
-        {management ? <div><small>ADMIN · INFORMATION</small><h2>運営からのお知らせ</h2></div> : <button type="button" className="operation-announcements-bell" aria-label={`運営からのお知らせ、未読${unread}件`} aria-expanded={open} onClick={() => setOpen((value) => !value)}>♧ <span aria-hidden="true">🔔</span>{unread > 0 && <b>{unread > 99 ? "99+" : unread}</b>}</button>}
+        {management ? <div><small>ADMIN · INFORMATION</small><h2>運営からのお知らせ</h2></div> : <button type="button" className="operation-announcements-bell" aria-label={`運営からのお知らせ、未読${unread}件`} aria-expanded={open} onClick={() => setOpen((value) => !value)}><span aria-hidden="true">🔔</span>{unread > 0 && <b>{unread > 99 ? "99+" : unread}</b>}</button>}
         {canManage && <button type="button" className="operation-announcements-primary" onClick={startCreate}>＋ お知らせを作成</button>}
       </div>
-      {(open || canManage) && <>
+      {(open || canManage) && <div className="operation-announcements-list">
         {loading && <p className="operation-announcements-muted">読み込み中…</p>}
         {message && <p role="alert" className="operation-announcements-error">{message}</p>}
         {!loading && !visible.length && <p className="operation-announcements-muted">{canManage ? "お知らせはまだありません。" : "現在のお知らせはありません。"}</p>}
@@ -126,7 +126,7 @@ export default function OperationAnnouncements({ role, userId, management = fals
           </article>
         ))}
         {!canManage && <button type="button" className="operation-announcements-close" onClick={() => setOpen(false)}>閉じる</button>}
-      </>}
+      </div>}
       {canManage && open && <form className="operation-announcements-form" onSubmit={(event) => void save(event)}>
         <h3>{editingId ? "お知らせを編集" : "新しいお知らせ"}</h3>
         <label>タイトル<input maxLength={120} required value={title} onChange={(event) => setTitle(event.target.value)} /></label>
