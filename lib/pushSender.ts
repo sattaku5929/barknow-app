@@ -13,10 +13,16 @@ function configureVapid() {
 }
 
 export async function sendPushNotification(userId: string, title: string, body: string, url: string,
-  options?: { kind?: "care"; tag?: string; endpoint?: string }) {
+  options?: { kind?: "care" | "announcement" | "test"; tag?: string; endpoint?: string }) {
   const admin = serviceSupabase();
   const { data, error } = await admin.from("push_subscriptions").select("subscription").eq("user_id", userId);
   const { data: authData, error: authError } = await admin.auth.admin.getUserById(userId);
+  if (authError || !authData.user) throw new Error("Push notification preferences lookup failed");
+  const category = options?.kind === "care" ? "care" : options?.kind === "announcement" ? "announcements" : "chat";
+  const preferences = authData.user.user_metadata?.notification_preferences;
+  if (options?.kind !== "test" && preferences && typeof preferences === "object" && (preferences as Record<string, unknown>)[category] === false) {
+    return "disabled" as const;
+  }
   const candidates = [...(data ?? []).map(row => row.subscription), authData.user?.user_metadata?.push_subscription];
   const devices = new Map<string, PushSubscription>();
   for (const candidate of candidates) {
