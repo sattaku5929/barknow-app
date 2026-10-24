@@ -8,13 +8,14 @@ import { supabase } from "@/app/supabase";
 
 type AuthState = "checking" | "authenticated" | "anonymous";
 
-const configuredMonthlyPrice = process.env.NEXT_PUBLIC_COACHING_MONTHLY_PRICE?.trim() || "月額 9,800円";
+type PriceOffer = { available: boolean; monthlyAmount?: number; currency?: string; taxBehavior?: string; testMode?: boolean };
 
 export default function CoachingPlanPage() {
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [session, setSession] = useState<Session | null>(null);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState("");
+  const [priceOffer, setPriceOffer] = useState<PriceOffer | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -40,8 +41,17 @@ export default function CoachingPlanPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    void fetch("/api/stripe/checkout", { cache: "no-store" })
+      .then(async response => response.ok ? await response.json() as PriceOffer : { available: false })
+      .then(offer => { if (mounted) setPriceOffer(offer); })
+      .catch(() => { if (mounted) setPriceOffer({ available: false }); });
+    return () => { mounted = false; };
+  }, []);
+
   async function startCheckout() {
-    if (!session?.user.id || checkoutBusy) return;
+    if (!session?.user.id || checkoutBusy || !priceOffer?.available) return;
     setCheckoutBusy(true);
     setCheckoutMessage("");
 
@@ -95,8 +105,10 @@ export default function CoachingPlanPage() {
           <h2 className="m-0 text-[21px] leading-[1.55] font-medium sm:text-2xl">愛犬との毎日に、<br />相談できる安心を。</h2>
           <div className="my-5 border-y border-[#00866126] py-[19px] sm:mt-6">
             <span className="block text-[10px] font-medium text-[#6f7873]">月額料金</span>
-            <strong className="mt-1 block text-[21px] leading-[1.45] font-medium text-[#006c4f] sm:text-[25px]">{configuredMonthlyPrice}</strong>
-            <small className="mt-0.5 block text-[9px] text-[#6f7873]">税込</small>
+            <strong className="mt-1 block text-[21px] leading-[1.45] font-medium text-[#006c4f] sm:text-[25px]">{priceOffer?.available && priceOffer.monthlyAmount
+              ? new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" }).format(priceOffer.monthlyAmount)
+              : priceOffer ? "決済準備中" : "料金を確認しています…"}</strong>
+            <small className="mt-0.5 block text-[9px] text-[#6f7873]">{priceOffer?.available && priceOffer.taxBehavior === "inclusive" ? "税込" : "正確な請求額・税の取扱いは決済画面でご確認ください"}</small>
           </div>
           <ul className="m-0 grid list-none gap-[9px] p-0 text-xs text-[#4d5852]">
             <li className="before:mr-[9px] before:font-medium before:text-[#008661] before:content-['✓']">個別オンラインレッスン 月4回</li>
@@ -119,9 +131,15 @@ export default function CoachingPlanPage() {
           {authState === "authenticated" && (
             <>
               <div className="mt-[23px] flex items-center gap-2.5 rounded-[13px] bg-[#eff5f2] px-3.5 py-[13px] text-[11px] text-[#5f6e67]"><span className="grid size-[25px] place-items-center rounded-full bg-[#008661] text-[11px] text-white" aria-hidden="true">✓</span><div><small className="block text-[8px] text-[#6f7873]">ログイン済み</small><strong className="mt-0.5 block max-w-[250px] overflow-hidden text-[10px] text-ellipsis whitespace-nowrap">{session?.user.email || "WanToneユーザー"}</strong></div></div>
-              <button type="button" className="mt-3 flex min-h-13.5 w-full cursor-pointer items-center justify-center gap-[18px] rounded-full border-0 bg-[#008661] text-[13px] font-medium text-white shadow-none disabled:cursor-wait disabled:opacity-60" onClick={() => void startCheckout()} disabled={checkoutBusy}>
-                {checkoutBusy ? "Stripeへ接続しています…" : "Stripeで安全に申し込む"}<span className="text-[17px]">→</span>
-              </button>
+              {priceOffer?.available ? (
+                <button type="button" className="mt-3 flex min-h-13.5 w-full cursor-pointer items-center justify-center gap-[18px] rounded-full border-0 bg-[#008661] text-[13px] font-medium text-white shadow-none disabled:cursor-wait disabled:opacity-60" onClick={() => void startCheckout()} disabled={checkoutBusy}>
+                  {checkoutBusy ? "Stripeへ接続しています…" : priceOffer.testMode ? "テスト決済画面へ進む" : "料金・契約条件を確認して申し込む"}<span className="text-[17px]">→</span>
+                </button>
+              ) : (
+                <p role="status" className="mt-3 rounded-[13px] bg-[#eff5f2] p-4 text-xs leading-6 text-[#505a54]">
+                  {priceOffer ? "月額プランの決済準備中です。現在はお申し込みいただけません。" : "決済情報を確認しています…"}
+                </p>
+              )}
             </>
           )}
 
