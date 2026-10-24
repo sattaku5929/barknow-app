@@ -68,10 +68,18 @@ export async function DELETE(request: NextRequest) {
   // Check Stripe's live state, not only our cached status, before irreversible deletion.
   try {
     const { data: linked, error: lookupError } = await admin.from("wt_subscriptions")
-      .select("plan_status,stripe_customer_id,stripe_subscription_id")
+      .select("plan_status,stripe_customer_id,stripe_subscription_id,stripe_checkout_session_id")
       .eq("user_id", user.id).maybeSingle();
     if (lookupError) throw lookupError;
     if (linked) {
+      if (!linked.stripe_subscription_id && linked.stripe_checkout_session_id) {
+        const pending = await stripeClient().checkout.sessions.retrieve(linked.stripe_checkout_session_id);
+        if (pending.status !== "expired") {
+          return NextResponse.json({
+            error: "月額プランの申込み処理中、または決済結果の反映待ちです。課金状態を確認してから退会してください。",
+          }, { status: 409 });
+        }
+      }
       if (!linked.stripe_subscription_id) {
         if (linked.plan_status === "active_member" || linked.plan_status === "past_due") {
           return NextResponse.json({
