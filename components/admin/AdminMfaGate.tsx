@@ -91,7 +91,7 @@ export default function AdminMfaGate({ children, onVerified }: { children: React
   if (stage === "ready") return <>{children}</>;
   return (
     <main style={{ minHeight: "100svh", display: "grid", placeItems: "center", padding: 24, background: "#f8f9f6", color: "#202522" }}>
-      <section aria-labelledby="admin-mfa-title" style={{ width: "100%", maxWidth: 420, background: "white", borderRadius: 20, padding: 28, boxShadow: "0 12px 44px #203a3020" }}>
+      <section aria-labelledby="admin-mfa-title" style={{ width: "100%", maxWidth: 420, boxSizing: "border-box", background: "white", borderRadius: 20, padding: "30px 24px", boxShadow: "0 12px 44px #203a3020" }}>
         <p style={{ color: "#008661", letterSpacing: ".18em", fontSize: 12 }}>WANTONE · SECURITY</p>
         <h1 id="admin-mfa-title" style={{ fontSize: 25, marginBlock: 16 }}>管理者の2段階認証</h1>
         {stage === "checking" && <p role="status">認証状態を確認しています…</p>}
@@ -108,10 +108,40 @@ export default function AdminMfaGate({ children, onVerified }: { children: React
             <img src={qr} alt="認証アプリ登録用QRコード" width={210} height={210} />
             <details><summary>QRコードを読み取れない場合</summary><code style={{ overflowWrap: "anywhere" }}>{secret}</code></details>
           </div>}
-          <form onSubmit={(event) => void verify(event)}>
-            <label htmlFor="admin-totp">認証アプリの6桁コード</label>
-            <input id="admin-totp" type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} autoComplete="one-time-code" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} required style={{ display: "block", width: "100%", padding: 12, marginBlock: 12 }} />
-            <button disabled={busy || code.length !== 6} type="submit">認証して管理画面へ</button>
+          <form onSubmit={(event) => void verify(event)} style={{ marginTop: 18 }}>
+            <p style={{ margin: "0 0 18px", fontSize: 14, lineHeight: 1.8, color: "#54635c" }}>
+              Google Authenticatorなどの認証アプリに表示されている、6桁の数字を入力してください。
+            </p>
+            <label htmlFor="admin-totp" style={{ display: "block", marginBottom: 10, fontWeight: 700, fontSize: 16 }}>
+              認証コード（6桁）
+            </label>
+            <input
+              id="admin-totp"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              autoComplete="one-time-code"
+              placeholder="000000"
+              aria-describedby="admin-totp-help"
+              value={code}
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+              required
+              style={{ display: "block", boxSizing: "border-box", width: "100%", minHeight: 68, padding: "14px 16px", marginBottom: 8, border: "2px solid #008661", borderRadius: 12, background: "#fbfefd", color: "#17392e", fontSize: 30, fontWeight: 700, letterSpacing: "0.26em", textAlign: "center", fontVariantNumeric: "tabular-nums" }}
+            />
+            <p id="admin-totp-help" style={{ margin: "0 0 20px", color: "#687970", fontSize: 13 }}>
+              {code.length} / 6桁入力済み
+            </p>
+            <button
+              disabled={busy || code.length !== 6}
+              type="submit"
+              style={{ display: "block", width: "100%", minHeight: 56, padding: "14px 18px", border: 0, borderRadius: 12, background: busy || code.length !== 6 ? "#bfd8ce" : "#008661", color: busy || code.length !== 6 ? "#335c4d" : "#ffffff", fontSize: 16, fontWeight: 700, cursor: busy || code.length !== 6 ? "not-allowed" : "pointer" }}
+            >
+              {busy ? "認証中…" : "6桁のコードで認証する"}
+            </button>
+            <p style={{ margin: "12px 0 0", color: "#687970", fontSize: 13, textAlign: "center" }}>
+              認証が完了すると管理画面が開きます。
+            </p>
           </form>
         </>}
         {message && <p role="alert" style={{ color: "#a13b32" }}>{message}</p>}
