@@ -1,0 +1,5 @@
+const test=require("node:test");const assert=require("node:assert/strict");const fs=require("node:fs");
+const page=fs.readFileSync("app/page.tsx","utf8"),menu=fs.readFileSync("components/admin/AdminMenuNavigation.tsx","utf8"),css=fs.readFileSync("components/admin/AdminMenuNavigation.module.css","utf8");
+test("Admin receives grouped menu; coach keeps existing tabs",()=>{assert.match(page,/userRole === "admin" \? <AdminMenuNavigation/);assert.match(page,/<nav className="admin-tabs has-three"/);assert.match(menu,/顧客・予約/);assert.match(menu,/運営・分析/);});
+test("Each of six actions keeps existing identifiers",()=>{for(const id of ["applications","customers","schedule","accounts","announcements","analytics"])assert.match(menu,new RegExp('id: "'+id+'"'));assert.match(menu,/onSelect\(item.id\)/);assert.match(page,/onSelect={setAdminTab}/);});
+test("Selection is accessible and pending badges remain",()=>{assert.match(menu,/aria-current={active === item.id \? "page" : undefined}/);assert.match(menu,/pendingApplications > 0/);assert.match(css,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);});
