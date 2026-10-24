@@ -2659,18 +2659,6 @@ export default function Home() {
     }
   }
 
-  async function resetPassword() {
-    if (!authEmail.trim()) {
-      setAuthError("先にメールアドレスを入力してください。");
-      return;
-    }
-    setSaving(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(authEmail.trim(), { redirectTo: `${window.location.origin}/auth/reset-password` });
-    setSaving(false);
-    if (error) setAuthError("再設定メールを送れませんでした。Supabase設定を確認してください。");
-    else { setAuthError(""); showNotice("登録済みのメールアドレスであれば、再設定用のメールをお送りします。受信箱をご確認ください。"); }
-  }
-
   async function signOut() {
     clearActiveViewMode(currentUserId);
     await supabase.auth.signOut();
@@ -5094,7 +5082,7 @@ export default function Home() {
           {authError && <p className="auth-error" role="alert">{authError}</p>}
           <button className="auth-submit" disabled={saving}>{saving ? "確認中…" : anonymousUser ? "今のデータを引き継ぐ" : authMode === "login" ? "ログインする" : "アカウントを作る"}<span>→</span></button>
         </form>
-        {!anonymousUser && authMode === "login" && <button className="forgot-password" onClick={() => void resetPassword()}>パスワードを忘れた方</button>}
+        {!anonymousUser && authMode === "login" && <button type="button" className="forgot-password" onClick={() => router.push("/auth/forgot-password")}>パスワードを忘れた方</button>}
         {anonymousUser && <p className="migration-note">この操作では愛犬・記録・相談履歴の所有者IDは変わりません。</p>}
       </section>
       <div className={`toast ${notice ? "show" : ""}`} role="status">{notice}</div>
