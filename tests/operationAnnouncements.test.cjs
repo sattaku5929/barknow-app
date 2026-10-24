@@ -5,7 +5,7 @@ const path = require("node:path");
 const root = path.join(__dirname, "..");
 const main = fs.readFileSync(path.join(root, "app/page.tsx"), "utf8");
 const ui = fs.readFileSync(path.join(root, "components/OperationAnnouncements.tsx"), "utf8");
-const sql = fs.readFileSync(path.join(root, "supabase/migrations/20261024110000_admin_announcements.sql"), "utf8");
+const sql = fs.readFileSync(path.join(root, "supabase/migrations/20261024112304_admin_announcements.sql"), "utf8");
 
 test("admin-only editor integrated into admin workspace", () => {
   assert.ok(main.includes('adminTab === "announcements"'));
