@@ -28,6 +28,8 @@ jobs:
       - name: Quality checks
         run: |
           npm run lint
+          node --test tests/operationAnnouncements.test.cjs
+          node --test tests/operationAnnouncementsRls.sql.test.mjs
           node --test tests/forgotPasswordNavigation.test.cjs
           node --test tests/authPasswordAutofill.test.cjs
           node --test tests/signupPasswordConfirmation.test.cjs

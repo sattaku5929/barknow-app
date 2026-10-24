@@ -7007,3 +7007,41 @@ body { font-size: 16px; }
 .calendar-dialog button:disabled { opacity:.5; }.sr-only { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 .home-calendar button:focus-visible,.calendar-dialog button:focus-visible,.calendar-dialog input:focus-visible,.calendar-dialog textarea:focus-visible { outline:3px solid #008661; outline-offset:3px; }
 @media (max-width:360px) { .home-calendar { padding:18px 12px; }.calendar-heading h2 { font-size:17px; }.calendar-toolbar > strong { font-size:14px; }.calendar-dialog { padding:18px; }.care-period-group .home-v3-care-title h2 { font-size:16px; } }
+
+
+/* Operation announcements: compact header bell and admin editor */
+.app-header-actions, .admin-header-actions { position:relative; }
+.operation-announcements { position:relative; font-family:inherit; color:#213b32; }
+.operation-announcements-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.operation-announcements-head h2 { margin:2px 0 0; font-size:21px; }
+.operation-announcements-head small { color:#008661; font-size:11px; font-weight:700; letter-spacing:.1em; }
+.operation-announcements-bell { position:relative; display:grid; place-items:center; width:44px; height:44px; padding:0; border:1px solid #d6e4dd; border-radius:14px; background:#fff; color:#008661; cursor:pointer; font-size:19px; }
+.operation-announcements-bell > span { display:block; }
+.operation-announcements-bell > b { position:absolute; top:-7px; right:-7px; display:grid; min-width:21px; height:21px; padding:0 4px; place-items:center; border-radius:99px; background:#bb4338; color:#fff; font-size:11px; }
+.operation-announcements:not(.is-management) > :not(.operation-announcements-head) { position:absolute; z-index:80; right:0; top:calc(100% + 10px); width:min(350px, calc(100vw - 34px)); max-height:65vh; overflow:auto; padding:14px; border:1px solid #dbe6df; border-radius:18px; background:#fff; box-shadow:0 14px 36px #193e3022; }
+.operation-announcements-item { border-bottom:1px solid #e5eae7; padding:14px 0; }
+.operation-announcements-item:last-of-type { border-bottom:0; }
+.operation-announcements-item h3 { margin:7px 0; font-size:15px; line-height:1.5; }
+.operation-announcements-item p { margin:0 0 8px; color:#51665d; font-size:13px; line-height:1.8; white-space:pre-wrap; overflow-wrap:anywhere; }
+.operation-announcements-meta { display:flex; align-items:center; flex-wrap:wrap; gap:9px; color:#76847e; font-size:11px; }
+.operation-announcements-new { color:#bb4338; font-weight:700; }
+.operation-announcements button:not(.operation-announcements-bell) { min-height:36px; padding:7px 13px; border:1px solid #cbded4; border-radius:10px; background:#fff; color:#006b4e; cursor:pointer; font-size:12px; font-weight:600; }
+.operation-announcements .operation-announcements-primary,.operation-announcements .operation-announcements-actions button:last-child { border-color:#008661; background:#008661; color:#fff; }
+.operation-announcements .operation-announcements-close { width:100%; margin-top:12px; }
+.operation-announcements-muted { color:#6e7d76; font-size:13px; }
+.operation-announcements-error { color:#a44137; font-size:12px; }
+.operation-announcements.is-management { padding:20px; border:1px solid #e2e9e5; border-radius:18px; background:#fff; }
+.operation-announcements.is-management .operation-announcements-item { padding:16px 0; }
+.operation-announcements-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:10px; }
+.operation-announcements-form { display:grid; gap:13px; padding:18px; margin-top:16px; border:1px solid #dbe8df; border-radius:14px; background:#f9fbfa; }
+.operation-announcements-form h3 { margin:0; font-size:17px; }
+.operation-announcements-form label { display:grid; gap:7px; font-size:13px; font-weight:600; }
+.operation-announcements-form input:not([type=checkbox]),.operation-announcements-form select,.operation-announcements-form textarea { width:100%; min-height:42px; padding:10px 12px; box-sizing:border-box; border:1px solid #cbdad1; border-radius:10px; background:#fff; color:#1f342a; font:inherit; }
+.operation-announcements-form .operation-announcements-publish { display:flex; align-items:center; gap:10px; }
+.operation-announcements-form input[type=checkbox] { accent-color:#008661; }
+.admin-tabs:has(button:nth-child(5)) { display:flex; flex-wrap:wrap; }
+.admin-tabs:has(button:nth-child(5)) > button { flex:1 1 90px; }
+@media (max-width:420px) {
+  .operation-announcements.is-management { padding:14px; }
+  .operation-announcements-head h2 { font-size:17px; }
+}
