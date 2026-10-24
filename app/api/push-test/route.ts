@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "この端末の通知をONにしてください" }, { status: 400 });
   }
   try {
-    const result = await sendPushNotification(user.id, "WanTone｜通知テスト", "この端末で通知を受け取れます。", "/", { kind: "care", endpoint: input!.endpoint });
+    const result = await sendPushNotification(user.id, "WanTone｜通知テスト", "この端末で通知を受け取れます。", "/", { kind: "test", endpoint: input!.endpoint });
     if (result !== "sent") return NextResponse.json({ error: "この端末の通知を一度OFFにして、ONにし直してください" }, { status: 400 });
     return NextResponse.json({ ok: true });
   } catch {
