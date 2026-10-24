@@ -80,6 +80,13 @@ async function sendCoachingNotifications({
   }
 }
 
+function planStatus(stripeStatus: Stripe.Subscription["status"]) {
+  if (stripeStatus === "active" || stripeStatus === "trialing") return "active_member";
+  if (stripeStatus === "past_due" || stripeStatus === "unpaid") return "past_due";
+  if (stripeStatus === "canceled" || stripeStatus === "incomplete_expired") return "canceled";
+  return "inactive";
+}
+
 export async function POST(request: NextRequest) {
   const signature = request.headers.get("stripe-signature");
   if (!signature) return NextResponse.json({ error: "Stripe signature is missing" }, { status: 400 });
@@ -91,6 +98,36 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[Stripe webhook] signature verification failed", error);
     return NextResponse.json({ error: "Invalid Stripe signature" }, { status: 400 });
+  }
+
+  if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
+    // Webhook signature was verified above; still check the customer and subscription IDs
+    // already linked to a WanTone user before changing any entitlement.
+    const incoming = event.data.object as Stripe.Subscription;
+    try {
+      const live = await stripeClient().subscriptions.retrieve(incoming.id);
+      const customerId = typeof live.customer === "string" ? live.customer : live.customer.id;
+      const admin = serviceSupabase();
+      const { error } = await admin.from("wt_subscriptions")
+        .update({ plan_status: planStatus(live.status), updated_at: new Date().toISOString() })
+        .eq("stripe_subscription_id", incoming.id)
+        .eq("stripe_customer_id", customerId);
+      if (error) throw error;
+      return NextResponse.json({ received: true });
+    } catch (error) {
+      // Stripe may no longer return a hard-deleted subscription.
+      if (event.type === "customer.subscription.deleted") {
+        const customerId = typeof incoming.customer === "string" ? incoming.customer : incoming.customer.id;
+        const admin = serviceSupabase();
+        const { error: updateError } = await admin.from("wt_subscriptions")
+          .update({ plan_status: "canceled", updated_at: new Date().toISOString() })
+          .eq("stripe_subscription_id", incoming.id)
+          .eq("stripe_customer_id", customerId);
+        if (!updateError) return NextResponse.json({ received: true });
+      }
+      console.error("[Stripe webhook] subscription state sync failed", { eventId: event.id, error });
+      return NextResponse.json({ error: "Subscription state sync failed" }, { status: 500 });
+    }
   }
 
   if (event.type !== "checkout.session.completed") {
@@ -109,16 +146,48 @@ export async function POST(request: NextRequest) {
 
   const admin = serviceSupabase();
   try {
-    const { data: existing } = await admin.from("wt_subscriptions").select("stripe_event_id").eq("user_id", userId).maybeSingle();
+    const { data: existing, error: readError } = await admin.from("wt_subscriptions")
+      .select("stripe_event_id,stripe_subscription_id,stripe_checkout_session_id")
+      .eq("user_id", userId).maybeSingle();
+    if (readError) throw readError;
     if (existing?.stripe_event_id === event.id) return NextResponse.json({ received: true, duplicate: true });
+    if (existing?.stripe_checkout_session_id && existing.stripe_checkout_session_id !== session.id) {
+      // A delayed event from an older Checkout must never overwrite a newer contract.
+      console.error("[Stripe webhook] Checkout session mismatch", { eventId: event.id, userId });
+      return NextResponse.json({ error: "Checkout session does not match current application" }, { status: 409 });
+    }
 
+    const subscriptionId = stripeId(session.subscription);
+    const checkoutCustomerId = stripeId(session.customer);
+    if (!subscriptionId || !checkoutCustomerId) {
+      console.error("[Stripe webhook] checkout missing subscription/customer", { eventId: event.id });
+      return NextResponse.json({ error: "Checkout subscription reference is missing" }, { status: 400 });
+    }
+    const liveSubscription = await stripeClient().subscriptions.retrieve(subscriptionId);
+    const liveCustomerId = stripeId(liveSubscription.customer);
+    const validPriceId = coachingPriceId();
+    if (liveCustomerId !== checkoutCustomerId ||
+        liveSubscription.metadata?.user_id !== userId ||
+        liveSubscription.metadata?.plan !== "coaching" ||
+        !liveSubscription.items.data.some((item) => item.price.id === validPriceId)) {
+      console.error("[Stripe webhook] subscription does not match checkout owner/plan", { eventId: event.id, subscriptionId });
+      return NextResponse.json({ error: "Checkout subscription mismatch" }, { status: 400 });
+    }
+    if (existing?.stripe_subscription_id && existing.stripe_subscription_id !== subscriptionId) {
+      // Never silently replace a user's still-running contract with a second checkout.
+      const previous = await stripeClient().subscriptions.retrieve(existing.stripe_subscription_id);
+      if (previous.status !== "canceled" && previous.status !== "incomplete_expired") {
+        console.error("[Stripe webhook] duplicate live subscription detected", { eventId: event.id, userId });
+        return NextResponse.json({ error: "Existing subscription requires reconciliation" }, { status: 409 });
+      }
+    }
     const { error } = await admin.from("wt_subscriptions").upsert({
       user_id: userId,
-      plan_status: "active_member",
-      stripe_customer_id: stripeId(session.customer),
-      stripe_subscription_id: stripeId(session.subscription),
+      plan_status: planStatus(liveSubscription.status),
+      stripe_customer_id: checkoutCustomerId,
+      stripe_subscription_id: subscriptionId,
       stripe_checkout_session_id: session.id,
-      stripe_price_id: coachingPriceId(),
+      stripe_price_id: validPriceId,
       stripe_event_id: event.id,
       activated_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
