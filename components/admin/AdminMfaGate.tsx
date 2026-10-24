@@ -43,20 +43,53 @@ export default function AdminMfaGate({ children, onVerified }: { children: React
   useEffect(() => { void check(); }, [check]);
 
   async function enroll() {
+    if (busy) return;
     setBusy(true);
     setMessage("");
-    const result = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: "WanTone Admin" });
-    setBusy(false);
-    if (result.error || !result.data.totp) {
-      const detail = result.error?.message ?? "QRコードの生成に失敗しました";
-      const code = result.error?.code ? ` (${result.error.code})` : "";
-      setMessage(`登録できませんでした: ${detail}${code}`);
-      return;
+    try {
+      // Supabase keeps abandoned enrollments as unverified factors. A new
+      // enrollment can be rejected until these stale factors are removed.
+      const factors = await supabase.auth.mfa.listFactors();
+      if (factors.error) {
+        setMessage(`認証設定を確認できません: ${factors.error.message}`);
+        return;
+      }
+      const verified = factors.data.all.find((factor) =>
+        factor.factor_type === "totp" && factor.status === "verified"
+      );
+      if (verified) {
+        setFactorId(verified.id);
+        setQr("");
+        setSecret("");
+        setStage("verify");
+        return;
+      }
+      const stale = factors.data.all.filter((factor) =>
+        factor.factor_type === "totp" && factor.status === "unverified"
+      );
+      for (const factor of stale) {
+        const removal = await supabase.auth.mfa.unenroll({ factorId: factor.id });
+        if (removal.error) {
+          setMessage(`途中の登録を整理できません: ${removal.error.message}`);
+          return;
+        }
+      }
+      const result = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: "WanTone Admin" });
+      if (result.error || !result.data.totp) {
+        const detail = result.error?.message ?? "QRコードの生成に失敗しました";
+        const errorCode = result.error?.code ? ` (${result.error.code})` : "";
+        setMessage(`登録できませんでした: ${detail}${errorCode}`);
+        return;
+      }
+      setFactorId(result.data.id);
+      setQr(result.data.totp.qr_code);
+      setSecret(result.data.totp.secret);
+      setStage("verify");
+    } catch (error) {
+      setMessage(`登録処理に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}`);
+    } finally {
+      setBusy(false);
     }
-    setFactorId(result.data.id);
-    setQr(result.data.totp.qr_code);
-    setSecret(result.data.totp.secret);
-    setStage("verify");
   }
 
   async function verify(event: React.FormEvent<HTMLFormElement>) {
