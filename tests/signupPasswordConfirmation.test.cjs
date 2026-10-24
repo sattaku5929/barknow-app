@@ -7,7 +7,7 @@ const main = fs.readFileSync(path.join(__dirname, "../app/page.tsx"), "utf8");
 
 test("confirmation appears for signup and anonymous conversion", () => {
   assert.ok(main.includes('const [authPasswordConfirm, setAuthPasswordConfirm] = useState("");'));
-  assert.ok(main.includes('(anonymousUser || authMode === "signup") && <label>パスワード（確認）'));
+  assert.match(main, /\(anonymousUser \|\| authMode === "signup"\) && <label[^>]*>パスワード（確認）/);
   assert.ok(main.includes('autoComplete="new-password" minLength={8} value={authPasswordConfirm}'));
 });
 test("mismatch prevents submit before saving or auth API calls", () => {
