@@ -4,6 +4,7 @@ import AdminMfaGate from "@/components/admin/AdminMfaGate";
 import AdminUsageDashboard from "@/components/admin/AdminUsageDashboard";
 import AdminMenuNavigation from "@/components/admin/AdminMenuNavigation";
 import NotificationPreferences from "@/components/owner/NotificationPreferences";
+import { legalDocuments } from "@/lib/legalDocuments";
 import OperationAnnouncements from "@/components/OperationAnnouncements";
 import { PrivateChatMedia, PrivateDogImage, useChatMediaUrl } from "@/components/PrivateMedia";
 
@@ -4912,42 +4913,15 @@ export default function Home() {
     </form>
   );
 
-  const settingsDocuments: Record<Exclude<SettingsPanel, "menu" | "profile" | "profile-edit" | "owner" | "household" | "notifications">, { eyebrow: string; title: string; sections: Array<{ heading: string; body: string }> }> = {
-    disclaimer: {
-      eyebrow: "DISCLAIMER",
-      title: "免責事項",
-      sections: [
-        { heading: "記録・分析について", body: "WanToneに表示されるスコアや傾向は、入力された記録を整理するための目安です。獣医療上の診断、治療、専門家の判断に代わるものではありません。" },
-        { heading: "体調に異変がある場合", body: "食欲不振、嘔吐、下痢、呼吸の異常、強い痛みなどがある場合は、アプリ上の表示にかかわらず速やかに動物病院へご相談ください。" },
-        { heading: "外部サービス", body: "オンライン通話や決済などの外部サービスは、各サービスの利用条件に基づいて提供されます。" },
-      ],
-    },
-    terms: {
-      eyebrow: "TERMS OF USE",
-      title: "利用規約",
-      sections: [
-        { heading: "サービスの利用", body: "ユーザーは、正確な登録情報を用いてご自身の責任でWanToneを利用するものとします。アカウントを第三者へ貸与・譲渡することはできません。" },
-        { heading: "禁止事項", body: "他の利用者やコーチへの迷惑行為、不正アクセス、サービス運営を妨げる行為、法令または公序良俗に反する行為を禁止します。" },
-        { heading: "変更・停止", body: "安全性や利便性向上のため、サービス内容を変更または一時停止する場合があります。重要な変更はアプリまたは登録先へお知らせします。" },
-      ],
-    },
-    privacy: {
-      eyebrow: "PRIVACY POLICY",
-      title: "プライバシーポリシー",
-      sections: [
-        { heading: "取得する情報", body: "アカウント情報、飼い主情報、愛犬情報、日々の記録、相談内容、アップロードされた画像・動画、通知購読情報などを取得します。" },
-        { heading: "利用目的", body: "サービス提供、担当コーチによるサポート、通知、本人確認、不具合対応、機能改善のために利用します。" },
-        { heading: "管理と削除", body: "取得した情報は適切に管理します。退会手続きを行うと、法令上の保存義務がある情報を除き、アカウントに紐づくデータを削除します。" },
-      ],
-    },
-  };
+  const settingsDocuments = legalDocuments;
 
   const settingsDocumentView = settingsPanel !== "menu" && settingsPanel !== "profile" && settingsPanel !== "profile-edit" && settingsPanel !== "owner" && settingsPanel !== "household" && settingsPanel !== "notifications" ? (
     <section className="settings-document">
       <button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
       <p className="card-label">{settingsDocuments[settingsPanel].eyebrow}</p>
       <h1>{settingsDocuments[settingsPanel].title}</h1>
-      <p className="settings-document-date">2026年9月27日 現在</p>
+      <p className="settings-document-date">改訂草案（施行日は公開時に確定）</p>
+      <p className="settings-document-note" role="status">法的な運営者情報・課金解約導線等を確認後に正式公開する草案です。</p>
       <div>{settingsDocuments[settingsPanel].sections.map((section) => <article key={section.heading}><h2>{section.heading}</h2><p>{section.body}</p></article>)}</div>
       <p className="settings-document-note">内容についてご不明な点がある場合は、「お問い合わせ・ご要望」からご連絡ください。</p>
     </section>
@@ -5083,6 +5057,7 @@ export default function Home() {
           <label htmlFor="auth-email">メールアドレス<input id="auth-email" name="username" type="email" inputMode="email" autoCapitalize="none" spellCheck={false} autoComplete="username" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" required /></label>
           <label htmlFor="auth-password">パスワード<input id="auth-password" name="password" type="password" autoComplete={authMode === "login" && !anonymousUser ? "current-password" : "new-password"} minLength={authMode === "login" && !anonymousUser ? undefined : 8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder={authMode === "login" && !anonymousUser ? "パスワードを入力" : "8文字以上"} required /></label>
           {(anonymousUser || authMode === "signup") && <label htmlFor="auth-confirm-password">パスワード（確認）<input id="auth-confirm-password" name="new-password-confirmation" type="password" autoComplete="new-password" minLength={8} value={authPasswordConfirm} onChange={(event) => setAuthPasswordConfirm(event.target.value)} placeholder="確認のため再入力" required /></label>}
+          {(anonymousUser || authMode === "signup") && <p style={{ fontSize: 12, lineHeight: 1.8, color: "#667469" }}>登録前に <a href="/legal/terms" target="_blank" rel="noopener noreferrer" style={{ color: "#008661" }}>利用規約</a>・<a href="/legal/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "#008661" }}>プライバシーポリシー</a>・<a href="/legal/disclaimer" target="_blank" rel="noopener noreferrer" style={{ color: "#008661" }}>免責事項</a>をご確認ください。</p>}
           {authError && <p className="auth-error" role="alert">{authError}</p>}
           <button className="auth-submit" disabled={saving}>{saving ? "確認中…" : anonymousUser ? "今のデータを引き継ぐ" : authMode === "login" ? "ログインする" : "アカウントを作る"}<span>→</span></button>
         </form>
