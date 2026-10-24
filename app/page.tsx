@@ -4,6 +4,7 @@ import AdminMfaGate from "@/components/admin/AdminMfaGate";
 import AdminUsageDashboard from "@/components/admin/AdminUsageDashboard";
 import AdminMenuNavigation from "@/components/admin/AdminMenuNavigation";
 import NotificationPreferences from "@/components/owner/NotificationPreferences";
+import SubscriptionManagementEntry from "@/components/owner/SubscriptionManagementEntry";
 import OperationAnnouncements from "@/components/OperationAnnouncements";
 import { PrivateChatMedia, PrivateDogImage, useChatMediaUrl } from "@/components/PrivateMedia";
 
@@ -4991,6 +4992,11 @@ export default function Home() {
           {isSubscribed && <button type="button" disabled={pushBusy} onClick={()=>void testPushNotifications()}><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>テスト通知を送る</strong><small>この端末に通知が届くか確認</small></span><i aria-hidden="true">›</i></button>}
           <button type="button" onClick={() => navigateSettingsPanel("notifications")}><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>通知設定</strong><small>端末と通知の種類を管理</small></span><i aria-hidden="true">›</i></button>
         </div>
+      </section>
+
+      <section className="settings-group" aria-label="契約管理">
+        <p className="settings-group-label">契約・お支払い</p>
+        <div className="settings-list"><SubscriptionManagementEntry /></div>
       </section>
 
       <section className="settings-group" aria-labelledby="settings-support-title">
