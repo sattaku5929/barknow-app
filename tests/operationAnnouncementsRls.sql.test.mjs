@@ -22,7 +22,7 @@ insert into public.wt_user_roles values ('${admin}','admin'),('${owner}','owner'
 create function public.wt_is_admin() returns boolean language sql stable security definer set search_path=public as $$
  select exists(select 1 from public.wt_user_roles where user_id=auth.uid() and role='admin')
 $$;
-grant usage on schema public to authenticated;
+grant usage on schema public,auth to authenticated;
 grant execute on function auth.uid() to authenticated;
 grant execute on function public.wt_is_admin() to authenticated;
 `);
