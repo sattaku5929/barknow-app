@@ -4,6 +4,7 @@ import AdminMfaGate from "@/components/admin/AdminMfaGate";
 import AdminUsageDashboard from "@/components/admin/AdminUsageDashboard";
 import AdminMenuNavigation from "@/components/admin/AdminMenuNavigation";
 import NotificationPreferences from "@/components/owner/NotificationPreferences";
+import { SubscriptionMenuLink, SubscriptionSettings } from "@/components/owner/SubscriptionManagement";
 import OperationAnnouncements from "@/components/OperationAnnouncements";
 import { PrivateChatMedia, PrivateDogImage, useChatMediaUrl } from "@/components/PrivateMedia";
 
@@ -48,7 +49,7 @@ type UserRole = "owner" | "coach" | "admin";
 type AuthMode = "login" | "signup";
 type CoachingStatus = "submitted" | "offered" | "assigned" | "consulting" | "payment_pending" | "active" | "closed";
 type AdminTab = "applications" | "customers" | "accounts" | "schedule" | "coachProfile" | "announcements" | "analytics";
-type SettingsPanel = "menu" | "profile" | "profile-edit" | "owner" | "household" | "notifications" | "disclaimer" | "terms" | "privacy";
+type SettingsPanel = "menu" | "profile" | "profile-edit" | "owner" | "household" | "notifications" | "subscription" | "disclaimer" | "terms" | "privacy";
 
 type DogProfile = {
   id?: string;
@@ -4912,7 +4913,7 @@ export default function Home() {
     </form>
   );
 
-  const settingsDocuments: Record<Exclude<SettingsPanel, "menu" | "profile" | "profile-edit" | "owner" | "household" | "notifications">, { eyebrow: string; title: string; sections: Array<{ heading: string; body: string }> }> = {
+  const settingsDocuments: Record<Exclude<SettingsPanel, "menu" | "profile" | "profile-edit" | "owner" | "household" | "notifications" | "subscription">, { eyebrow: string; title: string; sections: Array<{ heading: string; body: string }> }> = {
     disclaimer: {
       eyebrow: "DISCLAIMER",
       title: "免責事項",
@@ -4942,7 +4943,7 @@ export default function Home() {
     },
   };
 
-  const settingsDocumentView = settingsPanel !== "menu" && settingsPanel !== "profile" && settingsPanel !== "profile-edit" && settingsPanel !== "owner" && settingsPanel !== "household" && settingsPanel !== "notifications" ? (
+  const settingsDocumentView = settingsPanel !== "menu" && settingsPanel !== "profile" && settingsPanel !== "profile-edit" && settingsPanel !== "owner" && settingsPanel !== "household" && settingsPanel !== "notifications" && settingsPanel !== "subscription" ? (
     <section className="settings-document">
       <button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
       <p className="card-label">{settingsDocuments[settingsPanel].eyebrow}</p>
@@ -4993,6 +4994,8 @@ export default function Home() {
         </div>
       </section>
 
+      <SubscriptionMenuLink onOpen={() => navigateSettingsPanel("subscription")} />
+
       <section className="settings-group" aria-labelledby="settings-support-title">
         <p className="settings-group-label" id="settings-support-title">サポート</p>
         <div className="settings-list">
@@ -5023,7 +5026,7 @@ export default function Home() {
   const householdView = <section className="screen-form settings-profile-editor"><button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
     <SectionTitle eyebrow="HOUSEHOLD" title="家族・お世話する人" /><HouseholdMemberManager online={connection === "online"} /></section>;
   const notificationPreferencesView = settingsPanel === "notifications" ? <NotificationPreferences hasCoach={Boolean(coachingApplication?.assignedCoachId && ["assigned", "consulting", "payment_pending", "active"].includes(coachingApplication.status))} isSubscribed={isSubscribed} busy={pushBusy || subscriptionStatus === "checking"} supported={subscriptionStatus !== "unsupported"} denied={permissionStatus === "denied"} onDeviceToggle={() => void (isSubscribed ? disablePushNotifications() : enablePushNotifications())} onTest={() => void testPushNotifications()} onBack={closeSettingsPanel} /> : null;
-  const profileView = settingsPanel === "notifications" ? notificationPreferencesView : settingsPanel === "menu" ? settingsMenuView : settingsPanel === "profile" ? profileSummaryView : settingsPanel === "profile-edit" ? profileEditorView : settingsPanel === "owner" ? ownerProfileEditorView : settingsPanel === "household" ? householdView : settingsDocumentView;
+  const profileView = settingsPanel === "subscription" ? <SubscriptionSettings onBack={closeSettingsPanel} /> : settingsPanel === "notifications" ? notificationPreferencesView : settingsPanel === "menu" ? settingsMenuView : settingsPanel === "profile" ? profileSummaryView : settingsPanel === "profile-edit" ? profileEditorView : settingsPanel === "owner" ? ownerProfileEditorView : settingsPanel === "household" ? householdView : settingsDocumentView;
 
   const onboardingView = (
     <div className="onboarding-stage">
