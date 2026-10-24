@@ -90,7 +90,7 @@ test("delete-account endpoint checks live Stripe status BEFORE deleting user dat
   const source = fs.readFileSync(path.join(__dirname, "..", "app/api/user/delete/route.ts"), "utf8");
   const query = source.indexOf('from("wt_subscriptions")');
   const stripe = source.indexOf("subscriptions.retrieve");
-  const deletion = source.indexOf("listR2Keys(");
+  const deletion = source.indexOf("const [ownedUploadKeys]");
   assert.ok(query > 0 && stripe > query && deletion > stripe, "billing guard must execute first");
   assert.match(source, /status: 409/);
   assert.match(source, /継続課金が残っています/);
