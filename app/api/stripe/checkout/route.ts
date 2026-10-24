@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     // Never open another recurring contract for an already-linked paying customer.
     const admin = serviceSupabase();
     const { data: existing, error: lookupError } = await admin.from("wt_subscriptions")
-      .select("stripe_customer_id,stripe_subscription_id")
+      .select("stripe_customer_id,stripe_subscription_id,stripe_checkout_session_id")
       .eq("user_id", user.id).maybeSingle();
     if (lookupError) throw lookupError;
     if (existing?.stripe_subscription_id) {
@@ -52,6 +52,23 @@ export async function POST(request: NextRequest) {
       if (actualCustomer !== existing.stripe_customer_id) throw new Error("Existing subscription customer mismatch");
       if (linked.status !== "canceled" && linked.status !== "incomplete_expired") {
         return NextResponse.json({ error: "すでに有料契約があります。マイページの「契約・お支払い」から確認してください。" }, { status: 409 });
+      }
+    }
+
+    if (!existing?.stripe_subscription_id && existing?.stripe_checkout_session_id) {
+      const pending = await stripeClient().checkout.sessions.retrieve(existing.stripe_checkout_session_id);
+      // Reuse the open Checkout rather than issuing a second subscription checkout.
+      if (pending.status === "open" && pending.url &&
+          pending.client_reference_id === user.id && pending.metadata?.plan === "coaching") {
+        return NextResponse.json({ checkoutUrl: pending.url });
+      }
+      if (pending.status === "complete") {
+        return NextResponse.json({
+          error: "決済処理を確認しています。完了通知の反映後に契約状況をご確認ください。",
+        }, { status: 409 });
+      }
+      if (pending.status !== "expired") {
+        return NextResponse.json({ error: "既存の申込み状況を確認できませんでした" }, { status: 503 });
       }
     }
 
@@ -71,6 +88,24 @@ export async function POST(request: NextRequest) {
     });
 
     if (!checkoutSession.url) throw new Error("Stripe Checkout URL was not returned");
+
+    // Persist the pending Checkout *before* sharing its URL. Otherwise account
+    // deletion could erase the identity while a monthly charge is being started.
+    const { error: pendingError } = await admin.from("wt_subscriptions").upsert({
+      user_id: user.id,
+      plan_status: "inactive",
+      stripe_customer_id: null,
+      stripe_subscription_id: null,
+      stripe_checkout_session_id: checkoutSession.id,
+      stripe_event_id: null,
+      stripe_price_id: priceId,
+      activated_at: null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id" });
+    if (pendingError) {
+      await stripeClient().checkout.sessions.expire(checkoutSession.id).catch(() => undefined);
+      throw pendingError;
+    }
     return NextResponse.json({ checkoutUrl: checkoutSession.url });
   } catch (error) {
     console.error("[Stripe checkout] session creation failed", error);
