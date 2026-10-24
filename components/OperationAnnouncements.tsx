@@ -44,12 +44,11 @@ export default function OperationAnnouncements({ role, userId, management = fals
   const [saving, setSaving] = useState(false);
   const reload = useCallback(async () => {
     if (!userId) return;
-    setLoading(true);
     const [{ data, error }, { data: receipts, error: receiptError }] = await Promise.all([
       supabase.from("wt_announcements").select("id,title,body,audience,is_published,starts_at,ends_at,created_at").order("created_at", { ascending: false }).limit(100),
       supabase.from("wt_announcement_reads").select("announcement_id").eq("user_id", userId),
     ]);
-    if (error || receiptError) setMessage("お知らせを取得できません。準備中の場合は時間をおいて再度お試しください。");
+    if (error || receiptError) setMessage("お知らせを取得できません。お知らせ用DBテーブルの適用状況とアクセス権限を確認してください。");
     else setMessage("");
     setRows((data ?? []) as Announcement[]);
     setReads((receipts ?? []).map((r: Receipt) => r.announcement_id));
@@ -85,7 +84,7 @@ export default function OperationAnnouncements({ role, userId, management = fals
       ? await supabase.from("wt_announcements").update(payload).eq("id", editingId)
       : await supabase.from("wt_announcements").insert({ ...payload, created_by: userId });
     setSaving(false);
-    if (error) { setMessage("保存できませんでした。権限と入力内容を確認してください。"); return; }
+    if (error) { setMessage(error.code === "42P01" || error.code === "PGRST205" ? "お知らせ用DBがまだ準備されていません。管理者にお問い合わせください。" : "保存できませんでした。権限と入力内容を確認してください。"); return; }
     setOpen(false); await reload();
   };
   const markRead = async (id: string) => {
@@ -128,6 +127,7 @@ export default function OperationAnnouncements({ role, userId, management = fals
         {!canManage && <button type="button" className="operation-announcements-close" onClick={() => setOpen(false)}>閉じる</button>}
       </div>}
       {canManage && open && <form className="operation-announcements-form" onSubmit={(event) => void save(event)}>
+        {message && <p role="alert" className="operation-announcements-error">{message}</p>}
         <h3>{editingId ? "お知らせを編集" : "新しいお知らせ"}</h3>
         <label>タイトル<input maxLength={120} required value={title} onChange={(event) => setTitle(event.target.value)} /></label>
         <label>本文<textarea maxLength={4000} rows={5} required value={body} onChange={(event) => setBody(event.target.value)} /></label>
