@@ -1138,6 +1138,7 @@ export default function Home() {
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [authPasswordConfirm, setAuthPasswordConfirm] = useState("");
   const [authError, setAuthError] = useState("");
   const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>([]);
   const openedChatLinkRef = useRef("");
@@ -2599,6 +2600,10 @@ export default function Home() {
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setAuthError("");
+    if ((anonymousUser || authMode === "signup") && authPassword !== authPasswordConfirm) {
+      setAuthError("確認用パスワードが一致しません。");
+      return;
+    }
     setSaving(true);
     try {
       if (anonymousUser) {
@@ -5084,6 +5089,7 @@ export default function Home() {
         <form className="auth-form" onSubmit={submitAuth}>
           <label>メールアドレス<input type="email" inputMode="email" autoComplete="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" required /></label>
           <label>パスワード<input type="password" autoComplete={authMode === "login" && !anonymousUser ? "current-password" : "new-password"} minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="8文字以上" required /></label>
+          {(anonymousUser || authMode === "signup") && <label>パスワード（確認）<input type="password" autoComplete="new-password" minLength={8} value={authPasswordConfirm} onChange={(event) => setAuthPasswordConfirm(event.target.value)} placeholder="確認のため再入力" required /></label>}
           {authError && <p className="auth-error" role="alert">{authError}</p>}
           <button className="auth-submit" disabled={saving}>{saving ? "確認中…" : anonymousUser ? "今のデータを引き継ぐ" : authMode === "login" ? "ログインする" : "アカウントを作る"}<span>→</span></button>
         </form>
