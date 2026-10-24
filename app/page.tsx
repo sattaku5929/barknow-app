@@ -1,6 +1,7 @@
 "use client";
 
 import AdminMfaGate from "@/components/admin/AdminMfaGate";
+import AdminUsageDashboard from "@/components/admin/AdminUsageDashboard";
 import OperationAnnouncements from "@/components/OperationAnnouncements";
 import { PrivateChatMedia, PrivateDogImage, useChatMediaUrl } from "@/components/PrivateMedia";
 
@@ -44,7 +45,7 @@ type GoalPeriod = "day" | "week" | "month";
 type UserRole = "owner" | "coach" | "admin";
 type AuthMode = "login" | "signup";
 type CoachingStatus = "submitted" | "offered" | "assigned" | "consulting" | "payment_pending" | "active" | "closed";
-type AdminTab = "applications" | "customers" | "accounts" | "schedule" | "coachProfile" | "announcements";
+type AdminTab = "applications" | "customers" | "accounts" | "schedule" | "coachProfile" | "announcements" | "analytics";
 type SettingsPanel = "menu" | "profile" | "profile-edit" | "owner" | "household" | "disclaimer" | "terms" | "privacy";
 
 type DogProfile = {
@@ -5171,6 +5172,7 @@ export default function Home() {
     coachProfile: { title: "コーチプロフィール", description: "オーナーへ表示する経歴とオンライン面談情報を整える。", count: availableSlots.length },
     accounts: { title: "ユーザー管理", description: "権限と担当コーチを、この画面で設定できます。", count: adminAccounts.length },
     announcements: { title: "運営からのお知らせ", description: "公開期間と配信対象を指定してお知らせを管理します。", count: 0 },
+    analytics: { title: "利用状況", description: "会員・訪問・Daily Check・申込の動きを把握します。", count: 0 },
   };
 
   const pullRefreshIndicator = (
@@ -5296,8 +5298,9 @@ export default function Home() {
             ))}</div>
           </section>
         )}
-        {userRole === "admin" ? <nav className="admin-tabs has-four" aria-label="管理メニュー"><button type="button" aria-current={adminTab === "applications" ? "page" : undefined} className={adminTab === "applications" ? "is-selected" : ""} onClick={() => setAdminTab("applications")}>申込み{pendingApplicationCount > 0 && <b>{pendingApplicationCount}</b>}</button><button type="button" aria-current={adminTab === "customers" ? "page" : undefined} className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button type="button" aria-current={adminTab === "schedule" ? "page" : undefined} className={adminTab === "schedule" ? "is-selected" : ""} onClick={() => setAdminTab("schedule")}>予約</button><button type="button" aria-current={adminTab === "accounts" ? "page" : undefined} className={adminTab === "accounts" ? "is-selected" : ""} onClick={() => setAdminTab("accounts")}>ユーザー</button><button type="button" aria-current={adminTab === "announcements" ? "page" : undefined} className={adminTab === "announcements" ? "is-selected" : ""} onClick={() => setAdminTab("announcements")}>お知らせ</button></nav> : <nav className="admin-tabs has-three" aria-label="コーチメニュー"><button type="button" aria-current={adminTab === "customers" ? "page" : undefined} className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button type="button" aria-current={adminTab === "schedule" ? "page" : undefined} className={adminTab === "schedule" ? "is-selected" : ""} onClick={() => setAdminTab("schedule")}>予約・空き枠</button><button type="button" aria-current={adminTab === "coachProfile" ? "page" : undefined} className={adminTab === "coachProfile" ? "is-selected" : ""} onClick={() => setAdminTab("coachProfile")}>プロフィール</button></nav>}
+        {userRole === "admin" ? <nav className="admin-tabs has-four" aria-label="管理メニュー"><button type="button" aria-current={adminTab === "applications" ? "page" : undefined} className={adminTab === "applications" ? "is-selected" : ""} onClick={() => setAdminTab("applications")}>申込み{pendingApplicationCount > 0 && <b>{pendingApplicationCount}</b>}</button><button type="button" aria-current={adminTab === "customers" ? "page" : undefined} className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button type="button" aria-current={adminTab === "schedule" ? "page" : undefined} className={adminTab === "schedule" ? "is-selected" : ""} onClick={() => setAdminTab("schedule")}>予約</button><button type="button" aria-current={adminTab === "accounts" ? "page" : undefined} className={adminTab === "accounts" ? "is-selected" : ""} onClick={() => setAdminTab("accounts")}>ユーザー</button><button type="button" aria-current={adminTab === "announcements" ? "page" : undefined} className={adminTab === "announcements" ? "is-selected" : ""} onClick={() => setAdminTab("announcements")}>お知らせ</button><button type="button" aria-current={adminTab === "analytics" ? "page" : undefined} className={adminTab === "analytics" ? "is-selected" : ""} onClick={() => setAdminTab("analytics")}>利用状況</button></nav> : <nav className="admin-tabs has-three" aria-label="コーチメニュー"><button type="button" aria-current={adminTab === "customers" ? "page" : undefined} className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button type="button" aria-current={adminTab === "schedule" ? "page" : undefined} className={adminTab === "schedule" ? "is-selected" : ""} onClick={() => setAdminTab("schedule")}>予約・空き枠</button><button type="button" aria-current={adminTab === "coachProfile" ? "page" : undefined} className={adminTab === "coachProfile" ? "is-selected" : ""} onClick={() => setAdminTab("coachProfile")}>プロフィール</button></nav>}
         {userRole === "admin" && adminTab === "announcements" && currentUserId && <OperationAnnouncements role="admin" userId={currentUserId} management />}
+        {userRole === "admin" && adminTab === "analytics" && <AdminUsageDashboard />}
         {adminTab === "applications" && <div className="admin-inbox-status"><span><i className={pendingApplicationCount ? "has-new" : ""}></i>{adminApplicationsError ? "申込みを取得できませんでした" : pendingApplicationCount ? `未対応の申込みが${pendingApplicationCount}件あります` : "未対応の申込みはありません"}<small>{adminApplicationsError ? adminApplicationsError : lastAdminRefresh ? `${lastAdminRefresh.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}更新 · 30秒ごとに自動確認` : "確認中"}</small></span><button onClick={() => void loadAdminWorkspace()}>今すぐ更新</button></div>}
         {adminTab === "applications" && (adminApplications.length ? (
           <div className="application-list">
