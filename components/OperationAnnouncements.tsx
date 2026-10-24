@@ -54,7 +54,10 @@ export default function OperationAnnouncements({ role, userId, management = fals
     setReads((receipts ?? []).map((r: Receipt) => r.announcement_id));
     setLoading(false);
   }, [userId]);
-  useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void reload(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [reload]);
   useEffect(() => {
     if (!userId) return;
     const refresh = () => { if (document.visibilityState === "visible") void reload(); };
