@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WanTone パスワード再設定のご案内</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f7f9f7;color:#24352e;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Kaku Gothic ProN','Noto Sans JP',Meiryo,sans-serif;">
+  <div style="display:none;font-size:1px;color:#f7f9f7;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">WanToneのパスワード再設定用リンクをお送りします。</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;background-color:#f7f9f7;">
+    <tr><td align="center" style="padding:36px 16px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;border-collapse:separate;background-color:#ffffff;border:1px solid #e3ebe6;border-radius:16px;">
+        <tr><td style="padding:32px 32px 12px;">
+          <p style="margin:0;color:#008661;font-weight:700;font-size:17px;letter-spacing:.04em;">WanTone <span style="color:#6b7c71;font-size:12px;font-weight:400;">by BarKnow</span></p>
+        </td></tr>
+        <tr><td style="padding:12px 32px 32px;">
+          <h1 style="font-size:22px;line-height:1.5;margin:0 0 24px;font-weight:700;color:#203a30;">パスワード再設定のご案内</h1>
+          <p style="font-size:15px;line-height:1.9;margin:0 0 16px;">WanToneをご利用いただき、ありがとうございます。</p>
+          <p style="font-size:15px;line-height:1.9;margin:0 0 24px;">パスワードの再設定リクエストを受け付けました。以下のボタンから、新しいパスワードを設定してください。</p>
+          <table role="presentation" cellspacing="0" cellpadding="0" width="100%" style="border-collapse:collapse;"><tr><td align="center" style="padding:8px 0 24px;">
+            <a href="{{ .ConfirmationURL }}" style="display:inline-block;box-sizing:border-box;background-color:#008661;color:#ffffff;font-size:15px;line-height:1.4;font-weight:700;text-decoration:none;text-align:center;padding:17px 25px;border-radius:10px;">パスワードを再設定する</a>
+          </td></tr></table>
+          <p style="font-size:13px;line-height:1.9;margin:0 0 10px;color:#596d61;">ボタンが開けない場合は、以下のリンクをブラウザに貼り付けてください。</p>
+          <p style="font-size:12px;line-height:1.7;margin:0 0 24px;overflow-wrap:anywhere;word-break:break-all;"><a href="{{ .ConfirmationURL }}" style="color:#008661;text-decoration:underline;">{{ .ConfirmationURL }}</a></p>
+          <div style="border-top:1px solid #e8eee9;padding-top:22px;">
+            <p style="font-size:13px;line-height:1.9;margin:0 0 10px;color:#586a60;">このメールに心当たりがない場合は、何も操作する必要はありません。パスワードが自動で変更されることはありません。</p>
+            <p style="font-size:13px;line-height:1.9;margin:0;color:#586a60;">セキュリティのため、この再設定リンクやメールの内容を他人に共有しないでください。</p>
+          </div>
+        </td></tr>
+      </table>
+      <p style="margin:20px auto 0;font-size:12px;line-height:1.8;color:#74857a;text-align:center;">WanTone by BarKnow<br />このメールはパスワード再設定の操作に伴い自動送信されています。<br />このメールへの返信ではお問い合わせを受け付けていません。</p>
+    </td></tr>
+  </table>
+</body>
+</html>
