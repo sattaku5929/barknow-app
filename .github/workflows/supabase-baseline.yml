@@ -28,6 +28,7 @@ jobs:
       - name: Quality checks
         run: |
           npm run lint
+          node --test tests/forgotPasswordNavigation.test.cjs
           node --test tests/authPasswordAutofill.test.cjs
           node --test tests/signupPasswordConfirmation.test.cjs
           npm run test:insights
