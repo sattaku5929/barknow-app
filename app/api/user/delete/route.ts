@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { r2BucketName, r2Client, R2ConfigurationError } from "@/lib/r2";
 import { authenticatedUser, serviceSupabase } from "@/lib/server/supabase";
 import { validChatMediaKey } from "@/lib/media-security";
+import { stripeClient } from "@/lib/server/stripe";
 
 export const runtime = "nodejs";
 
@@ -61,6 +62,40 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error("[Account deletion] service configuration error", error);
     return NextResponse.json({ error: "アカウント削除のサーバー設定を確認してください" }, { status: 503 });
+  }
+
+  // Account deletion must not orphan an active subscription and leave the customer paying.
+  // Check Stripe's live state, not only our cached status, before irreversible deletion.
+  try {
+    const { data: linked, error: lookupError } = await admin.from("wt_subscriptions")
+      .select("plan_status,stripe_customer_id,stripe_subscription_id")
+      .eq("user_id", user.id).maybeSingle();
+    if (lookupError) throw lookupError;
+    if (linked) {
+      if (!linked.stripe_subscription_id) {
+        if (linked.plan_status === "active_member" || linked.plan_status === "past_due") {
+          return NextResponse.json({
+            error: "有料契約の確認が必要です。退会前にお問い合わせからご連絡ください。",
+          }, { status: 409 });
+        }
+      } else {
+        const subscription = await stripeClient().subscriptions.retrieve(linked.stripe_subscription_id);
+        const actualCustomer = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
+        if (!linked.stripe_customer_id || actualCustomer !== linked.stripe_customer_id) {
+          throw new Error("Subscription customer mismatch");
+        }
+        if (subscription.status !== "canceled" && subscription.status !== "incomplete_expired") {
+          return NextResponse.json({
+            error: "有料契約の継続課金が残っています。マイページの「契約・お支払い」で解約を完了し、契約終了後に退会してください。",
+          }, { status: 409 });
+        }
+      }
+    }
+  } catch (error) {
+    console.error("[Account deletion] subscription verification failed", { userId: user.id, error });
+    return NextResponse.json({
+      error: "契約状況を確認できませんでした。課金の継続を防ぐため、退会処理を停止しました。お問い合わせからご連絡ください。",
+    }, { status: 503 });
   }
 
   try {
