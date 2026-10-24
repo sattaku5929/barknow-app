@@ -147,10 +147,15 @@ export async function POST(request: NextRequest) {
   const admin = serviceSupabase();
   try {
     const { data: existing, error: readError } = await admin.from("wt_subscriptions")
-      .select("stripe_event_id,stripe_subscription_id")
+      .select("stripe_event_id,stripe_subscription_id,stripe_checkout_session_id")
       .eq("user_id", userId).maybeSingle();
     if (readError) throw readError;
     if (existing?.stripe_event_id === event.id) return NextResponse.json({ received: true, duplicate: true });
+    if (existing?.stripe_checkout_session_id && existing.stripe_checkout_session_id !== session.id) {
+      // A delayed event from an older Checkout must never overwrite a newer contract.
+      console.error("[Stripe webhook] Checkout session mismatch", { eventId: event.id, userId });
+      return NextResponse.json({ error: "Checkout session does not match current application" }, { status: 409 });
+    }
 
     const subscriptionId = stripeId(session.subscription);
     const checkoutCustomerId = stripeId(session.customer);
