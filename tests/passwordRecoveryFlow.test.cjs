@@ -16,7 +16,17 @@ test("recovery page requires recovery session and authenticated update", () => {
   assert.match(reset, /password\.length < 8/);
   assert.match(reset, /password !== confirm/);
 });
-test("login lets user reveal password without weakening signup policy", () => {
+test("password fields use accessible inline eye toggles", () => {
+  const eye = fs.readFileSync(path.join(__dirname, "../components/auth/PasswordVisibilityButton.tsx"), "utf8");
   assert.match(main, /type=\{showAuthPassword \? "text" : "password"\}/);
+  assert.match(main, /<PasswordVisibilityButton visible=\{showAuthPassword\}/);
+  assert.match(reset, /<PasswordVisibilityButton visible=\{showPassword\}/);
+  assert.match(reset, /<PasswordVisibilityButton visible=\{showConfirmPassword\}/);
+  assert.match(reset, /showConfirmPassword \? "text" : "password"/);
+  assert.doesNotMatch(main, /パスワードを表示する<\/label>/);
+  assert.doesNotMatch(reset, /パスワードを表示する<\/label>/);
+  assert.match(eye, /aria-label=/);
+  assert.match(eye, /aria-pressed=/);
+  assert.match(eye, /type="button"/);
   assert.match(main, /minLength=\{authMode === "login" && !anonymousUser \? undefined : 8\}/);
 });
