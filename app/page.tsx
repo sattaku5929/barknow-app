@@ -4912,7 +4912,7 @@ export default function Home() {
     </form>
   );
 
-  const settingsDocuments: Record<Exclude<SettingsPanel, "menu" | "profile" | "profile-edit" | "owner" | "household">, { eyebrow: string; title: string; sections: Array<{ heading: string; body: string }> }> = {
+  const settingsDocuments: Record<Exclude<SettingsPanel, "menu" | "profile" | "profile-edit" | "owner" | "household" | "notifications">, { eyebrow: string; title: string; sections: Array<{ heading: string; body: string }> }> = {
     disclaimer: {
       eyebrow: "DISCLAIMER",
       title: "免責事項",
