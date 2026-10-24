@@ -3,6 +3,7 @@
 import AdminMfaGate from "@/components/admin/AdminMfaGate";
 import AdminUsageDashboard from "@/components/admin/AdminUsageDashboard";
 import AdminMenuNavigation from "@/components/admin/AdminMenuNavigation";
+import NotificationPreferences from "@/components/owner/NotificationPreferences";
 import OperationAnnouncements from "@/components/OperationAnnouncements";
 import { PrivateChatMedia, PrivateDogImage, useChatMediaUrl } from "@/components/PrivateMedia";
 
@@ -47,7 +48,7 @@ type UserRole = "owner" | "coach" | "admin";
 type AuthMode = "login" | "signup";
 type CoachingStatus = "submitted" | "offered" | "assigned" | "consulting" | "payment_pending" | "active" | "closed";
 type AdminTab = "applications" | "customers" | "accounts" | "schedule" | "coachProfile" | "announcements" | "analytics";
-type SettingsPanel = "menu" | "profile" | "profile-edit" | "owner" | "household" | "disclaimer" | "terms" | "privacy";
+type SettingsPanel = "menu" | "profile" | "profile-edit" | "owner" | "household" | "notifications" | "disclaimer" | "terms" | "privacy";
 
 type DogProfile = {
   id?: string;
@@ -4911,7 +4912,7 @@ export default function Home() {
     </form>
   );
 
-  const settingsDocuments: Record<Exclude<SettingsPanel, "menu" | "profile" | "profile-edit" | "owner" | "household">, { eyebrow: string; title: string; sections: Array<{ heading: string; body: string }> }> = {
+  const settingsDocuments: Record<Exclude<SettingsPanel, "menu" | "profile" | "profile-edit" | "owner" | "household" | "notifications">, { eyebrow: string; title: string; sections: Array<{ heading: string; body: string }> }> = {
     disclaimer: {
       eyebrow: "DISCLAIMER",
       title: "免責事項",
@@ -4941,7 +4942,7 @@ export default function Home() {
     },
   };
 
-  const settingsDocumentView = settingsPanel !== "menu" && settingsPanel !== "profile" && settingsPanel !== "profile-edit" && settingsPanel !== "owner" && settingsPanel !== "household" ? (
+  const settingsDocumentView = settingsPanel !== "menu" && settingsPanel !== "profile" && settingsPanel !== "profile-edit" && settingsPanel !== "owner" && settingsPanel !== "household" && settingsPanel !== "notifications" ? (
     <section className="settings-document">
       <button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
       <p className="card-label">{settingsDocuments[settingsPanel].eyebrow}</p>
@@ -4988,7 +4989,7 @@ export default function Home() {
           <button type="button" onClick={() => navigateSettingsPanel("owner")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>飼い主情報</strong><small>氏名・連絡先・住所を確認、変更</small></span><i aria-hidden="true">›</i></button>
           <button type="button" onClick={() => navigateSettingsPanel("household")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>家族・お世話する人</strong><small>できごとの担当者を登録・編集</small></span><i aria-hidden="true">›</i></button>
           {isSubscribed && <button type="button" disabled={pushBusy} onClick={()=>void testPushNotifications()}><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>テスト通知を送る</strong><small>この端末に通知が届くか確認</small></span><i aria-hidden="true">›</i></button>}
-          <div className="settings-notification-row"><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>通知</strong><small>{isSubscribed ? "チャットとお世話のお知らせを通知します" : permissionStatus === "denied" ? "端末の設定で通知が拒否されています" : "チャットとお世話のお知らせはオフです"}</small></span><button type="button" className={`settings-toggle ${isSubscribed ? "is-on" : ""}`} role="switch" aria-checked={isSubscribed} aria-label={`通知を${isSubscribed ? "オフ" : "オン"}にする`} disabled={pushBusy || subscriptionStatus === "checking" || subscriptionStatus === "unsupported"} onClick={() => void (isSubscribed ? disablePushNotifications() : enablePushNotifications())}><i></i></button></div>
+          <button type="button" onClick={() => navigateSettingsPanel("notifications")}><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>通知設定</strong><small>端末と通知の種類を管理</small></span><i aria-hidden="true">›</i></button>
         </div>
       </section>
 
@@ -5021,7 +5022,8 @@ export default function Home() {
 
   const householdView = <section className="screen-form settings-profile-editor"><button type="button" className="settings-back" onClick={closeSettingsPanel}>← 設定へ戻る</button>
     <SectionTitle eyebrow="HOUSEHOLD" title="家族・お世話する人" /><HouseholdMemberManager online={connection === "online"} /></section>;
-  const profileView = settingsPanel === "menu" ? settingsMenuView : settingsPanel === "profile" ? profileSummaryView : settingsPanel === "profile-edit" ? profileEditorView : settingsPanel === "owner" ? ownerProfileEditorView : settingsPanel === "household" ? householdView : settingsDocumentView;
+  const notificationPreferencesView = settingsPanel === "notifications" ? <NotificationPreferences hasCoach={Boolean(coachingApplication?.assignedCoachId && ["assigned", "consulting", "payment_pending", "active"].includes(coachingApplication.status))} isSubscribed={isSubscribed} busy={pushBusy || subscriptionStatus === "checking"} supported={subscriptionStatus !== "unsupported"} denied={permissionStatus === "denied"} onDeviceToggle={() => void (isSubscribed ? disablePushNotifications() : enablePushNotifications())} onTest={() => void testPushNotifications()} onBack={closeSettingsPanel} /> : null;
+  const profileView = settingsPanel === "notifications" ? notificationPreferencesView : settingsPanel === "menu" ? settingsMenuView : settingsPanel === "profile" ? profileSummaryView : settingsPanel === "profile-edit" ? profileEditorView : settingsPanel === "owner" ? ownerProfileEditorView : settingsPanel === "household" ? householdView : settingsDocumentView;
 
   const onboardingView = (
     <div className="onboarding-stage">
