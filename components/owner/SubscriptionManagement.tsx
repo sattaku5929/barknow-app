@@ -69,7 +69,7 @@ export function SubscriptionSettings({ onBack }: { onBack: () => void }) {
       setLoading(false);
     }
   }, []);
-  useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => { const timer = window.setTimeout(() => void reload(), 0); return () => window.clearTimeout(timer); }, [reload]);
 
   async function openPortal() {
     if (busy || !contract?.eligible) return;
