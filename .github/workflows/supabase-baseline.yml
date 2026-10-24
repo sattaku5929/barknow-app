@@ -33,6 +33,7 @@ jobs:
           node --test tests/adminMenuNavigation.test.cjs
           node --test tests/subscriptionManagement.test.cjs
           node --test tests/stripeWebhookLifecycle.test.cjs
+          node --test tests/stripeCheckoutOffer.test.cjs
           node --test tests/adminUsageDashboard.sql.test.mjs
           node --test tests/announcementPreviewUi.test.cjs
           node --test tests/operationAnnouncementsRls.sql.test.mjs
