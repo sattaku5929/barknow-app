@@ -48,3 +48,18 @@ test("Anonymous role cannot execute the aggregate", async () => {
   await db.exec("reset role;set role anon");
   await assert.rejects(db.query("select public.wt_admin_usage_dashboard()"), /permission denied/);
 });
+
+test("Daily Check and visit counts deduplicate by user/day and ignore deleted entries", async () => {
+  await db.exec("reset role");
+  await db.query("insert into public.wt_app_visits(owner_id,visited_on) values ($1,(now() at time zone 'Asia/Tokyo')::date),($1,(now() at time zone 'Asia/Tokyo')::date)",[owner]);
+  await db.query("insert into public.wt_observation_entries(id,owner_id,entry_kind,local_date) values ('aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaa1',$1,'daily_check',(now() at time zone 'Asia/Tokyo')::date)",[owner]);
+  await db.query("insert into public.wt_daily_checks(entry_id) values ('aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaa1')");
+  await db.query("insert into public.wt_observation_entries(id,owner_id,entry_kind,local_date,deleted_at) values ('aaaaaaa2-aaaa-4aaa-8aaa-aaaaaaaaaaa2',$1,'daily_check',(now() at time zone 'Asia/Tokyo')::date,now())",[owner]);
+  await db.query("insert into public.wt_daily_checks(entry_id) values ('aaaaaaa2-aaaa-4aaa-8aaa-aaaaaaaaaaa2')");
+  await actor(admin);
+  const { rows } = await db.query("select public.wt_admin_usage_dashboard() as stats");
+  assert.equal(rows[0].stats.active_owners_7d, 1);
+  assert.equal(rows[0].stats.daily_check_users_7d, 1);
+  assert.equal(rows[0].stats.daily_check_days_7d, 1);
+  assert.equal(rows[0].stats.daily.at(-1).daily_check_users, 1);
+});
