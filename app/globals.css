@@ -7045,3 +7045,33 @@ body { font-size: 16px; }
   .operation-announcements.is-management { padding:14px; }
   .operation-announcements-head h2 { font-size:17px; }
 }
+
+
+/* Announcement notification preview and minimal bell */
+.operation-announcements-bell svg { display:block; width:21px; height:21px; flex:none; }
+.operation-announcements-bell:hover { background:#f5faf7; border-color:#afd3c1; }
+.operation-announcements-bell:focus-visible,
+.operation-announcements-expand:focus-visible { outline:2px solid #008661; outline-offset:3px; }
+.operation-announcements-item .operation-announcements-body.is-collapsed {
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:3;
+  line-clamp:3;
+  overflow:hidden;
+  white-space:normal;
+}
+.operation-announcements .operation-announcements-item .operation-announcements-expand {
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  margin:0 0 8px;
+  padding:5px 1px;
+  min-height:32px;
+  border:0;
+  background:transparent;
+  color:#008661;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+}
+.operation-announcements .operation-announcements-item .operation-announcements-expand:hover { text-decoration:underline; }

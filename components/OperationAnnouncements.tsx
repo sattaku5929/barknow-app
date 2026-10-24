@@ -30,6 +30,7 @@ function isLive(a: Announcement) {
 export default function OperationAnnouncements({ role, userId, management = false }: { role: Role; userId: string; management?: boolean }) {
   const canManage = management && role === "admin";
   const [open, setOpen] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [rows, setRows] = useState<Announcement[]>([]);
   const [reads, setReads] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,7 +109,7 @@ export default function OperationAnnouncements({ role, userId, management = fals
   return (
     <section className={management ? "operation-announcements is-management" : "operation-announcements"} aria-label="運営からのお知らせ">
       <div className="operation-announcements-head">
-        {management ? <div><small>ADMIN · INFORMATION</small><h2>運営からのお知らせ</h2></div> : <button type="button" className="operation-announcements-bell" aria-label={`運営からのお知らせ、未読${unread}件`} aria-expanded={open} onClick={() => setOpen((value) => !value)}><span aria-hidden="true">🔔</span>{unread > 0 && <b>{unread > 99 ? "99+" : unread}</b>}</button>}
+        {management ? <div><small>ADMIN · INFORMATION</small><h2>運営からのお知らせ</h2></div> : <button type="button" className="operation-announcements-bell" aria-label={`運営からのお知らせ、未読${unread}件`} aria-expanded={open} onClick={() => setOpen((value) => !value)}><svg aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></svg>{unread > 0 && <b>{unread > 99 ? "99+" : unread}</b>}</button>}
         {canManage && <button type="button" className="operation-announcements-primary" onClick={startCreate}>＋ お知らせを作成</button>}
       </div>
       {(open || canManage) && <div className="operation-announcements-list">
@@ -123,7 +124,12 @@ export default function OperationAnnouncements({ role, userId, management = fals
               {!canManage && !reads.includes(item.id) && <span className="operation-announcements-new">未読</span>}
             </div>
             <h3>{item.title}</h3>
-            <p>{item.body}</p>
+            <p className={!canManage && !expandedIds.includes(item.id) ? "operation-announcements-body is-collapsed" : "operation-announcements-body"} id={`announcement-body-${item.id}`}>{item.body}</p>
+            {!canManage && (item.body.length > 55 || item.body.includes("\n")) && (
+              <button type="button" className="operation-announcements-expand" aria-expanded={expandedIds.includes(item.id)} aria-controls={`announcement-body-${item.id}`} onClick={() => setExpandedIds((ids) => ids.includes(item.id) ? ids.filter((id) => id !== item.id) : [...ids, item.id])}>
+                {expandedIds.includes(item.id) ? "閉じる" : "もっと見る"} <span aria-hidden="true">{expandedIds.includes(item.id) ? "⌃" : "⌄"}</span>
+              </button>
+            )}
             {canManage ? <div className="operation-announcements-actions"><button type="button" onClick={() => startEdit(item)}>編集</button><button type="button" disabled={saving} onClick={() => void togglePublish(item)}>{item.is_published ? "公開停止" : "公開する"}</button></div> : !reads.includes(item.id) && <button type="button" className="operation-announcements-read" onClick={() => void markRead(item.id)}>確認しました</button>}
           </article>
         ))}
