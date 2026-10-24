@@ -1,5 +1,6 @@
 "use client";
 
+import PasswordVisibilityButton from "@/components/auth/PasswordVisibilityButton";
 import AdminMfaGate from "@/components/admin/AdminMfaGate";
 import { PrivateChatMedia, PrivateDogImage, useChatMediaUrl } from "@/components/PrivateMedia";
 
@@ -5084,8 +5085,12 @@ export default function Home() {
         )}
         <form className="auth-form" onSubmit={submitAuth}>
           <label>メールアドレス<input type="email" inputMode="email" autoComplete="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" required /></label>
-          <label>パスワード<input type={showAuthPassword ? "text" : "password"} autoComplete={authMode === "login" && !anonymousUser ? "current-password" : "new-password"} minLength={authMode === "login" && !anonymousUser ? undefined : 8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder={authMode === "login" && !anonymousUser ? "パスワードを入力" : "8文字以上"} required /></label>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 500 }}><input type="checkbox" checked={showAuthPassword} onChange={(event) => setShowAuthPassword(event.target.checked)} />パスワードを表示する</label>
+          <label>パスワード
+            <span style={{ display: "block", position: "relative" }}>
+              <input type={showAuthPassword ? "text" : "password"} autoComplete={authMode === "login" && !anonymousUser ? "current-password" : "new-password"} minLength={authMode === "login" && !anonymousUser ? undefined : 8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder={authMode === "login" && !anonymousUser ? "パスワードを入力" : "8文字以上"} required style={{ width: "100%", boxSizing: "border-box", paddingRight: 56 }} />
+              <PasswordVisibilityButton visible={showAuthPassword} onToggle={() => setShowAuthPassword((current) => !current)} label="パスワード" />
+            </span>
+          </label>
           {authError && <p className="auth-error" role="alert">{authError}</p>}
           <button className="auth-submit" disabled={saving}>{saving ? "確認中…" : anonymousUser ? "今のデータを引き継ぐ" : authMode === "login" ? "ログインする" : "アカウントを作る"}<span>→</span></button>
         </form>
