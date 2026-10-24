@@ -125,7 +125,7 @@ export default function OperationAnnouncements({ role, userId, management = fals
             </div>
             <h3>{item.title}</h3>
             <p className={!canManage && !expandedIds.includes(item.id) ? "operation-announcements-body is-collapsed" : "operation-announcements-body"} id={`announcement-body-${item.id}`}>{item.body}</p>
-            {!canManage && (item.body.length > 80 || item.body.split("\\n").length > 3) && (
+            {!canManage && (item.body.length > 80 || item.body.split("\n").length > 3) && (
               <button type="button" className="operation-announcements-expand" aria-expanded={expandedIds.includes(item.id)} aria-controls={`announcement-body-${item.id}`} onClick={() => setExpandedIds((ids) => ids.includes(item.id) ? ids.filter((id) => id !== item.id) : [...ids, item.id])}>
                 {expandedIds.includes(item.id) ? "閉じる" : "もっと見る"} <span aria-hidden="true">{expandedIds.includes(item.id) ? "⌃" : "⌄"}</span>
               </button>
