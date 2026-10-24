@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/app/supabase";
 import PasswordVisibilityButton from "@/components/auth/PasswordVisibilityButton";
 
@@ -17,22 +18,13 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     let mounted = true;
-    // Only a password-recovery session may open this form.
-    // A regular logged-in session does not grant access to this route's reset action.
+    // Only the PASSWORD_RECOVERY event may open the form.
+    // A regular signed-in session or a forged #type=recovery fragment is insufficient.
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (!mounted) return;
       if (event === "PASSWORD_RECOVERY") setState("ready");
     });
 
-    // In the implicit recovery flow, a full reload or hydration can happen after
-    // the SDK parsed the recovery fragment. Validate that session before allowing
-    // the form; avoid accidentally changing an unrelated existing user's password.
-    const recoveryHash = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("type") === "recovery";
-    if (recoveryHash) {
-      void supabase.auth.getUser().then(({ data, error: userError }) => {
-        if (mounted && !userError && data.user) setState("ready");
-      });
-    }
     const timer = window.setTimeout(() => {
       if (mounted) setState((current) => current === "checking" ? "invalid" : current);
     }, 6000);
@@ -68,11 +60,11 @@ export default function ResetPasswordPage() {
         {state === "checking" && <p role="status">再設定リンクを確認しています…</p>}
         {state === "invalid" && <div role="alert">
           <p>再設定リンクを確認できませんでした。リンクの有効期限が切れている可能性があります。</p>
-          <a href="/" style={{ color: "#008661", fontWeight: 700 }}>ログイン画面へ戻る</a>
+          <Link href="/" style={{ color: "#008661", fontWeight: 700 }}>ログイン画面へ戻る</Link>
         </div>}
         {state === "complete" && <div role="status">
           <p>新しいパスワードに変更しました。</p>
-          <a href="/" style={{ color: "#008661", fontWeight: 700 }}>アプリに戻る</a>
+          <Link href="/" style={{ color: "#008661", fontWeight: 700 }}>アプリに戻る</Link>
         </div>}
         {state === "ready" && <form onSubmit={(event) => void submit(event)} style={{ display: "grid", gap: 14 }}>
           <p style={{ margin: "4px 0", fontSize: 14, color: "#56675f" }}>新しいパスワードを入力してください（8文字以上）。</p>
