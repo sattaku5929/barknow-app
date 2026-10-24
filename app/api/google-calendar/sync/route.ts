@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processCalendarSyncJobs } from "@/lib/server/google-calendar";
-import { authenticatedUser, requireStaffRole, serviceSupabase } from "@/lib/server/supabase";
+import { authenticatedStaffRole, serviceSupabase } from "@/lib/server/supabase";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  const user = await authenticatedUser(request);
-  const role = user ? await requireStaffRole(user.id) : null;
+  const staff = await authenticatedStaffRole(request);
+  const user = staff?.user;
+  const role = staff?.role;
   if (!user || !role) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await request.json().catch(() => null) as { sessionId?: string } | null;
   if (body?.sessionId) {
