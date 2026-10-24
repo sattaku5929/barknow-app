@@ -25,7 +25,7 @@ test("all three legal documents are present with distinct responsibilities", () 
 });
 
 test("critical service-specific obligations are visibly addressed", () => {
-  const all = Object.fromEntries(Object.entries(docs).map(([key, doc]) => [key, doc.sections.map(s => s.body).join("\n")]));
+  const all = Object.fromEntries(Object.entries(docs).map(([key, doc]) => [key, doc.sections.map(s => `${s.heading}\n${s.body}`).join("\n")]));
   for (const word of ["獣医", "緊急", "通知", "行動"]) assert.match(all.disclaimer, new RegExp(word));
   for (const word of ["解約", "Stripe", "退会", "損害賠償", "個人情報", "有料"]) assert.match(all.terms, new RegExp(word));
   for (const word of ["利用目的", "第三者", "開示", "安全管理", "削除", "コーチ"]) assert.match(all.privacy, new RegExp(word));
