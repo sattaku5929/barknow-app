@@ -2,6 +2,7 @@ import { DeleteObjectsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { NextRequest, NextResponse } from "next/server";
 import { r2BucketName, r2Client, R2ConfigurationError } from "@/lib/r2";
 import { authenticatedUser, serviceSupabase } from "@/lib/server/supabase";
+import { verifiedBillingSubscription } from "@/lib/server/billing-subscription";
 import { validChatMediaKey } from "@/lib/media-security";
 
 export const runtime = "nodejs";
@@ -53,6 +54,19 @@ export async function DELETE(request: NextRequest) {
   const user = await authenticatedUser(request);
   if (!user) {
     return NextResponse.json({ error: "ログイン情報を確認できませんでした。再度ログインしてください" }, { status: 401 });
+  }
+
+  // Never remove the identity used to manage a renewing paid contract.
+  // The deletion can proceed after future renewal has been canceled.
+  try {
+    const activeContract = await verifiedBillingSubscription(user.id);
+    if (activeContract && !activeContract.cancelAtPeriodEnd) {
+      return NextResponse.json({
+        error: "継続中の有料契約があります。マイページの「契約・お支払い」から自動更新を停止してから退会してください。",
+      }, { status: 409 });
+    }
+  } catch {
+    return NextResponse.json({ error: "契約状況を確認できません。時間をおいて再度お試しください。" }, { status: 503 });
   }
 
   let admin: ReturnType<typeof serviceSupabase>;

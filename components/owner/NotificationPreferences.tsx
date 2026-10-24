@@ -36,7 +36,6 @@ export default function NotificationPreferences({
   const [message, setMessage] = useState("");
 
   const load = useCallback(async () => {
-    setLoading(true);
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
       setMessage("通知設定を取得できませんでした。");

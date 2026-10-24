@@ -4,6 +4,7 @@ import AdminMfaGate from "@/components/admin/AdminMfaGate";
 import AdminUsageDashboard from "@/components/admin/AdminUsageDashboard";
 import AdminMenuNavigation from "@/components/admin/AdminMenuNavigation";
 import NotificationPreferences from "@/components/owner/NotificationPreferences";
+import SubscriptionManagementEntry from "@/components/owner/SubscriptionManagementEntry";
 import OperationAnnouncements from "@/components/OperationAnnouncements";
 import { PrivateChatMedia, PrivateDogImage, useChatMediaUrl } from "@/components/PrivateMedia";
 
@@ -4990,6 +4991,7 @@ export default function Home() {
           <button type="button" onClick={() => navigateSettingsPanel("household")}><span className="settings-row-icon"><SettingsGlyph name="person" /></span><span><strong>家族・お世話する人</strong><small>できごとの担当者を登録・編集</small></span><i aria-hidden="true">›</i></button>
           {isSubscribed && <button type="button" disabled={pushBusy} onClick={()=>void testPushNotifications()}><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>テスト通知を送る</strong><small>この端末に通知が届くか確認</small></span><i aria-hidden="true">›</i></button>}
           <button type="button" onClick={() => navigateSettingsPanel("notifications")}><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>通知設定</strong><small>端末と通知の種類を管理</small></span><i aria-hidden="true">›</i></button>
+          <SubscriptionManagementEntry />
         </div>
       </section>
 
