@@ -51,7 +51,7 @@ begin
       where (submitted_at at time zone 'Asia/Tokyo')::date between v_today - 6 and v_today
     ),
     'daily', (
-      select pg_catalog.coalesce(pg_catalog.jsonb_agg(
+      select coalesce(pg_catalog.jsonb_agg(
         pg_catalog.jsonb_build_object(
           'date', d.day,
           'active_owners', (select count(*) from visits v where v.visited_on = d.day),
