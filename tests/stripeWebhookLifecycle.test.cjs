@@ -131,3 +131,10 @@ test("missing Stripe signature is not accepted", async () => {
   assert.equal(response.status, 400);
   assert.equal(h.calls.length, 0);
 });
+
+test("stale Checkout event cannot overwrite the latest pending session", async () => {
+  const h = harness({ existing: { stripe_event_id: "evt_OLD", stripe_checkout_session_id: "cs_NEW" } });
+  const response = await h.route.POST(h.request);
+  assert.equal(response.status, 409);
+  assert.equal(h.calls.filter(c => c.operation === "upsert").length, 0);
+});
