@@ -23,6 +23,7 @@ create function public.wt_is_admin() returns boolean language sql stable securit
  select exists(select 1 from public.wt_user_roles where user_id=auth.uid() and role='admin')
 $$;
 grant usage on schema public,auth to authenticated;
+grant select on public.wt_user_roles to authenticated;
 grant execute on function auth.uid() to authenticated;
 grant execute on function public.wt_is_admin() to authenticated;
 `);
