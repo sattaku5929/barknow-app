@@ -3,6 +3,33 @@ import { authenticatedUser, serviceSupabase } from "@/lib/server/supabase";
 import { coachingPriceId, stripeClient } from "@/lib/server/stripe";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+async function verifiedMonthlyPrice() {
+  const key = process.env.STRIPE_SECRET_KEY?.trim() || "";
+  // Never accidentally run live charges on Preview deployments.
+  if (process.env.VERCEL_ENV !== "production" && !key.startsWith("sk_test_")) {
+    throw new Error("Stripe test-mode credentials are required in Preview");
+  }
+  const price = await stripeClient().prices.retrieve(coachingPriceId());
+  if (!price.active || price.currency !== "jpy" || price.type !== "recurring" ||
+      price.recurring?.interval !== "month" || !price.unit_amount || price.unit_amount <= 0) {
+    throw new Error("Invalid monthly coaching price configuration");
+  }
+  return price;
+}
+
+export async function GET() {
+  try {
+    const price = await verifiedMonthlyPrice();
+    return NextResponse.json({
+      available: true, monthlyAmount: price.unit_amount, currency: "jpy",
+      taxBehavior: price.tax_behavior, testMode: !price.livemode,
+    }, { headers: { "Cache-Control": "no-store" } });
+  } catch {
+    return NextResponse.json({ available: false }, { headers: { "Cache-Control": "no-store" } });
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +56,8 @@ export async function POST(request: NextRequest) {
     }
 
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL?.trim() || request.nextUrl.origin).replace(/\/$/, "");
-    const priceId = coachingPriceId();
+    const verifiedPrice = await verifiedMonthlyPrice();
+    const priceId = verifiedPrice.id;
     const checkoutSession = await stripeClient().checkout.sessions.create({
       mode: "subscription",
       client_reference_id: user.id,
@@ -46,7 +74,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ checkoutUrl: checkoutSession.url });
   } catch (error) {
     console.error("[Stripe checkout] session creation failed", error);
-    const configurationError = error instanceof Error && ["STRIPE_SECRET_KEY", "STRIPE_COACHING_PRICE_ID"].some((name) => error.message.includes(name));
+    const configurationError = error instanceof Error && ["STRIPE_SECRET_KEY", "STRIPE_COACHING_PRICE_ID", "Invalid monthly coaching price", "test-mode credentials"].some((name) => error.message.includes(name));
     return NextResponse.json({
       error: configurationError
         ? "決済設定が完了していません。管理者へお問い合わせください"
