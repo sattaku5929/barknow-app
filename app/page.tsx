@@ -5087,11 +5087,9 @@ export default function Home() {
           </div>
         )}
         <form className="auth-form" onSubmit={submitAuth} autoComplete="on">
-          <label htmlFor="auth-email">メールアドレス</label>
-          <input id="auth-email" name="username" type="email" inputMode="email" autoCapitalize="none" spellCheck={false} autoComplete="username" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" required />
-          <label htmlFor="auth-password">パスワード</label>
-          <input id="auth-password" name="password" type="password" autoComplete={authMode === "login" && !anonymousUser ? "current-password" : "new-password"} minLength={authMode === "login" && !anonymousUser ? undefined : 8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder={authMode === "login" && !anonymousUser ? "パスワードを入力" : "8文字以上"} required />
-          {(anonymousUser || authMode === "signup") && <><label htmlFor="auth-confirm-password">パスワード（確認）</label><input id="auth-confirm-password" name="new-password-confirmation" type="password" autoComplete="new-password" minLength={8} value={authPasswordConfirm} onChange={(event) => setAuthPasswordConfirm(event.target.value)} placeholder="確認のため再入力" required /></>}
+          <label htmlFor="auth-email">メールアドレス<input id="auth-email" name="username" type="email" inputMode="email" autoCapitalize="none" spellCheck={false} autoComplete="username" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" required /></label>
+          <label htmlFor="auth-password">パスワード<input id="auth-password" name="password" type="password" autoComplete={authMode === "login" && !anonymousUser ? "current-password" : "new-password"} minLength={authMode === "login" && !anonymousUser ? undefined : 8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder={authMode === "login" && !anonymousUser ? "パスワードを入力" : "8文字以上"} required /></label>
+          {(anonymousUser || authMode === "signup") && <label htmlFor="auth-confirm-password">パスワード（確認）<input id="auth-confirm-password" name="new-password-confirmation" type="password" autoComplete="new-password" minLength={8} value={authPasswordConfirm} onChange={(event) => setAuthPasswordConfirm(event.target.value)} placeholder="確認のため再入力" required /></label>}
           {authError && <p className="auth-error" role="alert">{authError}</p>}
           <button className="auth-submit" disabled={saving}>{saving ? "確認中…" : anonymousUser ? "今のデータを引き継ぐ" : authMode === "login" ? "ログインする" : "アカウントを作る"}<span>→</span></button>
         </form>
