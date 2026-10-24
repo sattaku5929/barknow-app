@@ -5,7 +5,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const ts = require("typescript");
 
-function fixture({ key = "sk_test_mock", price = {}, subscription = null, authenticated = true, payloadUser = "user-one" } = {}) {
+function fixture({ key = "sk_test_mock", price = {}, subscription = null, authenticated = true, payloadUser = "user-one", pendingStatus = "open" } = {}) {
   const calls = [];
   const stripe = {
     prices: { retrieve: async id => {
@@ -14,7 +14,11 @@ function fixture({ key = "sk_test_mock", price = {}, subscription = null, authen
         recurring: { interval: "month" }, tax_behavior: "inclusive", livemode: false, ...price };
     }},
     subscriptions: { retrieve: async id => { calls.push(["subscription", id]); return { status: "active", customer: "cus_existing" }; } },
-    checkout: { sessions: { create: async options => { calls.push(["checkout", options]); return { url: "https://checkout.stripe.com/c/pay/cs_test_one" }; } } },
+    checkout: { sessions: {
+      create: async options => { calls.push(["checkout", options]); return { id: "cs_test_one", url: "https://checkout.stripe.com/c/pay/cs_test_one" }; },
+      retrieve: async id => { calls.push(["retrieve-checkout", id]); return { id, status: pendingStatus, url: "https://checkout.stripe.com/c/pay/cs_test_one", client_reference_id: "user-one", metadata: { plan: "coaching" } }; },
+      expire: async id => { calls.push(["expire-checkout", id]); return { id, status: "expired" }; },
+    } },
   };
   const supabase = {
     authenticatedUser: async () => authenticated ? { id: "user-one", email: "owner@example.test" } : null,
@@ -24,6 +28,7 @@ function fixture({ key = "sk_test_mock", price = {}, subscription = null, authen
           assert.equal(column, "user_id"); assert.equal(uid, "user-one");
           return { maybeSingle: async () => ({ data: subscription, error: null }) };
         } }),
+        upsert: async (record, options) => { calls.push(["pending-upsert", record, options]); return { error: null }; },
       }; },
     }),
   };
@@ -84,6 +89,11 @@ test("Stripe Checkout metadata is derived from authenticated user", async () => 
   assert.equal(checkout.subscription_data.metadata.user_id, "user-one");
   assert.equal(checkout.mode, "subscription");
   assert.equal(checkout.line_items[0].price, "price_test_month");
+  const record = h.calls.find(v => v[0] === "pending-upsert")[1];
+  assert.equal(record.user_id, "user-one");
+  assert.equal(record.plan_status, "inactive");
+  assert.equal(record.stripe_checkout_session_id, "cs_test_one");
+  assert.equal(record.stripe_subscription_id, null);
 });
 
 test("mismatched user ID and anonymous clients cannot start checkout", async () => {
@@ -97,4 +107,25 @@ test("existing active subscription blocks duplicate purchase", async () => {
   const h = fixture({ subscription: { stripe_customer_id: "cus_existing", stripe_subscription_id: "sub_existing" } });
   assert.equal((await h.api.POST(h.req)).status, 409);
   assert.equal(h.calls.some(v => v[0] === "checkout"), false);
+});
+
+test("open Checkout is reused and does not create duplicate subscriptions", async () => {
+  const h = fixture({ subscription: { stripe_customer_id: null, stripe_subscription_id: null, stripe_checkout_session_id: "cs_existing" } });
+  const result = await h.api.POST(h.req);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.checkoutUrl.startsWith("https://checkout.stripe.com/"), true);
+  assert.equal(h.calls.some(v => v[0] === "checkout"), false);
+  assert.equal(h.calls.some(v => v[0] === "pending-upsert"), false);
+});
+
+test("completed Checkout cannot be duplicated while webhook is pending", async () => {
+  const h = fixture({ subscription: { stripe_customer_id: null, stripe_subscription_id: null, stripe_checkout_session_id: "cs_existing" }, pendingStatus: "complete" });
+  assert.equal((await h.api.POST(h.req)).status, 409);
+  assert.equal(h.calls.some(v => v[0] === "checkout"), false);
+});
+
+test("expired pending Checkout can be restarted", async () => {
+  const h = fixture({ subscription: { stripe_customer_id: null, stripe_subscription_id: null, stripe_checkout_session_id: "cs_existing" }, pendingStatus: "expired" });
+  assert.equal((await h.api.POST(h.req)).status, 200);
+  assert.equal(h.calls.some(v => v[0] === "checkout"), true);
 });
