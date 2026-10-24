@@ -7060,7 +7060,7 @@ body { font-size: 16px; }
   overflow:hidden;
   white-space:normal;
 }
-.operation-announcements-item .operation-announcements-expand {
+.operation-announcements .operation-announcements-item .operation-announcements-expand {
   display:inline-flex;
   align-items:center;
   gap:4px;
@@ -7074,4 +7074,4 @@ body { font-size: 16px; }
   font-weight:600;
   cursor:pointer;
 }
-.operation-announcements-item .operation-announcements-expand:hover { text-decoration:underline; }
+.operation-announcements .operation-announcements-item .operation-announcements-expand:hover { text-decoration:underline; }
