@@ -1,5 +1,6 @@
 "use client";
 
+import PasswordVisibilityButton from "@/components/auth/PasswordVisibilityButton";
 import AdminMfaGate from "@/components/admin/AdminMfaGate";
 import { PrivateChatMedia, PrivateDogImage, useChatMediaUrl } from "@/components/PrivateMedia";
 
@@ -1138,6 +1139,7 @@ export default function Home() {
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [showAuthPassword, setShowAuthPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [adminCustomers, setAdminCustomers] = useState<AdminCustomer[]>([]);
   const openedChatLinkRef = useRef("");
@@ -2647,7 +2649,7 @@ export default function Home() {
                 : normalized.includes("already registered") || normalized.includes("already been registered")
                   ? "このメールアドレスは登録済みです。「ログイン」からお進みください。"
                   : normalized.includes("password")
-                    ? "パスワードは8文字以上で設定してください。"
+                    ? "パスワードの条件を確認してください。8文字以上で設定し、必要に応じて別のパスワードをお試しください。"
                     : normalized.includes("invalid email")
                       ? "メールアドレスの形式を確認してください。"
                       : `登録できませんでした（${message}）`,
@@ -2655,18 +2657,6 @@ export default function Home() {
     } finally {
       setSaving(false);
     }
-  }
-
-  async function resetPassword() {
-    if (!authEmail.trim()) {
-      setAuthError("先にメールアドレスを入力してください。");
-      return;
-    }
-    setSaving(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(authEmail.trim(), { redirectTo: window.location.origin });
-    setSaving(false);
-    if (error) setAuthError("再設定メールを送れませんでした。Supabase設定を確認してください。");
-    else showNotice("パスワード再設定メールを送りました");
   }
 
   async function signOut() {
@@ -5083,11 +5073,16 @@ export default function Home() {
         )}
         <form className="auth-form" onSubmit={submitAuth}>
           <label>メールアドレス<input type="email" inputMode="email" autoComplete="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" required /></label>
-          <label>パスワード<input type="password" autoComplete={authMode === "login" && !anonymousUser ? "current-password" : "new-password"} minLength={8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="8文字以上" required /></label>
+          <label>パスワード
+            <span style={{ display: "block", position: "relative" }}>
+              <input type={showAuthPassword ? "text" : "password"} autoComplete={authMode === "login" && !anonymousUser ? "current-password" : "new-password"} minLength={authMode === "login" && !anonymousUser ? undefined : 8} value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder={authMode === "login" && !anonymousUser ? "パスワードを入力" : "8文字以上"} required style={{ width: "100%", boxSizing: "border-box", paddingRight: 56 }} />
+              <PasswordVisibilityButton visible={showAuthPassword} onToggle={() => setShowAuthPassword((current) => !current)} label="パスワード" />
+            </span>
+          </label>
           {authError && <p className="auth-error" role="alert">{authError}</p>}
           <button className="auth-submit" disabled={saving}>{saving ? "確認中…" : anonymousUser ? "今のデータを引き継ぐ" : authMode === "login" ? "ログインする" : "アカウントを作る"}<span>→</span></button>
         </form>
-        {!anonymousUser && authMode === "login" && <button className="forgot-password" onClick={() => void resetPassword()}>パスワードを忘れた方</button>}
+        {!anonymousUser && authMode === "login" && <button type="button" className="forgot-password" onClick={() => router.push("/auth/forgot-password")}>パスワードを忘れた方</button>}
         {anonymousUser && <p className="migration-note">この操作では愛犬・記録・相談履歴の所有者IDは変わりません。</p>}
       </section>
       <div className={`toast ${notice ? "show" : ""}`} role="status">{notice}</div>
