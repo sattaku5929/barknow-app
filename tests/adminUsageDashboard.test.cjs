@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const source = fs.readFileSync("app/page.tsx","utf8");
 const component = fs.readFileSync("components/admin/AdminUsageDashboard.tsx","utf8");
-const migration = fs.readFileSync("supabase/migrations/20261024123000_admin_usage_dashboard.sql","utf8");
+const migration = fs.readFileSync("supabase/migrations/20261024131329_admin_usage_dashboard.sql","utf8");
 test("analytics is admin-only and uses only the aggregate RPC",()=>{
   assert.match(source,/userRole === "admin" && adminTab === "analytics" && <AdminUsageDashboard/);
   assert.match(component,/\.rpc\("wt_admin_usage_dashboard"\)/);
