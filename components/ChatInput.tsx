@@ -118,6 +118,8 @@ export default function ChatInput({ ownerId, dogId, sender, placeholder = "メ�
       let mediaUrl = "";
       let mediaKey = "";
       let mediaType: "image" | "video" | "" = "";
+      let uploadedName = "";
+      let uploadedSize = 0;
       if (file) {
         let uploadFile: File = file;
         mediaType = file.type.startsWith("image/") ? "image" : "video";
@@ -149,6 +151,8 @@ export default function ChatInput({ ownerId, dogId, sender, placeholder = "メ�
         }
         mediaUrl = signed.publicUrl;
         mediaKey = signed.key ?? "";
+        uploadedName = uploadFile.name;
+        uploadedSize = uploadFile.size;
       }
 
       const messageBody = text || (selectedContent ? selectedContent.title + "を共有しました" : mediaType === "image" ? "画像を共有しました" : "動画を共有しました");
@@ -159,7 +163,7 @@ export default function ChatInput({ ownerId, dogId, sender, placeholder = "メ�
         body: messageBody,
         ...(replyTo ? { reply_to_message_id: replyTo.id } : {}),
         ...(selectedContent ? { content_id: selectedContent.id } : {}),
-        ...(mediaUrl ? { media_url: mediaUrl, media_key: mediaKey, media_type: mediaType, media_name: uploadFile?.name ?? "", media_size: uploadFile?.size ?? 0 } : {}),
+        ...(mediaUrl ? { media_url: mediaUrl, media_key: mediaKey, media_type: mediaType, media_name: uploadedName, media_size: uploadedSize } : {}),
       };
       const response = await fetch("/api/chat/messages", {
         method: "POST",
