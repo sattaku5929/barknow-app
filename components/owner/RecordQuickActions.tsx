@@ -13,16 +13,25 @@ type Props = {
 
 export default function RecordQuickActions({onDaily,onEvent,onClose,dailyCompleted,eventCount}:Props) {
   const dailyRef=useRef<HTMLButtonElement>(null);
+  const sheetRef=useRef<HTMLElement>(null);
   useEffect(()=>{
     const previous=document.activeElement instanceof HTMLElement ? document.activeElement : null;
     dailyRef.current?.focus();
-    const escape=(event:KeyboardEvent)=>{if(event.key==="Escape"){event.preventDefault();onClose();}};
+    const escape=(event:KeyboardEvent)=>{
+      if(event.key==="Escape"){event.preventDefault();onClose();return;}
+      if(event.key!=="Tab"||!sheetRef.current)return;
+      const controls=Array.from(sheetRef.current.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"));
+      const first=controls[0],last=controls[controls.length-1];
+      if(!first||!last)return;
+      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+      else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+    };
     window.addEventListener("keydown",escape);
-    return()=>{window.removeEventListener("keydown",escape);previous?.focus();};
+    return()=>{window.removeEventListener("keydown",escape);if(previous?.isConnected && !previous.closest("[inert]"))previous.focus();};
   },[onClose]);
 
   return <div className={styles.backdrop} onMouseDown={event=>{if(event.target===event.currentTarget)onClose();}}>
-    <section className={styles.sheet} role="dialog" aria-modal="true" aria-labelledby="quick-record-title" aria-describedby="quick-record-help">
+    <section ref={sheetRef} className={styles.sheet} role="dialog" aria-modal="true" aria-labelledby="quick-record-title" aria-describedby="quick-record-help">
       <div className={styles.grab} aria-hidden="true"/>
       <div className={styles.header}>
         <div><small>QUICK LOG</small><h2 id="quick-record-title">何を記録しますか？</h2><p id="quick-record-help">今日の様子を、気軽に残しましょう。</p></div>
