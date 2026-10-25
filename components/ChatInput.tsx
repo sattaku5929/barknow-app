@@ -205,12 +205,30 @@ export default function ChatInput({ ownerId, dogId, sender, placeholder = "メ�
           <button type="button" onClick={onCancelReply} aria-label="引用返信を取り消す">×</button>
         </div>
       )}
-      {file && <div className="media-file-chip"><span>{file.type.startsWith("image/") ? "画像" : "動画"}</span><b>{file.name}</b><button type="button" onClick={() => { setFile(null); if (fileInput.current) fileInput.current.value = ""; }} aria-label="選択したファイルを外す">×</button></div>}
+      {file && <div className="media-file-chip"><span>{file.type.startsWith("image/") ? "画像" : "動画"}</span><b>{file.name}</b>
+        <button type="button" disabled={busy} onClick={() => setMediaEditOpen(value => !value)}>{mediaEditOpen ? "編集を閉じる" : "編集"}</button>
+        <button type="button" disabled={busy} onClick={() => { setFile(null);setMediaEditOpen(false);if(fileInput.current)fileInput.current.value=""; }} aria-label="選択したファイルを外す">×</button>
+      </div>}
+      {file && mediaEditOpen && <div className="chat-media-edit" style={{padding:12,background:"#f2f9f4",borderRadius:12,display:"grid",gap:8}}>
+        {file.type.startsWith("image/") ? <>
+          <label><input type="checkbox" checked={cropSquare} onChange={e=>setCropSquare(e.target.checked)}/>中央を正方形に切り抜く</label>
+          <button type="button" onClick={()=>setRotation(deg=>(deg+90)%360)}>右に90度回転（{rotation}°）</button>
+          <label><input type="checkbox" checked={highQuality==="high"} onChange={e=>setHighQuality(e.target.checked?"high":"standard")}/>高画質で送信</label>
+        </> : <>
+          <small>動画の開始・終了位置を選択してください</small>
+          <label>開始 {clipStart}秒 <input type="range" min={0} max={Math.max(1,clipEnd-1)} value={clipStart} onChange={e=>setClipStart(Number(e.target.value))}/></label>
+          <label>終了 {clipEnd}秒 <input type="range" min={Math.min(clipDuration,clipStart+1)} max={Math.max(1,clipDuration)} value={clipEnd} onChange={e=>setClipEnd(Number(e.target.value))}/></label>
+          <small>対応ブラウザでは編集後に変換して送信します。未対応の場合はエラーを表示します。</small>
+        </>}
+      </div>}
+      {selectedContent && <div className="media-file-chip"><span>教材</span><b>{selectedContent.title}</b><button type="button" disabled={busy} onClick={()=>setSelectedContent(null)} aria-label="コンテンツを外す">×</button></div>}
+      {pickerOpen && sender==="coach" && <ContentPicker onCancel={()=>setPickerOpen(false)} onPick={item=>{setSelectedContent(item);setFile(null);setPickerOpen(false);if(fileInput.current)fileInput.current.value="";}}/>}
       <textarea ref={textInput} rows={3} value={body} onChange={(event) => setBody(event.target.value)} placeholder={placeholder} maxLength={3000} />
       {error && <p className="media-chat-error" role="alert">{error}</p>}
       <div className="media-chat-actions">
         <label><span>画像・動画</span><input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime" onChange={chooseFile} disabled={busy} /></label>
-        <small>{file ? `${(file.size / 1024 / 1024).toFixed(1)}MB` : "画像10MB・動画50MBまで"}</small>
+        {sender==="coach" && <button type="button" disabled={busy} onClick={()=>setPickerOpen(open=>!open)} style={{background:"#e8f5ec",color:"#008661",border:"1px solid #b8d8c7",borderRadius:10,padding:"9px 12px",cursor:"pointer"}}>コンテンツから選ぶ</button>}
+        <small>{file ? (file.size/1024/1024).toFixed(1)+"MB" : "写真を自動最適化 · 動画最大50MB"}</small>
         <button disabled={busy || (!body.trim() && !file && !selectedContent)}>{busy ? "送信中…" : "送信する"}</button>
       </div>
     </form>
