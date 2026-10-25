@@ -104,3 +104,26 @@ export async function videoDuration(file: File): Promise<number> {
     URL.revokeObjectURL(url);
   }
 }
+
+/** Optional manual crop and 90-degree rotations (preserves alpha via WebP). */
+export async function editPhoto(file: File, cropSquare: boolean, rotation: number): Promise<File> {
+  const turns=((Math.round(rotation/90)%4)+4)%4;
+  if(!cropSquare && turns===0)return file;
+  if(file.type==="image/gif")throw new Error("GIFの編集には対応していません");
+  const url=URL.createObjectURL(file);
+  try {
+    const image=new Image();image.src=url;await image.decode();
+    const side=Math.min(image.width,image.height);
+    const sw=cropSquare?side:image.width, sh=cropSquare?side:image.height;
+    const sx=(image.width-sw)/2, sy=(image.height-sh)/2;
+    const canvas=document.createElement("canvas");
+    canvas.width=turns%2?sh:sw;canvas.height=turns%2?sw:sh;
+    const ctx=canvas.getContext("2d");if(!ctx)throw new Error("画像を編集できません");
+    ctx.translate(canvas.width/2,canvas.height/2);
+    ctx.rotate(turns*Math.PI/2);
+    ctx.drawImage(image,sx,sy,sw,sh,-sw/2,-sh/2,sw,sh);
+    const blob=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,"image/webp",.93));
+    if(!blob || blob.type!=="image/webp")throw new Error("画像を書き出せません");
+    return blobAsFile(blob,file.name.replace(/\.[^.]+$/,"")+"-edited.webp");
+  }finally{URL.revokeObjectURL(url);}
+}
