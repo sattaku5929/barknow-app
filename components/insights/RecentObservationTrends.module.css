@@ -5,3 +5,15 @@
 
 :global(.owner-stage) .emptyPanel { border:0; border-radius:23px; padding:17px; background:var(--owner-surface,#fffefb); box-shadow:var(--owner-shadow); }
 :global(.owner-stage) .moreButton { background:#edf2e7; color:#597353; padding-inline:12px; border-radius:12px; }
+
+
+.homeDisclosure { margin-top:12px; overflow:hidden; border:1px solid #dfeae2; border-radius:15px; background:#fff; }
+.homeDisclosure > summary { display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:56px; padding:11px 15px; list-style:none; cursor:pointer; color:#255c43; }
+.homeDisclosure > summary::-webkit-details-marker { display:none; }
+.homeDisclosure > summary span:first-child { display:grid; gap:3px; }
+.homeDisclosure > summary strong { font-size:13px; }
+.homeDisclosure > summary small { font-size:11px; color:#668174; }
+.homeDisclosure > summary > span:last-child { font-size:20px; transition:transform .2s ease; }
+.homeDisclosure[open] > summary > span:last-child { transform:rotate(180deg); }
+.homeDisclosure > summary:focus-visible { outline:2px solid #008661; outline-offset:-2px; border-radius:15px; }
+.homeDisclosureBody { display:grid; gap:16px; padding:8px 12px 16px; border-top:1px solid #edf2ed; }
