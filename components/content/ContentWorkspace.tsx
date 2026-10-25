@@ -4,6 +4,7 @@ import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/app/supabase";
 import { optimizeImage, trimVideo, videoDuration } from "@/lib/media-optimization";
 import styles from "./ContentWorkspace.module.css";
+import VideoTrimEditor from "./VideoTrimEditor";
 
 export type ContentItem = {
   id:string;authorId:string;origin:"coach"|"admin";format:"video"|"image"|"article";
@@ -108,10 +109,7 @@ export default function ContentWorkspace({role}:{role:"coach"|"admin"}){
     if(!(next.type.startsWith("video/")||next.type.startsWith("image/"))){setError("画像または動画を選択してください");return;}
     setFile(next);if(!form.title)setForm(current=>({...current,title:next.name.replace(/\.[^.]+$/,"").slice(0,120)}));
     setClipStart(0);setClipDuration(0);setClipEnd(0);
-    if(next.type.startsWith("video/")){
-      try {const duration=await videoDuration(next);setClipDuration(duration);setClipEnd(duration);}
-      catch {setError("動画の長さを確認できませんでした");}
-    }
+
   }
   async function saveNew(){
     if(saving)return;
@@ -181,13 +179,11 @@ export default function ContentWorkspace({role}:{role:"coach"|"admin"}){
         <option value="private">自分専用</option><option value="coaches">他のコーチにも共有</option>
       </select></label>}
       {file&&<p className={styles.helper}>選択中：{file.name}（{friendlyBytes(file.size)}）</p>}
-      {file&&form.format==="video"&&clipDuration>1&&<div className={styles.editor}>
-        <strong>必要な場面だけ切り取る（任意）</strong>
-        <label>開始 {clipStart}秒<input type="range" min={0} max={Math.max(1,clipEnd-1)} value={clipStart} onChange={e=>setClipStart(Number(e.target.value))}/></label>
-        <label>終了 {clipEnd}秒<input type="range" min={Math.min(clipDuration,clipStart+1)} max={clipDuration} value={clipEnd} onChange={e=>setClipEnd(Number(e.target.value))}/></label>
-        <small>動画編集は対応するブラウザでのみ利用できます。端末内で処理し、元の動画はアップロードしません。</small>
-      </div>}
-      <button type="button" className={styles.primary} disabled={saving} onClick={()=>void saveNew()}>{saving?"処理中…":"登録する"}</button>
+      {file&&form.format==="video"&&<VideoTrimEditor key={`${file.name}:${file.size}:${file.lastModified}`} file={file}
+        duration={clipDuration} start={clipStart} end={clipEnd} disabled={saving}
+        onReady={duration=>{setClipDuration(duration);setClipEnd(duration);}}
+        onRangeChange={(start,end)=>{setClipStart(start);setClipEnd(end);}} />}
+      <button type="button" className={styles.primary} disabled={saving||(form.format==="video"&&!!file&&(!clipDuration||clipEnd-clipStart>180))} onClick={()=>void saveNew()}>{saving?"処理中…":"登録する"}</button>
       {error&&<p role="alert" className={styles.error}>{error}</p>}
       {notice&&<p role="status" className={styles.success}>{notice}</p>}
     </div>

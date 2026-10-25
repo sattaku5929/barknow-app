@@ -59,8 +59,12 @@ export async function trimVideo(file: File, startSeconds: number, endSeconds: nu
     if (!(startSeconds>=0 && endSeconds>startSeconds && endSeconds<=video.duration+0.1 && endSeconds-startSeconds<=180)) {
       throw new Error("切り取る範囲を確認してください");
     }
-    video.currentTime=startSeconds;
-    await new Promise<void>((resolve)=>{video.onseeked=()=>resolve();});
+    if (startSeconds > 0) {
+      await new Promise<void>((resolve) => {
+        video.onseeked = () => resolve();
+        video.currentTime = startSeconds;
+      });
+    }
     const capture=(video as HTMLVideoElement & {captureStream?:()=>MediaStream}).captureStream;
     if (!capture) throw new Error("この端末では動画のトリミングに対応していません");
     const stream=capture.call(video);
