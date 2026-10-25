@@ -4498,22 +4498,10 @@ export default function Home() {
       online={connection === "online"} onBack={() => { setEventTheme(null); setEditingEvent(null); returnToOwnerHome(); }}
       onSaved={() => { setEventRefresh((current) => current + 1); setEventTheme(null); setEditingEvent(null); showNotice("記録しました"); returnToOwnerHome(); }} />
   ) : !selectedCategory ? (
-    <section className="topic-screen">
-      <SectionTitle eyebrow="DAILY LOG" title="今日を記録" />
-      <p className="lead owner-record-lead">今日の調子をチェックするか、気になったできごとを残しましょう。</p>
-      <button type="button" className="owner-record-daily-action" onClick={() => openNewRecord("daily")}
-        disabled={connection !== "online" || !profile.id || todayCheckStatus === "loading"}
-        aria-label={todayCheckStatus === "recorded" ? "今日のDaily Checkを確認する" : "Daily Checkで今日の状態を記録する"}>
-        <span className="owner-record-daily-icon" aria-hidden="true"><NavGlyph name="record" /></span>
-        <span className="owner-record-daily-copy"><strong>{todayCheckStatus === "recorded" ? "今日の状態を確認" : "今日の状態を記録"}</strong>
-          <small>Daily Check · 気分・食欲・活動・睡眠・トイレ</small></span>
-        <span className="owner-record-daily-arrow" aria-hidden="true">→</span>
-      </button>
-      <div className="owner-record-event-intro"><h2>できごとを記録</h2><p>観察テーマから選ぶだけ。気づいたことを気軽に残せます。</p></div>
-      {eventStatus === "unavailable" && <p className="observation-error" role="alert">できごとを読み込めませんでした。画面を開き直してください。</p>}
-      <ObservationEventHub selectedThemes={eventThemesSelected} events={todayEvents} onSelect={startEvent} onEdit={editEvent}
-        disabled={connection !== "online" || !profile.id || eventStatus !== "ready"} />
-      <div className="owner-scene-panel owner-scene-panel--record" aria-hidden="true"><OwnerRecordScene /></div>
+    <section className="topic-screen owner-record-return">
+      <SectionTitle eyebrow="DAILY LOG" title="ホームで記録する" />
+      <p className="lead">Daily Checkとできごとの記録はホームにまとめました。</p>
+      <button type="button" className="primary-button" onClick={returnToOwnerHome}>ホームに戻る →</button>
     </section>
   ) : recordCategory === "daily" ? (
     <DailyCheckForm key={`${profile.id ?? ""}:${recordDate}`} dogId={profile.id} initialDate={recordDate}
