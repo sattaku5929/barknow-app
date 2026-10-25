@@ -4399,17 +4399,17 @@ export default function Home() {
       )}
 
       <section className="home-v3-summary" aria-label="今日のサマリー">
-        <button onClick={() => document.getElementById("home-event-log")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+        <button type="button" aria-label="今日のできごとの記録に移動" onClick={() => document.getElementById("home-event-log")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
           <span className="home-v3-summary-icon is-log"><NavGlyph name="record" /></span>
-          <span><small>今日のできごと</small><strong>{eventStatus === "ready" ? todayEvents.length : "—"}<em>LOG</em></strong></span>
+          <span><small>できごと</small><strong>{eventStatus === "ready" ? todayEvents.length : "—"}<em>件</em></strong></span>
           <b aria-hidden="true">›</b>
         </button>
-        <button onClick={() => navigateOwnerView("goals")}>
+        <button type="button" aria-label="今日のお世話へ移動" onClick={() => document.getElementById("home-care-day")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
           <span className="home-v3-summary-icon is-care"><NavGlyph name="goals" /></span>
-          <span><small>今日のお世話</small><strong>{completedDailyGoalCount}<em>/{dailyGoals.length || "–"}</em></strong></span>
+          <span><small>お世話</small><strong>{completedDailyGoalCount}<em>/{dailyGoals.length || "–"}</em></strong></span>
           <b aria-hidden="true">›</b>
         </button>
-        <button onClick={() => navigateOwnerView("report")}>
+        <button type="button" aria-label="記録した日の推移を確認" onClick={() => navigateOwnerView("report")}>
           <span className="home-v3-summary-icon is-week"><NavGlyph name="report" /></span>
           <RecordedDaysSummary key={`recorded-days:${profile.id ?? "no-dog"}`} dogId={profile.id} online={connection === "online"} revision={`${checkRefresh}:${eventRefresh}`} legacyRecords={records} />
           <b aria-hidden="true">›</b>
@@ -4466,12 +4466,21 @@ export default function Home() {
       onSaved={() => { setEventRefresh((current) => current + 1); setEventTheme(null); setEditingEvent(null); showNotice("記録しました"); returnToOwnerHome(); }} />
   ) : !selectedCategory ? (
     <section className="topic-screen">
-      <SectionTitle eyebrow="EVENT LOG" title="できごとを記録" />
-      <p className="lead">観察テーマから選んで、今日あったことを残しましょう。</p>
-      <div className="owner-scene-panel owner-scene-panel--record" aria-hidden="true"><OwnerRecordScene /></div>
+      <SectionTitle eyebrow="DAILY LOG" title="今日を記録" />
+      <p className="lead owner-record-lead">今日の調子をチェックするか、気になったできごとを残しましょう。</p>
+      <button type="button" className="owner-record-daily-action" onClick={() => openNewRecord("daily")}
+        disabled={connection !== "online" || !profile.id || todayCheckStatus === "loading"}
+        aria-label={todayCheckStatus === "recorded" ? "今日のDaily Checkを確認する" : "Daily Checkで今日の状態を記録する"}>
+        <span className="owner-record-daily-icon" aria-hidden="true"><NavGlyph name="record" /></span>
+        <span className="owner-record-daily-copy"><strong>{todayCheckStatus === "recorded" ? "今日の状態を確認" : "今日の状態を記録"}</strong>
+          <small>Daily Check · 気分・食欲・活動・睡眠・トイレ</small></span>
+        <span className="owner-record-daily-arrow" aria-hidden="true">→</span>
+      </button>
+      <div className="owner-record-event-intro"><h2>できごとを記録</h2><p>観察テーマから選ぶだけ。気づいたことを気軽に残せます。</p></div>
       {eventStatus === "unavailable" && <p className="observation-error" role="alert">できごとを読み込めませんでした。画面を開き直してください。</p>}
       <ObservationEventHub selectedThemes={eventThemesSelected} events={todayEvents} onSelect={startEvent} onEdit={editEvent}
         disabled={connection !== "online" || !profile.id || eventStatus !== "ready"} />
+      <div className="owner-scene-panel owner-scene-panel--record" aria-hidden="true"><OwnerRecordScene /></div>
     </section>
   ) : recordCategory === "daily" ? (
     <DailyCheckForm key={`${profile.id ?? ""}:${recordDate}`} dogId={profile.id} initialDate={recordDate}
@@ -4646,10 +4655,9 @@ export default function Home() {
   const reportView = (
     <section className="report-screen">
       <SectionTitle eyebrow="PROGRESS" title={`${dogName}の変化`} />
-      <p className="lead">記録がつながると、調子・暮らし・困りごとの変化が見えてきます。</p>
-      <div className="owner-scene-panel owner-scene-panel--report" aria-hidden="true"><OwnerReportScene /></div>
-
+      <p className="lead">できごとの傾向を確認しましょう。詳しいデータは必要なときに開けます。</p>
       <RecentObservationTrends key={profile.id} dogId={profile.id} online={connection === "online"} selectedThemes={eventThemesSelected} />
+      <div className="owner-scene-panel owner-scene-panel--report" aria-hidden="true"><OwnerReportScene /></div>
 
       <details className="report-deep-dive">
         <summary>
