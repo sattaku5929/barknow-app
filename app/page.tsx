@@ -4783,9 +4783,9 @@ export default function Home() {
             </section>
           ) : (
             <>
-              <div className="owner-coach-tabs owner-consultation-tabs is-sticky" role="tablist" aria-label="コーチメニュー">
-                <button type="button" role="tab" aria-selected={ownerCoachTab === "chat"} className={ownerCoachTab === "chat" ? "is-active" : ""} onClick={() => navigateCoachTab("chat")}><span className="owner-tab-icon"><NavGlyph name="coach" /></span><span><strong>チャット</strong><small>{messages.length ? `${messages.length}件のやりとり` : "コーチに相談"}</small></span></button>
-                <button type="button" role="tab" aria-selected={ownerCoachTab === "sessions"} className={`owner-online-tab ${ownerCoachTab === "sessions" ? "is-active" : ""}`} onClick={() => navigateCoachTab("sessions")}><span className="owner-tab-icon"><NavGlyph name="goals" /></span><span><strong>オンライン診断</strong><small>空き日時・予約を確認</small></span>{ownerBookedSessions.length > 0 && <span className="owner-tab-booking">予約 {ownerBookedSessions.length}件</span>}</button>
+              <div className="owner-coach-tabs owner-consultation-tabs" role="tablist" aria-label="コーチメニュー">
+                <button type="button" role="tab" aria-selected={ownerCoachTab === "chat"} className={ownerCoachTab === "chat" ? "is-active" : ""} onClick={() => navigateCoachTab("chat")}><span className="owner-tab-icon"><NavGlyph name="coach" /></span><span><strong>チャット</strong><small>{messages.length ? `メッセージ ${messages.length}件` : "コーチに相談"}</small></span></button>
+                <button type="button" role="tab" aria-selected={ownerCoachTab === "sessions"} className={`owner-online-tab ${ownerCoachTab === "sessions" ? "is-active" : ""}`} onClick={() => navigateCoachTab("sessions")}><span className="owner-tab-icon"><NavGlyph name="goals" /></span><span><strong>オンライン診断</strong><small>{ownerBookedSessions.length > 0 ? `予約 ${ownerBookedSessions.length}件 · 日程を確認` : "予約・空き日時"}</small></span></button>
               </div>
 
               {ownerCoachTab === "sessions" ? (
@@ -4847,10 +4847,27 @@ export default function Home() {
                       <button type="button" disabled={pushBusy} onClick={() => void enablePushNotifications()}>{pushBusy ? "設定中…" : "新着メッセージの通知をONにする"}</button>
                     </section>
                   )}
-                  <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
-                    <button type="button" style={{border:"1px solid #cee3d6",borderRadius:12,padding:"8px 12px",background:"#f4faf5",color:"#008661",fontWeight:700}}
-                      onClick={()=>{pushAppHistory({kind:"media-gallery",messageId:""});setMediaGalleryOpen(true);}}>写真・動画・記事を探す</button>
-                  </div>
+                  <header className="owner-chat-toolbar">
+                    <div className="owner-chat-toolbar-heading">
+                      <span className="owner-chat-toolbar-indicator" aria-hidden="true" />
+                      <div><strong>メッセージ</strong><small>担当コーチとの会話</small></div>
+                    </div>
+                    <button
+                      type="button"
+                      className="owner-chat-media-link"
+                      aria-label="写真・動画・記事のメディア一覧を開く"
+                      title="写真・動画・記事を探す"
+                      onClick={() => { pushAppHistory({ kind: "media-gallery", messageId: "" }); setMediaGalleryOpen(true); }}
+                    >
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <rect x="3.5" y="4" width="17" height="16" rx="3" />
+                        <circle cx="9" cy="9" r="1.6" />
+                        <path d="m4.2 16.6 4.7-4.5a1.5 1.5 0 0 1 2.1.1l2.4 2.4 2.1-2.1a1.5 1.5 0 0 1 2.1 0l2.9 3" />
+                      </svg>
+                      <span>メディア一覧</span>
+                      <svg className="owner-chat-media-chevron" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5" /></svg>
+                    </button>
+                  </header>
                   <div className="message-list" aria-live="polite" ref={attachOwnerMessageList}>
                     {chronologicalMessages.length
                       ? <ChatMessageTimeline messages={chronologicalMessages} selfSender="owner" onReply={setOwnerReplyTo} onOpenMedia={openMediaGallery} />
