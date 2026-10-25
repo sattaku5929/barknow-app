@@ -185,7 +185,7 @@ body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメ�
 body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record).active .nav-icon { background:#ddeee8; color:#008661; }
 body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record) > span:last-child { color:#68736d; font-weight:400; }
 body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.active > span:last-child { color:#008661; font-weight:500; }
-body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon { background:#008661; box-shadow:0 2px 12px #00866118; }
+body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon { background:transparent; box-shadow:none; }
 
 /* Authentication and registration use the same light editorial canvas. */
 body .auth-brand { background:#fff; color:#202824; padding-top:48px; }

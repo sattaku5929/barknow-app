@@ -7111,7 +7111,10 @@ body { font-size: 16px; }
 
 
 /* Operation announcements: compact header bell and admin editor */
-.app-header-actions, .admin-header-actions { position:relative; }
+.app-header-actions, .admin-header-actions { position:static; }
+/* Anchor the dropdown to the full header, not the bell beside the mode switch. */
+.app-header .operation-announcements:not(.is-management),
+.admin-header .operation-announcements:not(.is-management) { position:static; }
 .operation-announcements { position:relative; font-family:inherit; color:#213b32; }
 .operation-announcements-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .operation-announcements-head h2 { margin:2px 0 0; font-size:21px; }
@@ -7119,10 +7122,10 @@ body { font-size: 16px; }
 .operation-announcements-bell { position:relative; display:grid; place-items:center; width:44px; height:44px; padding:0; border:1px solid #d6e4dd; border-radius:14px; background:#fff; color:#008661; cursor:pointer; font-size:19px; }
 .operation-announcements-bell > span { display:block; }
 .operation-announcements-bell > b { position:absolute; top:-7px; right:-7px; display:grid; min-width:21px; height:21px; padding:0 4px; place-items:center; border-radius:99px; background:#bb4338; color:#fff; font-size:11px; }
-.operation-announcements:not(.is-management) > :not(.operation-announcements-head) { position:absolute; z-index:80; right:0; top:calc(100% + 10px); width:min(350px, calc(100vw - 34px)); max-height:65vh; overflow:auto; padding:14px; border:1px solid #dbe6df; border-radius:18px; background:#fff; box-shadow:0 14px 36px #193e3022; }
+.operation-announcements:not(.is-management) > :not(.operation-announcements-head) { position:absolute; z-index:80; right:16px; top:calc(100% + 10px); box-sizing:border-box; width:min(350px, calc(100% - 32px)); max-width:calc(100% - 32px); max-height:65vh; overflow:auto; padding:14px; border:1px solid #dbe6df; border-radius:18px; background:#fff; box-shadow:0 14px 36px #193e3022; }
 .operation-announcements-item { border-bottom:1px solid #e5eae7; padding:14px 0; }
 .operation-announcements-item:last-of-type { border-bottom:0; }
-.operation-announcements-item h3 { margin:7px 0; font-size:15px; line-height:1.5; }
+.operation-announcements-item h3 { overflow-wrap:anywhere; margin:7px 0; font-size:15px; line-height:1.5; }
 .operation-announcements-item p { margin:0 0 8px; color:#51665d; font-size:13px; line-height:1.8; white-space:pre-wrap; overflow-wrap:anywhere; }
 .operation-announcements-meta { display:flex; align-items:center; flex-wrap:wrap; gap:9px; color:#76847e; font-size:11px; }
 .operation-announcements-new { color:#bb4338; font-weight:700; }

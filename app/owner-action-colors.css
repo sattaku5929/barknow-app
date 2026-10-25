@@ -266,7 +266,7 @@
 .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:not(.bottom-nav-record).active > span:last-child { color:#008661; }
 .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button[data-nav="report"].active .nav-icon,
 .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button[data-nav="coach"].active .nav-icon { background:var(--owner-berry-soft); color:var(--owner-berry); }
-.app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon { background:#008661; color:#fff; box-shadow:0 4px 14px #244e3824; }
+.app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon { background:transparent; color:#68736d; box-shadow:none; }
 .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record > span:last-child { color:#008661; }
 .app-stage.owner-stage :is(button,a,summary,input,textarea,select):focus-visible { outline:3px solid #008661; outline-offset:3px; }
 .app-stage.owner-stage :is(.settings-list strong,.profile-form-section h2,.household-manager h2,.selected-topic h2) { color:var(--owner-ink); }
