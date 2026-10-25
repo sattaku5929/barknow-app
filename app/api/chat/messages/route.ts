@@ -1,6 +1,6 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { sendPushNotification } from "@/lib/pushSender";
-import { authenticatedSupabase, authenticatedUser, serviceSupabase } from "@/lib/server/supabase";
+import { authenticatedStaffRole, authenticatedSupabase, authenticatedUser, serviceSupabase } from "@/lib/server/supabase";
 import { validChatMediaKey } from "@/lib/media-security";
 import { canWriteCoaching } from "@/lib/server/coachingAuthorization";
 import { HeadObjectCommand } from "@aws-sdk/client-s3";
@@ -17,6 +17,7 @@ type MessageInput = {
   media_name?: string;
   media_size?: number;
   reply_to_message_id?: string;
+  content_id?: string;
 };
 
 export async function POST(request: NextRequest) {
@@ -66,6 +67,19 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  if (input.content_id) {
+    if (!/^[0-9a-f-]{36}$/i.test(input.content_id) || input.media_key || input.media_url || input.sender!=="coach") {
+      return NextResponse.json({error:"Invalid content attachment"},{status:400});
+    }
+    const staff = await authenticatedStaffRole(request);
+    if (!staff) return NextResponse.json({error:"Forbidden"},{status:403});
+    const {data:item}=await serviceSupabase().from("wt_content_items")
+      .select("author_id,sharing,archived_at,blocked_at").eq("id",input.content_id).maybeSingle();
+    if(!item || item.archived_at || item.blocked_at ||
+      !(staff.role==="admin"||item.author_id===user.id||["coaches","team"].includes(item.sharing))) {
+      return NextResponse.json({error:"このコンテンツは共有できません"},{status:403});
+    }
+  }
   const client = authenticatedSupabase(accessToken);
   let replySnapshot: { reply_to_message_id: string; reply_to_body: string; reply_to_sender: "owner" | "coach" } | null = null;
   if (input.reply_to_message_id) {
@@ -93,6 +107,7 @@ export async function POST(request: NextRequest) {
     sender: input.sender,
     body: input.body.trim(),
     ...(replySnapshot ?? {}),
+    ...(input.content_id ? { content_id: input.content_id } : {}),
     ...(input.media_url ? {
       media_url: input.media_url,
       media_key: input.media_key || null,

@@ -1,0 +1,42 @@
+name: WanTone content library quality
+
+on:
+  pull_request:
+    paths:
+      - "app/api/content/**"
+      - "app/api/chat/**"
+      - "app/api/upload-url/**"
+      - "app/page.tsx"
+      - "components/ChatInput.tsx"
+      - "components/content/**"
+      - "components/admin/**"
+      - "lib/media-optimization.ts"
+      - "lib/r2-usage.ts"
+      - "supabase/migrations/*content_library.sql"
+      - "tests/contentLibrary.sql.test.mjs"
+      - ".github/workflows/content-library-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: TypeScript
+        run: npx tsc --noEmit
+      - name: Content isolation test (PGlite)
+        run: node --test tests/contentLibrary.sql.test.mjs
+      - name: Lint changed app surface
+        run: npx eslint app/api/content app/api/chat/messages/route.ts app/api/upload-url/route.ts components/content components/ChatInput.tsx lib/media-optimization.ts lib/r2-usage.ts
+      - name: Next production build
+        run: npm run build
+      - run: git diff --check
