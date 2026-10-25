@@ -76,7 +76,6 @@ export function ChatMediaLibrary({messages,onClose,onJump}:{
     let alive=true;
     const includes=messages.filter(m=>m.contentId);
     if(includes.length===0)return;
-    setLoading(true);
     void Promise.all(includes.map(m=>api<{item:ContentItem}>(`/api/content/items?messageId=${encodeURIComponent(m.id)}`).then(r=>[m.id,r.item] as const).catch(()=>null)))
       .then(results=>{if(alive)setContent(Object.fromEntries(results.filter((r):r is readonly [string,ContentItem]=>r!==null)));})
       .finally(()=>{if(alive)setLoading(false);});
