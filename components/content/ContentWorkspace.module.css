@@ -57,3 +57,9 @@
 .trimControls{display:grid;gap:12px;min-width:0;margin:0;padding:0;border:0}
 .trimControls legend{padding:0 0 8px;font-size:13px;font-weight:600}
 .editor .trimControls input[type=range]{padding:0;accent-color:#008661;min-height:36px}
+
+.thumbnail{position:relative;flex:none;width:96px;height:64px;overflow:hidden;border-radius:10px;background:#e7f4ee;color:#008661;display:grid;place-items:center;font-size:24px}
+.thumbnail video,.thumbnail img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.thumbnail .thumbnailPlay{position:absolute;right:4px;bottom:4px;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#173c34bd;color:#fff;font-size:10px}
+.rowActions .deleteButton{color:#a83232;border-color:#ebcaca;background:#fff7f7}
+@media(max-width:420px){.thumbnail{width:72px;height:54px}}

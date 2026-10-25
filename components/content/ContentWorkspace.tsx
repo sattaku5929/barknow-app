@@ -1,17 +1,17 @@
 "use client";
 
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/app/supabase";
 import { optimizeImage, trimVideo, videoDuration } from "@/lib/media-optimization";
 import styles from "./ContentWorkspace.module.css";
 import VideoTrimEditor from "./VideoTrimEditor";
 
 export type ContentItem = {
-  id:string;authorId:string;origin:"coach"|"admin";format:"video"|"image"|"article";
+  id:string;authorId:string;authorLabel?:string;origin:"coach"|"admin";format:"video"|"image"|"article";
   sharing:"private"|"coaches"|"team";title:string;description:string;category:string;
   tags:string[];body:string;size:number;duration:number|null;archived:boolean;blocked:boolean;createdAt:string;
 };
-const categories=["吠え","噛み癖","トイレ","お散歩","お留守番","基本のしつけ","社会化・慣れ","その他"];
+const categories=["吠え","噛み癖","トイレ","お散歩","お留守番","基本のしつけ","社会化・慣れ","トレーニング","その他"];
 const formats: Record<ContentItem["format"],string>={video:"動画",image:"画像",article:"記事"};
 async function call<T>(url:string,method="GET",payload?:unknown):Promise<T>{
   const {data}=await supabase.auth.getSession();
@@ -145,6 +145,18 @@ export default function ContentWorkspace({role}:{role:"coach"|"admin"}){
     try {await call("/api/content/items","PATCH",{id,...changes});await refresh();setNotice("変更を保存しました");}
     catch(e){setError(e instanceof Error?e.message:"更新できませんでした");}finally{setSaving(false);}
   }
+  async function deleteItem(item: ContentItem) {
+    if(saving || !window.confirm(`「${item.title}」を削除しますか？\n一覧から削除され、送信済みの相手も閲覧できなくなります。`)) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      await call("/api/content/items", "DELETE", {id:item.id});
+      setItems(current=>current.filter(row=>row.id!==item.id));
+      if(editing===item.id)setEditing(null);
+      setNotice("コンテンツを削除しました");
+      await refresh();
+    } catch(e) { setError(e instanceof Error?e.message:"削除できませんでした"); }
+    finally { setSaving(false); }
+  }
   const visible=useMemo(()=>items.filter(i=>match(i,q,category,"all","all",uid)&&(role!=="admin"||coachFilter==="all"||i.authorId===coachFilter)),[items,q,category,uid,role,coachFilter]);
   const active=items.filter(i=>!i.archived&&!i.blocked);
   return <section className={styles.workspace} aria-label="コンテンツ管理">
@@ -199,10 +211,11 @@ export default function ContentWorkspace({role}:{role:"coach"|"admin"}){
       </div>
       {loading?<p>読み込み中…</p>:visible.length===0?<p className={styles.helper}>まだコンテンツがありません。</p>:<div className={styles.resultList}>
         {visible.map(item=><article className={styles.row} key={item.id}>
-          <div className={styles.typeIcon}>{item.format==="video"?"▶":item.format==="image"?"▧":"≡"}</div>
+          <ContentThumbnail item={item} />
           <div className={styles.rowBody}>
             <strong>{item.title}</strong>
             <small>{item.category} · {formats[item.format]} · {role==="admin"?(item.origin==="admin"?"運営":authors[item.authorId]||"コーチ"):item.authorId===uid?"自分":"共有動画"} · {item.sharing==="private"?"非共有":"コーチ共有"}</small>
+            <small>登録者：{authors[item.authorId]||item.authorLabel||(item.origin==="admin"?"運営":"コーチ（名前未設定）")}</small>
             {item.archived&&<small>アーカイブ済み（送信済みの相手は引き続き閲覧可）</small>}
             {item.blocked&&<small className={styles.error}>運営によって視聴停止中</small>}
             {item.body&&<p>{item.body.slice(0,150)}{item.body.length>150?"…":""}</p>}
@@ -211,6 +224,7 @@ export default function ContentWorkspace({role}:{role:"coach"|"admin"}){
               {item.authorId===uid&&<button type="button" disabled={saving} onClick={()=>setEditing(editing===item.id?null:item.id)}>編集</button>}
               {item.authorId===uid&&<button type="button" disabled={saving} onClick={()=>void changeItem(item.id,{archived:!item.archived})}>{item.archived?"再公開":"アーカイブ"}</button>}
               {role==="admin"&&<button type="button" disabled={saving} onClick={()=>void changeItem(item.id,{blocked:!item.blocked})}>{item.blocked?"視聴停止を解除":"視聴停止"}</button>}
+              {(item.authorId===uid||role==="admin")&&<button type="button" className={styles.deleteButton} disabled={saving} onClick={()=>void deleteItem(item)}>削除</button>}
             </div>
             {editing===item.id&&<ContentItemEditor key={item.id} item={item} save={c=>void changeItem(item.id,c)} cancel={()=>setEditing(null)} saving={saving}/>}
           </div>
@@ -245,5 +259,34 @@ function ContentPreview({contentId,format}:{contentId:string;format:ContentItem[
     <button type="button" onClick={()=>{void call<{url:string}>("/api/content/media","POST",{contentId}).then(r=>setUrl(r.url)).catch(e=>setError(e.message));}}>プレビュー</button>
     {error&&<small role="alert">{error}</small>}
     {url&&(format==="video"?<video src={url} controls playsInline preload="metadata"/>:<img src={url} alt="登録画像のプレビュー"/>)}
+  </div>;
+}
+
+function ContentThumbnail({item}:{item:ContentItem}) {
+  const host=useRef<HTMLDivElement>(null);
+  const [url,setUrl]=useState("");
+  const [failed,setFailed]=useState(false);
+  useEffect(()=>{
+    if(item.format==="article"||item.blocked)return;
+    let alive=true, requested=false;
+    const load=()=>{
+      if(requested)return;
+      requested=true;
+      void call<{url:string}>("/api/content/media","POST",{contentId:item.id})
+        .then(result=>{if(alive)setUrl(result.url);})
+        .catch(()=>{if(alive)setFailed(true);});
+    };
+    const element=host.current;
+    if(!element)return;
+    if(typeof IntersectionObserver==="undefined") {load();return()=>{alive=false;};}
+    const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){load();observer.disconnect();}},{rootMargin:"100px"});
+    observer.observe(element);
+    return()=>{alive=false;observer.disconnect();};
+  },[item.id,item.format,item.blocked]);
+  return <div ref={host} className={styles.thumbnail} aria-label={`${item.title}のサムネイル`}>
+    {url&&!failed ? item.format==="video" ? <video src={`${url}#t=0.1`} muted playsInline preload="metadata" aria-hidden="true"
+      onLoadedMetadata={event=>{const video=event.currentTarget;if(Number.isFinite(video.duration))video.currentTime=Math.min(.1,video.duration/2);}}
+      onError={()=>setFailed(true)}/> : <img src={url} alt="" loading="lazy" referrerPolicy="no-referrer" onError={()=>setFailed(true)}/> : <span aria-hidden="true">{item.format==="article"?"≡":item.format==="video"?"▶":"▧"}</span>}
+    {item.format==="video"&&url&&!failed&&<span className={styles.thumbnailPlay} aria-hidden="true">▶</span>}
   </div>;
 }
