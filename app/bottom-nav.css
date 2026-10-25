@@ -227,3 +227,13 @@
     translate: 0 0;
   }
 }
+
+/* Changes has moved into Home. Keep the primary record button centered
+   in the same physical position as the former five-item navigation. */
+.app-stage .app-shell nav.bottom-nav.bottom-nav-four[aria-label="メインメニュー"] {
+  grid-template-columns: repeat(5, minmax(0,1fr));
+}
+.app-stage .app-shell nav.bottom-nav.bottom-nav-four[aria-label="メインメニュー"] > button[data-nav="home"] { grid-column: 1 / 3; }
+.app-stage .app-shell nav.bottom-nav.bottom-nav-four[aria-label="メインメニュー"] > button[data-nav="record"] { grid-column: 3; }
+.app-stage .app-shell nav.bottom-nav.bottom-nav-four[aria-label="メインメニュー"] > button[data-nav="coach"] { grid-column: 4; }
+.app-stage .app-shell nav.bottom-nav.bottom-nav-four[aria-label="メインメニュー"] > button[data-nav="profile"] { grid-column: 5; }
