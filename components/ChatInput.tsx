@@ -118,8 +118,8 @@ export default function ChatInput({ ownerId, dogId, sender, placeholder = "ãƒ¡ãƒ
       let mediaUrl = "";
       let mediaKey = "";
       let mediaType: "image" | "video" | "" = "";
-      let uploadFile = file;
       if (file) {
+        let uploadFile: File = file;
         mediaType = file.type.startsWith("image/") ? "image" : "video";
         if (mediaType === "image") {
           uploadFile = await optimizeImage(await editPhoto(file, cropSquare, rotation), highQuality);
