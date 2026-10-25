@@ -1230,12 +1230,12 @@ export default function Home() {
     temporaryAccess: boolean;
   } | null>(null);
   useEffect(() => {
-    if (!authenticated || !currentUserId || userRole !== "owner") return;
+    if (!authenticated || !currentUserId || !profile.id || userRole !== "owner") return;
     let mounted = true;
     const timer = window.setTimeout(() => {
       void supabase.auth.getSession().then(async ({ data }) => {
         if (!data.session?.access_token) return;
-        const response = await fetch("/api/membership/coaching-access", {
+        const response = await fetch(`/api/membership/coaching-access?dogId=${encodeURIComponent(profile.id)}`, {
           headers: { Authorization: `Bearer ${data.session.access_token}` },
           cache: "no-store",
         });
@@ -1248,7 +1248,7 @@ export default function Home() {
       });
     }, 0);
     return () => { mounted = false; window.clearTimeout(timer); };
-  }, [authenticated, currentUserId, userRole, coachingApplication?.status, coachingApplication?.ownerConfirmedAt, coachingApplication?.assignedCoachId]);
+  }, [authenticated, currentUserId, profile.id, userRole, coachingApplication?.status, coachingApplication?.ownerConfirmedAt, coachingApplication?.assignedCoachId]);
   const [coachingConcerns, setCoachingConcerns] = useState<string[]>([]);
   const [coachingOutcome, setCoachingOutcome] = useState("");
   const [coachingNote, setCoachingNote] = useState("");
