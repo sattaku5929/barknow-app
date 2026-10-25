@@ -58,6 +58,7 @@ using (public.wt_is_admin() or (public.wt_is_coach() and exists(
 grant usage on schema auth,public to authenticated;
 grant select on public.wt_coach_assignments, public.wt_coach_messages to authenticated;
 grant insert on public.wt_coach_messages to authenticated;
+grant select,insert on public.wt_online_sessions to authenticated;
 grant execute on function auth.uid() to authenticated;
 grant execute on function public.wt_is_admin() to authenticated;
 grant execute on function public.wt_is_coach() to authenticated;
