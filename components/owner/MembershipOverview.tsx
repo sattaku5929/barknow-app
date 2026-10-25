@@ -37,7 +37,10 @@ export default function MembershipOverview() {
   }, [refresh]);
 
   const state = status?.state;
-  const description = state === "active"
+  const staffPremiumAccess = status?.staffPremiumAccess === true;
+  const description = staffPremiumAccess
+    ? "有料会員向け機能を課金なしで利用できます（コーチ機能は担当確定後）"
+    : state === "active"
     ? "月額プランの内容を確認する"
     : state === "payment_attention"
       ? "プラン・契約状況のご案内"
@@ -53,7 +56,7 @@ export default function MembershipOverview() {
           <div style={{ minWidth: 0 }}>
             <span style={{ color: "#60776b", display: "block", fontSize: 12, marginBottom: 7 }}>現在のご利用区分</span>
             <strong style={{ display: "block", fontSize: 19, color: "#008661", lineHeight: 1.35 }} aria-live="polite">
-              {loading ? "確認しています…" : errorMessage ? "確認できませんでした" : status?.label ?? "確認できませんでした"}
+              {loading ? "確認しています…" : errorMessage ? "確認できませんでした" : staffPremiumAccess ? "運営アカウント" : status?.label ?? "確認できませんでした"}
             </strong>
             <span style={{ display: "block", fontSize: 12, color: "#63766c", lineHeight: 1.6, marginTop: 7 }}>
               {errorMessage ? "タップしてプランを確認できます" : description}
