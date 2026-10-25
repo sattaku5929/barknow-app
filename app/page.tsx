@@ -5130,9 +5130,9 @@ export default function Home() {
           <p>{anonymousUser ? "メールアカウントへ変更すると、別の端末でも今の愛犬と記録を使えます。" : authMode === "login" ? "一度ログインすれば、次回からそのまま続けられます。" : "無料アカウントを作って、うちの子の記録を始めましょう。"}</p>
         </div>
         {!anonymousUser && (
-          <div className="auth-switch">
-            <button className={authMode === "login" ? "is-selected" : ""} onClick={() => { setAuthMode("login"); setAuthError(""); }}>ログイン</button>
-            <button className={authMode === "signup" ? "is-selected" : ""} onClick={() => { setAuthMode("signup"); setAuthError(""); }}>新規登録</button>
+          <div className="auth-switch" role="group" aria-label="ログイン・新規登録の切り替え">
+            <button type="button" className={authMode === "login" ? "is-selected" : ""} aria-pressed={authMode === "login"} onClick={() => { setAuthMode("login"); setAuthError(""); }}><span aria-hidden="true" className="auth-switch-check">{authMode === "login" ? "✓" : ""}</span>ログイン</button>
+            <button type="button" className={authMode === "signup" ? "is-selected" : ""} aria-pressed={authMode === "signup"} onClick={() => { setAuthMode("signup"); setAuthError(""); }}><span aria-hidden="true" className="auth-switch-check">{authMode === "signup" ? "✓" : ""}</span>新規登録</button>
           </div>
         )}
         <form className="auth-form" onSubmit={submitAuth} autoComplete="on">
