@@ -2,7 +2,7 @@
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/app/supabase";
-import { optimizeImage, videoDuration } from "@/lib/media-optimization";
+import { optimizeImage, trimVideo, videoDuration } from "@/lib/media-optimization";
 import styles from "./ContentWorkspace.module.css";
 
 export type ContentItem = {
@@ -86,6 +86,9 @@ export default function ContentWorkspace({role}:{role:"coach"|"admin"}){
   const [notice,setNotice]=useState("");
   const [form,setForm]=useState<FormState>(empty);
   const [file,setFile]=useState<File|null>(null);
+  const [clipDuration,setClipDuration]=useState(0);
+  const [clipStart,setClipStart]=useState(0);
+  const [clipEnd,setClipEnd]=useState(0);
   const [q,setQ]=useState("");
   const [category,setCategory]=useState("すべて");
   const [editing,setEditing]=useState<string|null>(null);
@@ -103,6 +106,11 @@ export default function ContentWorkspace({role}:{role:"coach"|"admin"}){
     if(!next){setFile(null);return;}
     if(!(next.type.startsWith("video/")||next.type.startsWith("image/"))){setError("画像または動画を選択してください");return;}
     setFile(next);if(!form.title)setForm(current=>({...current,title:next.name.replace(/\.[^.]+$/,"").slice(0,120)}));
+    setClipStart(0);setClipDuration(0);setClipEnd(0);
+    if(next.type.startsWith("video/")){
+      try {const duration=await videoDuration(next);setClipDuration(duration);setClipEnd(duration);}
+      catch {setError("動画の長さを確認できませんでした");}
+    }
   }
   async function saveNew(){
     if(saving)return;
@@ -113,7 +121,8 @@ export default function ContentWorkspace({role}:{role:"coach"|"admin"}){
       const format=form.format;
       if(format!=="article"){
         if(!file)throw new Error("画像または動画を選んでください");
-        const prepared=format==="image"?await optimizeImage(file):file;
+        const prepared=format==="image"?await optimizeImage(file):
+          (clipDuration>0&&(clipStart>0||clipEnd<clipDuration)?await trimVideo(file,clipStart,clipEnd):file);
         if(format==="video")duration=await videoDuration(prepared);
         if(format==="video"&&(!duration||duration>180))throw new Error("動画は3分以内にしてください");
         const max=format==="video"?30:5;
@@ -150,7 +159,8 @@ export default function ContentWorkspace({role}:{role:"coach"|"admin"}){
       <div><small>コーチ登録</small><strong>{items.filter(i=>i.origin==="coach").length}</strong></div>
       <div><small>運営コンテンツ</small><strong>{items.filter(i=>i.origin==="admin").length}</strong></div>
       <div><small>R2 保存容量（実測）</small><strong>{usage?friendlyBytes(usage.bytes):"確認不可"}</strong>
-        {usage&&<progress max={usage.limitBytes} value={usage.bytes} aria-label="R2利用容量"/>}</div>
+        {usage&&<progress max={usage.limitBytes} value={usage.bytes} aria-label="R2利用容量"/>}
+        {usage&&usage.bytes>=usage.warningBytes&&<small className={styles.error}>使用量が警告水準を超えています</small>}</div>
     </div>}
     <div className={styles.panel}>
       <h3>{role==="admin"?"運営コンテンツを追加":"マイコンテンツを追加"}</h3>
@@ -170,6 +180,12 @@ export default function ContentWorkspace({role}:{role:"coach"|"admin"}){
         <option value="private">自分専用</option><option value="coaches">他のコーチにも共有</option>
       </select></label>}
       {file&&<p className={styles.helper}>選択中：{file.name}（{friendlyBytes(file.size)}）</p>}
+      {file&&form.format==="video"&&clipDuration>1&&<div className={styles.editor}>
+        <strong>必要な場面だけ切り取る（任意）</strong>
+        <label>開始 {clipStart}秒<input type="range" min={0} max={Math.max(1,clipEnd-1)} value={clipStart} onChange={e=>setClipStart(Number(e.target.value))}/></label>
+        <label>終了 {clipEnd}秒<input type="range" min={Math.min(clipDuration,clipStart+1)} max={clipDuration} value={clipEnd} onChange={e=>setClipEnd(Number(e.target.value))}/></label>
+        <small>動画編集は対応するブラウザでのみ利用できます。端末内で処理し、元の動画はアップロードしません。</small>
+      </div>}
       <button type="button" className={styles.primary} disabled={saving} onClick={()=>void saveNew()}>{saving?"処理中…":"登録する"}</button>
       {error&&<p role="alert" className={styles.error}>{error}</p>}
       {notice&&<p role="status" className={styles.success}>{notice}</p>}
