@@ -97,7 +97,7 @@ export default function ContentWorkspace({role}:{role:"coach"|"admin"}){
       catch{setUsage(null);}
     }
   }
-  useEffect(()=>{let alive=true;void refresh().catch(e=>{if(alive)setError(e.message);}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[role]);
+  useEffect(()=>{let alive=true;const timeout=window.setTimeout(()=>{void refresh().catch(e=>{if(alive)setError(e.message);}).finally(()=>{if(alive)setLoading(false);});},0);return()=>{alive=false;window.clearTimeout(timeout);};},[role]);
   async function chooseFile(e:ChangeEvent<HTMLInputElement>){
     const next=e.target.files?.[0]??null;setError("");
     if(!next){setFile(null);return;}
@@ -110,7 +110,7 @@ export default function ContentWorkspace({role}:{role:"coach"|"admin"}){
     try{
       if(!form.title.trim())throw new Error("タイトルを入力してください");
       let key:string|undefined;let duration:number|undefined;
-      let format=form.format;
+      const format=form.format;
       if(format!=="article"){
         if(!file)throw new Error("画像または動画を選んでください");
         const prepared=format==="image"?await optimizeImage(file):file;
