@@ -4,6 +4,7 @@ import AdminMfaGate from "@/components/admin/AdminMfaGate";
 import AdminUsageDashboard from "@/components/admin/AdminUsageDashboard";
 import AdminMenuNavigation from "@/components/admin/AdminMenuNavigation";
 import NotificationPreferences from "@/components/owner/NotificationPreferences";
+import MembershipOverview from "@/components/owner/MembershipOverview";
 import OperationAnnouncements from "@/components/OperationAnnouncements";
 import { PrivateChatMedia, PrivateDogImage, useChatMediaUrl } from "@/components/PrivateMedia";
 
@@ -4992,6 +4993,8 @@ export default function Home() {
           <button type="button" onClick={() => navigateSettingsPanel("notifications")}><span className="settings-row-icon"><SettingsGlyph name="bell" /></span><span><strong>通知設定</strong><small>端末と通知の種類を管理</small></span><i aria-hidden="true">›</i></button>
         </div>
       </section>
+
+      <MembershipOverview />
 
       <section className="settings-group" aria-labelledby="settings-support-title">
         <p className="settings-group-label" id="settings-support-title">サポート</p>
