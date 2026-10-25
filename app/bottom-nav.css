@@ -237,8 +237,9 @@
  */
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  min-height: calc(70px + env(safe-area-inset-bottom));
-  padding: 0 9px env(safe-area-inset-bottom);
+  /* Keep a visible bottom gutter even when the browser reports no safe area. */
+  min-height: calc(82px + env(safe-area-inset-bottom, 0px));
+  padding: 0 9px calc(12px + env(safe-area-inset-bottom, 0px));
 }
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button,
 .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record {
@@ -327,7 +328,7 @@
 }
 @media(max-width:375px) {
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] {
-    min-height: calc(68px + env(safe-area-inset-bottom));
+    min-height: calc(80px + env(safe-area-inset-bottom, 0px));
     padding-inline: 4px;
   }
   .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button,
