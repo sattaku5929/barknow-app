@@ -34,7 +34,6 @@ import { useScrollNavigation } from "@/lib/ui/useScrollNavigation";
 import { archiveCareGoal, changeCareCount, changeCareIcon, createCareGoal, undoCareCompletions } from "@/lib/care/mutations";
 import OwnerAppBackdrop from "@/components/owner/OwnerAppBackdrop";
 import OwnerHomeScene from "@/components/owner/illustrations/OwnerHomeScene";
-import OwnerReportScene from "@/components/owner/illustrations/OwnerReportScene";
 import { deviceLocalDate, deviceLocalTime, loadDailyCheck } from "@/lib/observations/dailyCheck";
 import { eventThemes, loadEventThemes, loadEvents } from "@/lib/observations/observationEvent";
 import type { EventTheme, ObservationEvent } from "@/lib/observations/observationEvent";
@@ -4420,7 +4419,6 @@ export default function Home() {
       <SectionTitle eyebrow="PROGRESS" title={`${dogName}の変化`} />
       <p className="lead">できごとの傾向を確認しましょう。詳しいデータは必要なときに開けます。</p>
       <RecentObservationTrends key={profile.id} dogId={profile.id} online={connection === "online"} selectedThemes={eventThemesSelected} />
-      <div className="owner-scene-panel owner-scene-panel--report" aria-hidden="true"><OwnerReportScene /></div>
 
       <details className="report-deep-dive">
         <summary>
@@ -4576,7 +4574,7 @@ export default function Home() {
           editable={connection === "online" && !!profile.id} progress={goalProgress}
           onComplete={async (goal) => { await completeCareGoal(goal); setCalendarRefresh(value => value + 1); }}
           onUndo={undoHomeCareGoal} onCreate={createHomeCareGoal} onCountChange={changeHomeCareCount}
-          onIconChange={changeCareIcon} onRemove={removeHomeCareGoal} icon={(goal) => <CareIcon name={goal.goalType} />} />
+          onIconChange={changeHomeCareIcon} onRemove={removeHomeCareGoal} icon={(goal) => <CareIcon name={goal.goalType} />} />
       </section>
     </section>
   ) : recordCategory === "daily" ? (
