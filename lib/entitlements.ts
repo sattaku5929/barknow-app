@@ -11,6 +11,8 @@ export type OwnerCoachingStatus =
 
 export type OwnerEntitlementInput = {
   membershipState: MembershipState;
+  /** Verified server-side Admin role: premium feature access without a subscription. */
+  staffPremiumAccess?: boolean;
   coachingStatus?: OwnerCoachingStatus | null;
   assignedCoachId?: string | null;
   ownerConfirmedAt?: string | null;
@@ -45,12 +47,13 @@ const confirmedStatuses: ReadonlySet<OwnerCoachingStatus> =
  * Treat payment and coach assignment as independent requirements:
  * - active subscription + confirmed coach => coaching ready
  * - active subscription but unassigned => awaiting coach
- * - no paid subscription => no new coaching entitlement
+ * - no paid subscription or verified Admin exemption => no new coaching entitlement
+ * - Admin exemption does not waive coach assignment or owner confirmation
  *
  * Existing coaching data/history is NOT deleted when membership ends.
  */
 export function resolveOwnerEntitlements(input: OwnerEntitlementInput): OwnerEntitlements {
-  const paid = input.membershipState === "active";
+  const paid = input.membershipState === "active" || input.staffPremiumAccess === true;
   const confirmedCoach = Boolean(
     input.assignedCoachId?.trim() &&
     input.ownerConfirmedAt &&
@@ -59,7 +62,7 @@ export function resolveOwnerEntitlements(input: OwnerEntitlementInput): OwnerEnt
   );
   const coachingReady = paid && confirmedCoach;
   const availability: OwnerCoachingAvailability =
-    input.membershipState === "payment_attention" ? "payment_attention"
+    input.membershipState === "payment_attention" && !input.staffPremiumAccess ? "payment_attention"
       : !paid ? "upgrade_required"
         : !confirmedCoach ? "awaiting_coach"
           : "ready";

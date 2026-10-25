@@ -30,6 +30,7 @@ export default function MembershipPage() {
   }, []);
 
   const active = membership?.state === "active";
+  const staffPremiumAccess = membership?.staffPremiumAccess === true;
   return (
     <main className="min-h-svh bg-[#f8faf8] text-[#22362c]">
       <header className="mx-auto flex max-w-4xl items-center justify-between px-5 py-5">
@@ -48,7 +49,7 @@ export default function MembershipPage() {
           WanToneのオンラインコーチングで、愛犬に合った暮らしを一緒に育てていきます。
         </p>
         <div className="relative mx-auto mt-8 inline-flex items-center gap-2 rounded-full border border-[#b8dbca] bg-white/80 px-4 py-2 text-xs font-medium text-[#008661]">
-          {active ? "現在、月額会員としてご利用中です" : "無料会員からのアップグレードをご案内"}
+          {staffPremiumAccess ? "運営アカウント：有料機能を追加料金なしで利用できます" : active ? "現在、月額会員としてご利用中です" : "無料会員からのアップグレードをご案内"}
         </div>
       </section>
 
@@ -105,11 +106,13 @@ export default function MembershipPage() {
               </p>
             </div>
             <div className="shrink-0 rounded-xl bg-[#eef7f2] px-5 py-4 text-center text-sm font-semibold text-[#008661]">
-              {active ? "月額会員" : "お申し込み準備中"}
+              {staffPremiumAccess ? "運営アカウント" : active ? "月額会員" : "お申し込み準備中"}
             </div>
           </div>
           <div className="mt-6 border-t border-[#e6eee8] pt-5">
-            {active ? (
+            {staffPremiumAccess ? (
+              <p className="text-xs leading-7 text-[#66796c]">運営アカウントは月額契約なしで有料会員向け機能を利用できます。担当コーチとのチャット・予約には、通常の有料会員と同じく担当コーチの確定が必要です。課金登録は不要です。</p>
+            ) : active ? (
               <p className="text-xs leading-7 text-[#66796c]">現在月額会員として登録されています。契約内容・解約方法のご案内は準備中です。ご不明な点はサポートへお問い合わせください。</p>
             ) : (
               <p className="text-xs leading-7 text-[#66796c]">現在、この画面での有料会員登録・決済は受け付けていません。決済サービスと契約条件が確定した後に受付を開始します。</p>

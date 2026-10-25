@@ -4328,6 +4328,19 @@ body { font-size: 16px; }
   background: #659985;
 }
 
+/* Admin owner-mode entitlement hint. No billing or role changes implied. */
+.app-stage .owner-admin-premium-note {
+  margin: 0 0 10px;
+  padding: 10px 13px;
+  border: 1px solid rgba(0,134,97,.17);
+  border-radius: 12px;
+  background: #f0f8f3;
+  color: #266149;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.65;
+}
+
 /* Chat: conversational, calm */
 .app-stage .owner-view-coach .coach-screen {
   display: grid;

@@ -91,3 +91,17 @@ test("marketing page shows comparison but does not activate payments or block ch
   const api = fs.readFileSync(path.join(__dirname, "../app/api/online-sessions/book/route.ts"), "utf8");
   assert.match(api, /wt_book_online_session/);
 });
+
+test("Admin owner mode gets premium feature access without any subscription", () => {
+  const data = resolveOwnerEntitlements({ membershipState: "standard", staffPremiumAccess: true, ...linkedCoach });
+  assert.equal(data.tier, "paid");
+  assert.equal(data.availability, "ready");
+  assert.equal(data.features.coachChat, true);
+  assert.equal(data.features.onlineCoachingBooking, true);
+  const noCoach = resolveOwnerEntitlements({membershipState:"standard",staffPremiumAccess:true});
+  assert.equal(noCoach.tier,"paid");
+  assert.equal(noCoach.availability,"awaiting_coach");
+  assert.equal(noCoach.features.coachChat,false);
+  const missedPayment = resolveOwnerEntitlements({membershipState:"payment_attention",staffPremiumAccess:true,...linkedCoach});
+  assert.equal(missedPayment.availability,"ready");
+});

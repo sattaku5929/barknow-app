@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticatedUser } from "@/lib/server/supabase";
+import { authenticatedUser, requireStaffRole } from "@/lib/server/supabase";
 import { coachingPriceId, stripeClient } from "@/lib/server/stripe";
 
 export const runtime = "nodejs";
@@ -12,6 +12,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => null) as { userId?: string } | null;
     if (!body?.userId) return NextResponse.json({ error: "ユーザー情報が不足しています" }, { status: 400 });
     if (body.userId !== user.id) return NextResponse.json({ error: "ユーザー情報を確認できませんでした" }, { status: 403 });
+    // Admin owner mode already has paid-feature access; do not create a
+    // chargeable Stripe subscription for an operational test account.
+    if (await requireStaffRole(user.id) === "admin") {
+      return NextResponse.json({ error: "運営アカウントは有料機能を課金なしで利用できます" }, { status: 409 });
+    }
 
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL?.trim() || request.nextUrl.origin).replace(/\/$/, "");
     const priceId = coachingPriceId();

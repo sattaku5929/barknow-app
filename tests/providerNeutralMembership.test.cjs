@@ -40,7 +40,7 @@ test("all supported membership states are mapped consistently", () => {
   assert.equal(membership.membershipSummary({ plan_status: null, activated_at: "invalid", updated_at: null }).activatedAt, null);
 });
 
-function harness({ loggedIn = true, row = null, databaseError = null, throwAuth = false } = {}) {
+function harness({ loggedIn = true, row = null, databaseError = null, throwAuth = false, staffRole = null } = {}) {
   const seen = [];
   const auth = async request => {
     seen.push(["auth", request.token]);
@@ -63,7 +63,7 @@ function harness({ loggedIn = true, row = null, databaseError = null, throwAuth 
   };
   const { GET } = load("app/api/membership/route.ts", {
     "next/server": { NextResponse: { json: (body, opts) => ({ body, status: opts.status, headers: opts.headers }) } },
-    "@/lib/server/supabase": { authenticatedUser: auth, serviceSupabase: () => admin },
+    "@/lib/server/supabase": { authenticatedUser: auth, serviceSupabase: () => admin, requireStaffRole: async (userId) => { assert.equal(userId, "user-verified-1"); return staffRole; } },
     "@/lib/membership": membership,
   });
   return { GET, seen };
@@ -112,4 +112,19 @@ test("owner my page displays read-only membership and no payment actions", () =>
   assert.doesNotMatch(component, /stripe|checkout|billingPortal/i);
   assert.match(component, /href="\/membership"/);
   assert.doesNotMatch(component, /更新\s*<\/button>/);
+});
+
+test("verified Admin receives staff feature entitlement without inventing a paid billing record", async () => {
+  const h = harness({ staffRole:"admin" });
+  const response = await h.GET({ token:"valid" });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.state, "standard");
+  assert.equal(response.body.hasActiveMembership, false);
+  assert.equal(response.body.staffPremiumAccess, true);
+});
+test("Coach role does not receive Admin-only premium exemption", async () => {
+  const h = harness({ staffRole:"coach" });
+  const response = await h.GET({ token:"valid" });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.staffPremiumAccess, false);
 });

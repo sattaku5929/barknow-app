@@ -399,10 +399,12 @@ function LockedCoachingPreview({
   tab,
   onTabChange,
   onDetails,
+  staffPremiumAccess = false,
 }: {
   tab: "sessions" | "chat";
   onTabChange: (tab: "sessions" | "chat") => void;
   onDetails: () => void;
+  staffPremiumAccess?: boolean;
 }) {
   return (
     <section className="free-coaching-preview" aria-label="コーチングプランの機能紹介">
@@ -423,8 +425,8 @@ function LockedCoachingPreview({
           <div className="locked-gradient-blur" aria-hidden="true"></div>
           <section className="locked-plan-card">
             <span aria-hidden="true"><NavGlyph name="coach" /></span>
-            <div><strong>プロのコーチとリアルタイムで相談できます</strong><p>コーチングプラン限定</p></div>
-            <button type="button" onClick={onDetails}>詳細を確認する</button>
+            <div><strong>プロのコーチとリアルタイムで相談できます</strong><p>{staffPremiumAccess ? "担当コーチ確定後に利用可能" : "コーチングプラン限定"}</p></div>
+            <button type="button" onClick={onDetails}>{staffPremiumAccess ? "担当相談へ" : "詳細を確認する"}</button>
           </section>
         </div>
       ) : (
@@ -444,8 +446,8 @@ function LockedCoachingPreview({
           <div className="locked-gradient-blur" aria-hidden="true"></div>
           <section className="locked-plan-card">
             <span aria-hidden="true"><NavGlyph name="goals" /></span>
-            <div><strong>月4回のオンラインレッスン予約はこちら</strong><p>コーチングプラン限定</p></div>
-            <button type="button" onClick={onDetails}>詳細を確認する</button>
+            <div><strong>月4回のオンラインレッスン予約はこちら</strong><p>{staffPremiumAccess ? "担当コーチ確定後に利用可能" : "コーチングプラン限定"}</p></div>
+            <button type="button" onClick={onDetails}>{staffPremiumAccess ? "担当相談へ" : "詳細を確認する"}</button>
           </section>
         </div>
       )}
@@ -1234,10 +1236,11 @@ export default function Home() {
     eligibleForBooking: boolean;
     availability: "upgrade_required" | "payment_attention" | "awaiting_coach" | "ready";
     temporaryAccess: boolean;
+    staffPremiumAccess?: boolean;
   } | null>(null);
   useEffect(() => {
     const selectedDogId = profile.id;
-    if (!authenticated || !currentUserId || !selectedDogId || userRole !== "owner") return;
+    if (!authenticated || !currentUserId || !selectedDogId || (userRole !== "owner" && userRole !== "admin")) return;
     let mounted = true;
     const timer = window.setTimeout(() => {
       void supabase.auth.getSession().then(async ({ data }) => {
@@ -3235,9 +3238,9 @@ export default function Home() {
   }
 
   async function bookOnlineSession(slot: AvailabilitySlot) {
-    if (coachingAccess?.enforcementActive && !coachingAccess.eligibleForBooking && userRole === "owner") {
-      showNotice("オンライン予約は月額プラン登録と担当コーチの確定後に利用できます");
-      router.push("/membership");
+    if (coachingAccess?.enforcementActive && !coachingAccess.eligibleForBooking) {
+      showNotice(coachingAccess?.availability === "awaiting_coach" ? "オンライン予約には担当コーチの確定が必要です" : "オンライン予約は月額プラン登録と担当コーチの確定後に利用できます");
+      if (coachingAccess?.availability !== "awaiting_coach") router.push("/membership");
       return;
     }
     if (!coachingApplication || saving) return;
@@ -4714,7 +4717,7 @@ export default function Home() {
     </section>
   );
 
-  const coachingFeaturesLocked = userRole === "owner" && coachingAccess?.enforcementActive === true && !coachingAccess.eligibleForChat;
+  const coachingFeaturesLocked = coachingAccess?.enforcementActive === true && !coachingAccess.eligibleForChat;
   const coachingChatOpen = Boolean(coachingApplication?.ownerConfirmedAt) && Boolean(coachingApplication && ["assigned", "consulting", "payment_pending", "active"].includes(coachingApplication.status)) && !coachingFeaturesLocked;
   const ownerBookedSessions = onlineSessions.filter((session) => session.status === "booked").sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
   const ownerCompletedSessions = onlineSessions.filter((session) => session.status === "completed").sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
@@ -4736,9 +4739,10 @@ export default function Home() {
   const coachView = (
     <section className="coach-screen">
       <SectionTitle eyebrow="COACHING" title={coachingChatOpen ? "担当コーチに相談" : "記録を、変化につなげる"} />
+      {userRole === "admin" && <p className="owner-admin-premium-note">運営アカウント：有料会員向け機能をご利用いただけます。チャット・オンライン診断は担当コーチの確定後に利用できます。</p>}
       {!coachingApplication || coachingApplication.status === "closed" ? (
         <>
-          <LockedCoachingPreview tab={ownerCoachTab} onTabChange={navigateCoachTab} onDetails={openCoachingDetails} />
+          <LockedCoachingPreview tab={ownerCoachTab} onTabChange={navigateCoachTab} staffPremiumAccess={userRole === "admin"} onDetails={userRole === "admin" ? () => document.getElementById("owner-coaching-start")?.scrollIntoView({ behavior: "smooth", block: "start" }) : openCoachingDetails} />
           <section className="coaching-intro">
             <div className="coaching-intro-icon"><NavGlyph name="coach" /></div>
             <p className="card-label">WAN TONE COACHING</p>
@@ -4750,8 +4754,8 @@ export default function Home() {
               <span><b>03</b><strong>迷いを減らす</strong><small>次にやることを相談</small></span>
             </div>
           </section>
-          <form className="coaching-application-form" onSubmit={submitCoachingApplication}>
-            <div><p className="card-label">FIRST STEP</p><h2>コーチングについて相談する</h2><p>申込み後、担当候補のコーチとチャットで初回相談を行います。相談後に内容と料金をご案内します。</p></div>
+          <form id="owner-coaching-start" className="coaching-application-form" onSubmit={submitCoachingApplication}>
+            <div><p className="card-label">FIRST STEP</p><h2>コーチングについて相談する</h2><p>{userRole === "admin" ? "運営アカウントは課金不要です。担当コーチの申込み・確定を行うと、チャットとオンライン診断を利用できます。" : "申込み後、担当候補のコーチとチャットで初回相談を行います。相談後に内容と料金をご案内します。"}</p></div>
             <fieldset>
               <legend>相談したいこと <small>3つまで</small></legend>
               <div className="coaching-concerns">{COACHING_CONCERNS.map((concern) => <button type="button" key={concern.id} className={coachingConcerns.includes(concern.id) ? "is-selected" : ""} onClick={() => toggleCoachingConcern(concern.id)}>{concern.label}{coachingConcerns.includes(concern.id) && <span>✓</span>}</button>)}</div>
@@ -4759,7 +4763,7 @@ export default function Home() {
             <label>どうなれたら嬉しいですか？<textarea rows={3} value={coachingOutcome} onChange={(event) => setCoachingOutcome(event.target.value)} placeholder="例：来客時に落ち着いて過ごせるようになりたい" maxLength={300} required /></label>
             <label>補足・気になっていること <small>任意</small><textarea rows={3} value={coachingNote} onChange={(event) => setCoachingNote(event.target.value)} placeholder="試したこと、生活環境など" maxLength={500} /></label>
             <button className="primary-button" disabled={saving || !coachingConcerns.length || !coachingOutcome.trim()}>{saving ? "送信中…" : "相談を申し込む"}<span>→</span></button>
-            <p className="coaching-form-note">この時点では料金は発生しません。初回相談後にご判断いただけます。</p>
+            <p className="coaching-form-note">{userRole === "admin" ? "運営アカウントのご利用に月額料金は発生しません。" : "この時点では料金は発生しません。初回相談後にご判断いただけます。"}</p>
           </form>
         </>
       ) : coachingApplication.status === "submitted" || coachingApplication.status === "offered" ? (
@@ -4875,8 +4879,8 @@ export default function Home() {
                   </div>
                   {coachingFeaturesLocked ? (
                     <section className="coaching-locked-notice" aria-label="月額コーチングのご案内">
-                      <p>{coachingAccess?.availability === "payment_attention" ? "お支払い状況の確認が必要です。" : "コーチとの新しいメッセージ・オンライン予約は月額プラン限定です。"}</p>
-                      <button type="button" className="primary-button" onClick={() => router.push("/membership")}>プラン内容を見る →</button>
+                      <p>{coachingAccess?.availability === "awaiting_coach" ? "担当コーチの確定後にチャット・オンライン診断をご利用いただけます。" : coachingAccess?.availability === "payment_attention" ? "お支払い状況の確認が必要です。" : "コーチとの新しいメッセージ・オンライン予約は月額プラン限定です。"}</p>
+                      {coachingAccess?.availability !== "awaiting_coach" && <button type="button" className="primary-button" onClick={() => router.push("/membership")}>プラン内容を見る →</button>}
                       <small>これまでのチャット履歴は引き続き確認できます。</small>
                     </section>
                   ) : connection === "online" && currentUserId && profile.id
