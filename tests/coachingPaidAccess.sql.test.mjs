@@ -66,6 +66,8 @@ insert into auth.users(id) values ('${owner}'),('${other}'),('${coach}'),('${adm
 insert into public.wt_user_roles values ('${owner}','owner'),('${other}','owner'),('${coach}','coach'),('${admin}','admin');
 insert into public.wt_dogs values ('${dog}','${owner}'),('${otherDog}','${other}');
 insert into public.wt_coaching_applications values ('${application}','${owner}','${dog}','${coach}',now(),'assigned');
+-- A confirmed status without an actual assignment is not eligible for a pilot grant.
+insert into public.wt_coaching_applications values ('dddddddd-dddd-4ddd-8ddd-dddddddddddd','${other}','${otherDog}','${coach}',now(),'assigned');
 insert into public.wt_coach_assignments(owner_id,dog_id,coach_id) values ('${owner}','${dog}','${coach}');
 `);
 await db.exec(migration);
@@ -93,6 +95,7 @@ test("feature switch defaults OFF; existing confirmed cohort gets time-limited t
   assert.equal(grants.rows.length, 1);
   assert.equal(grants.rows[0].owner_id, owner);
   assert.equal(grants.rows[0].valid, true);
+  assert.notEqual(grants.rows[0].owner_id, other); // unlinked assignment cannot receive pilot access
 });
 
 test("before activation normal chat and booking remain unchanged", async () => {
