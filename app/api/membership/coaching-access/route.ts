@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const [subscription, application, control] = await Promise.all([
       admin.from("wt_subscriptions").select("plan_status,activated_at,updated_at").eq("user_id", user.id).maybeSingle(),
       admin.from("wt_coaching_applications")
-        .select("status,assigned_coach_id,owner_confirmed_at")
+        .select("status,dog_id,assigned_coach_id,owner_confirmed_at")
         .eq("owner_id", user.id).order("submitted_at", { ascending: false }).limit(1).maybeSingle(),
       admin.from("wt_coaching_access_control").select("enforce_paid").eq("singleton", true).maybeSingle(),
     ]);
@@ -35,10 +35,19 @@ export async function GET(request: NextRequest) {
 
     const enforcementActive = migrationNotApplied ? false : Boolean(control.data?.enforce_paid);
     const membership = membershipSummary(subscription.data);
+    const coachId = application.data?.assigned_coach_id;
+    const dogId = application.data?.dog_id;
+    let hasMatchingAssignment = false;
+    if (application.data?.owner_confirmed_at && coachId && dogId) {
+      const assignment = await admin.from("wt_coach_assignments")
+        .select("id").eq("owner_id", user.id).eq("dog_id", dogId).eq("coach_id", coachId).maybeSingle();
+      if (assignment.error) throw assignment.error;
+      hasMatchingAssignment = Boolean(assignment.data);
+    }
     const policy = resolveOwnerEntitlements({
       membershipState: membership.state,
       coachingStatus: (application.data?.status ?? null) as OwnerCoachingStatus | null,
-      assignedCoachId: application.data?.assigned_coach_id,
+      assignedCoachId: hasMatchingAssignment ? coachId : null,
       ownerConfirmedAt: application.data?.owner_confirmed_at,
     });
 
@@ -51,7 +60,7 @@ export async function GET(request: NextRequest) {
       // Do not grant an orphaned trial access without the same coach approval
       // the SQL guard checks.
       const coached = Boolean(
-        application.data?.owner_confirmed_at && application.data?.assigned_coach_id &&
+        application.data?.owner_confirmed_at && hasMatchingAssignment &&
         ["assigned", "consulting", "payment_pending", "active"].includes(application.data?.status ?? ""),
       );
       temporaryAccess = coached && Number.isFinite(expiresAt) && expiresAt > Date.now();
