@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/app/supabase";
 import type { MembershipSummary } from "@/lib/membership";
+import { membershipFeatureComparison } from "@/lib/entitlements";
 
 const benefits = [
   { icon: "01", title: "プロのトレーナーに相談", description: "愛犬に合わせたしつけ・日常のお悩みを、一緒に整理します。" },
@@ -65,6 +66,35 @@ export default function MembershipPage() {
             </article>
           ))}
         </div>
+        <section className="mt-11" aria-labelledby="membership-plan-comparison">
+          <p className="text-center text-[10px] font-semibold tracking-[.22em] text-[#008661]">PLANS & FEATURES</p>
+          <h2 id="membership-plan-comparison" className="mt-2 text-center text-xl font-semibold sm:text-2xl">無料で続ける。必要なときはプロと一緒に。</h2>
+          <p className="mx-auto mt-3 max-w-lg text-center text-xs leading-7 text-[#66796c]">
+            日々の記録やお世話管理は、無料でもずっと。月額プランでは担当コーチとのチャットやオンラインサポートが加わります。
+          </p>
+          <div className="mt-6 overflow-hidden rounded-2xl border border-[#dce9e2] bg-white">
+            <table className="w-full border-collapse text-[12px] sm:text-sm">
+              <thead className="bg-[#edf7f2]">
+                <tr><th scope="col" className="w-[56%] px-4 py-4 text-left font-semibold text-[#355143] sm:px-6">使える機能</th>
+                <th scope="col" className="px-2 py-4 text-center font-semibold text-[#536b5f]">無料</th>
+                <th scope="col" className="px-2 py-4 text-center font-semibold text-[#008661]">月額</th></tr>
+              </thead>
+              <tbody>
+                {membershipFeatureComparison.map((feature) => (
+                  <tr key={feature.key} className="border-t border-[#e8efea]">
+                    <th scope="row" className="px-4 py-3 text-left font-medium leading-6 text-[#415a4c] sm:px-6">{feature.label}</th>
+                    <td className="px-2 py-3 text-center">{feature.free ? <span className="font-semibold text-[#008661]" aria-label="利用できます">✓</span> : <span className="text-[#b2bcb5]" aria-label="対象外">—</span>}</td>
+                    <td className="px-2 py-3 text-center">{feature.paid ? <span className="font-semibold text-[#008661]" aria-label="利用できます">✓</span> : <span className="text-[#b2bcb5]" aria-label="対象外">—</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-xs leading-6 text-[#73877b]">
+            ※チャット・オンラインコーチングは、月額登録後に担当コーチが確定してから利用できます。契約料金・利用条件・受付開始日は準備中です。
+          </p>
+        </section>
+
         <div className="mt-9 rounded-2xl border border-[#d6e8dd] bg-[#fff] p-6 sm:p-9">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
