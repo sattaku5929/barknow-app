@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/app/supabase";
 import type { MembershipSummary } from "@/lib/membership";
@@ -31,46 +32,36 @@ export default function MembershipOverview() {
   }, []);
 
   useEffect(() => {
-    // Run loading asynchronously to avoid setState synchronously in an effect.
     const timer = window.setTimeout(() => { void refresh(); }, 0);
     return () => window.clearTimeout(timer);
   }, [refresh]);
 
+  const state = status?.state;
+  const description = state === "active"
+    ? "月額プランの内容を確認する"
+    : state === "payment_attention"
+      ? "プラン・契約状況のご案内"
+      : state === "ended"
+        ? "もう一度、愛犬との毎日をサポート"
+        : "プロのサポートで、愛犬との毎日をもっと豊かに";
+
   return (
     <section className="settings-group" aria-labelledby="settings-membership-title">
       <p className="settings-group-label" id="settings-membership-title">会員ステータス</p>
-      <div style={{ background: "var(--surface, #fff)", border: "1px solid #e0e9e5", borderRadius: 14, padding: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+      <Link href="/membership" className="block no-underline" aria-label="会員ステータス・月額プランの詳細を見る" style={{ color: "inherit", textDecoration: "none" }}>
+        <div style={{ border: "1px solid #d8e9e1", borderRadius: 18, padding: "19px 18px", background: "linear-gradient(120deg, #fff 5%, #f0f8f4 100%)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
           <div style={{ minWidth: 0 }}>
-            <span style={{ color: "#596e64", display: "block", fontSize: 12, marginBottom: 5 }}>現在のご利用区分</span>
-            <strong style={{ display: "block", fontSize: 17, color: "#126549" }} aria-live="polite">
+            <span style={{ color: "#60776b", display: "block", fontSize: 12, marginBottom: 7 }}>現在のご利用区分</span>
+            <strong style={{ display: "block", fontSize: 19, color: "#008661", lineHeight: 1.35 }} aria-live="polite">
               {loading ? "確認しています…" : errorMessage ? "確認できませんでした" : status?.label ?? "確認できませんでした"}
             </strong>
+            <span style={{ display: "block", fontSize: 12, color: "#63766c", lineHeight: 1.6, marginTop: 7 }}>
+              {errorMessage ? "タップしてプランを確認できます" : description}
+            </span>
           </div>
-          <button type="button" onClick={() => void refresh()} disabled={loading} style={{ borderRadius: 10, border: "1px solid #c9ddd3", background: "#f7fbf9", color: "#008661", padding: "9px 12px", fontSize: 12 }}>
-            更新
-          </button>
+          <span aria-hidden="true" style={{ flexShrink: 0, color: "#008661", fontSize: 26, fontWeight: 300 }}>›</span>
         </div>
-        {!loading && !errorMessage && status?.state === "active" && (
-          <p style={{ margin: "9px 0 0", fontSize: 12, color: "#596e64" }}>
-            月額会員として登録されています。契約管理・解約機能は準備中です。
-          </p>
-        )}
-        {!loading && !errorMessage && status?.state === "payment_attention" && (
-          <p style={{ margin: "9px 0 0", fontSize: 12, color: "#8f5d36" }}>
-            契約状況をご確認ください。ご不明な場合はお問い合わせからご連絡ください。
-          </p>
-        )}
-        {!loading && !errorMessage && status?.state === "standard" && (
-          <p style={{ margin: "9px 0 0", fontSize: 12, color: "#596e64" }}>
-            有料契約の登録は確認されていません。決済・申込方法は現在準備中です。
-          </p>
-        )}
-        {!loading && !errorMessage && status?.state === "ended" && (
-          <p style={{ margin: "9px 0 0", fontSize: 12, color: "#596e64" }}>月額契約は終了しています。</p>
-        )}
-        {errorMessage && <p role="alert" style={{ margin: "10px 0 0", color: "#a43832", fontSize: 12 }}>{errorMessage}</p>}
-      </div>
+      </Link>
     </section>
   );
 }
