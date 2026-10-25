@@ -24,9 +24,10 @@ const membership = load("lib/membership.ts", {});
 const policy = load("lib/entitlements.ts", {});
 function setup({ signedIn = true, paid = false, dogId = dog,
   assignment = true, confirmed = true, status = "assigned",
-  enforce = true, trial = null, broken = null } = {}) {
+  enforce = true, trial = null, broken = null, adminRole = false } = {}) {
   const seen = [];
   const results = {
+    wt_user_roles: { data: { role: adminRole ? "admin" : "owner" }, error: null },
     wt_subscriptions: { data: paid ? { plan_status: "active_member" } : null, error: null },
     wt_coaching_applications: { data: dogId === dog ? {
       dog_id: dog, assigned_coach_id: coach, owner_confirmed_at: confirmed ? "2026-10-25T00:00:00Z" : null,
@@ -114,4 +115,33 @@ test("before migration, API preserves enforcement disabled but reports planned e
   const response = await h.GET(h.request);
   assert.equal(response.status, 200);
   assert.equal(response.body.enforcementActive, false);
+});
+
+test("verified Admin is premium without Stripe, only after matching coach confirmation", async () => {
+  const approved = setup({ adminRole: true });
+  const response = await approved.GET(approved.request);
+  assert.equal(response.status, 200);
+  assert.equal(response.body.staffPremiumAccess, true);
+  assert.equal(response.body.tier, "paid");
+  assert.equal(response.body.eligibleForChat, true);
+  assert.equal(response.body.eligibleForBooking, true);
+  assert.equal(response.body.temporaryAccess, false);
+  assert.ok(!approved.seen.some(x=>x.table==="wt_coaching_trial_grants"));
+  for (const config of [
+    { adminRole: true, assignment: false },
+    { adminRole: true, confirmed: false },
+    { adminRole: true, status: "closed" },
+    { adminRole: true, dogId: anotherDog },
+  ]) {
+    const attempt = setup(config);
+    const result = await attempt.GET(attempt.request);
+    assert.equal(result.body.staffPremiumAccess, true);
+    assert.equal(result.body.eligibleForChat, false);
+    assert.equal(result.body.eligibleForBooking, false);
+    assert.equal(result.body.availability, "awaiting_coach");
+  }
+});
+test("server role lookup is required and errors fail closed", async () => {
+  const failure = setup({adminRole:true,broken:"wt_user_roles"});
+  assert.equal((await failure.GET(failure.request)).status,503);
 });
