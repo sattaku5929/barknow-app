@@ -1,6 +1,7 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { googleBusyRanges, processCalendarSyncJobs } from "@/lib/server/google-calendar";
 import { authenticatedSupabase } from "@/lib/server/supabase";
+import { canWriteCoaching } from "@/lib/server/coachingAuthorization";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,20 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => null) as { applicationId?: string; slotId?: string; sessionType?: "initial" | "followup"; allowGoogleConflict?: boolean } | null;
     if (!body?.applicationId || !body.slotId || !body.sessionType) return NextResponse.json({ error: "予約情報が不足しています" }, { status: 400 });
+
+    // Resolve the application using the verified token. The browser's
+    // applicationId alone is not proof of coaching entitlement.
+    const { data: ownApplication, error: ownApplicationError } = await client
+      .from("wt_coaching_applications")
+      .select("dog_id")
+      .eq("id", body.applicationId)
+      .eq("owner_id", userData.user.id)
+      .maybeSingle();
+    if (ownApplicationError) throw ownApplicationError;
+    if (!ownApplication) return NextResponse.json({ error: "対象の申込みが見つかりません" }, { status: 404 });
+    if (!await canWriteCoaching(userData.user.id, ownApplication.dog_id)) {
+      return NextResponse.json({ error: "オンライン予約には有効な月額契約と担当コーチの確定が必要です", code: "coaching_membership_required" }, { status: 403 });
+    }
 
     // Active slots are readable by authenticated users through RLS. Using the
     // caller's client here keeps booking independent from the service-role key.
