@@ -32,6 +32,7 @@ jobs:
           node --test tests/adminUsageDashboard.test.cjs
           node --test tests/adminMenuNavigation.test.cjs
           node --test tests/providerNeutralMembership.test.cjs
+          node --test tests/membershipMyPageUX.test.cjs
           node --test tests/adminUsageDashboard.sql.test.mjs
           node --test tests/announcementPreviewUi.test.cjs
           node --test tests/operationAnnouncementsRls.sql.test.mjs
