@@ -19,7 +19,7 @@ function parsePreferences(value: unknown): Preferences {
 }
 
 export default function NotificationPreferences({
-  hasCoach, isSubscribed, busy, supported, denied, onDeviceToggle, onTest, onBack,
+  hasCoach, isSubscribed, busy, supported, denied, onDeviceToggle, onBack,
 }: {
   hasCoach: boolean;
   isSubscribed: boolean;
@@ -27,7 +27,6 @@ export default function NotificationPreferences({
   supported: boolean;
   denied: boolean;
   onDeviceToggle: () => void;
-  onTest: () => void;
   onBack: () => void;
 }) {
   const [preferences, setPreferences] = useState<Preferences>(defaults);
@@ -83,7 +82,6 @@ export default function NotificationPreferences({
         <p>通知の許可・登録はスマホやPCごとに設定します。</p>
         <p aria-live="polite">{isSubscribed ? "この端末：ON" : denied ? "この端末：ブラウザで拒否されています" : supported ? "この端末：OFF" : "この端末は通知非対応です"}</p>
         <button type="button" disabled={busy || !supported} onClick={onDeviceToggle}>{busy ? "設定中…" : isSubscribed ? "この端末の通知をOFFにする" : "この端末の通知をONにする"}</button>
-        {isSubscribed && <button type="button" disabled={busy} onClick={onTest} style={{ marginLeft: 8 }}>テスト通知を送る</button>}
         {denied && <p>通知を許可するには端末またはブラウザの設定を変更してください。</p>}
       </section>
       <section className="profile-form-section" aria-label="通知の種類">

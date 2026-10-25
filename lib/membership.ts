@@ -41,6 +41,6 @@ export function membershipSummary(row: MembershipRow | null | undefined): Member
     case "canceled":
       return { ...base, state: "ended", label: "契約終了", hasActiveMembership: false };
     default:
-      return { ...base, state: "standard", label: "一般会員", hasActiveMembership: false };
+      return { ...base, state: "standard", label: "無料会員", hasActiveMembership: false };
   }
 }
