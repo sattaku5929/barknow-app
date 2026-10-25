@@ -399,10 +399,12 @@ function LockedCoachingPreview({
   tab,
   onTabChange,
   onDetails,
+  staffPremiumAccess = false,
 }: {
   tab: "sessions" | "chat";
   onTabChange: (tab: "sessions" | "chat") => void;
   onDetails: () => void;
+  staffPremiumAccess?: boolean;
 }) {
   return (
     <section className="free-coaching-preview" aria-label="コーチングプランの機能紹介">
@@ -423,8 +425,8 @@ function LockedCoachingPreview({
           <div className="locked-gradient-blur" aria-hidden="true"></div>
           <section className="locked-plan-card">
             <span aria-hidden="true"><NavGlyph name="coach" /></span>
-            <div><strong>プロのコーチとリアルタイムで相談できます</strong><p>コーチングプラン限定</p></div>
-            <button type="button" onClick={onDetails}>詳細を確認する</button>
+            <div><strong>プロのコーチとリアルタイムで相談できます</strong><p>{staffPremiumAccess ? "担当コーチ確定後に利用可能" : "コーチングプラン限定"}</p></div>
+            <button type="button" onClick={onDetails}>{staffPremiumAccess ? "担当相談へ" : "詳細を確認する"}</button>
           </section>
         </div>
       ) : (
@@ -444,8 +446,8 @@ function LockedCoachingPreview({
           <div className="locked-gradient-blur" aria-hidden="true"></div>
           <section className="locked-plan-card">
             <span aria-hidden="true"><NavGlyph name="goals" /></span>
-            <div><strong>月4回のオンラインレッスン予約はこちら</strong><p>コーチングプラン限定</p></div>
-            <button type="button" onClick={onDetails}>詳細を確認する</button>
+            <div><strong>月4回のオンラインレッスン予約はこちら</strong><p>{staffPremiumAccess ? "担当コーチ確定後に利用可能" : "コーチングプラン限定"}</p></div>
+            <button type="button" onClick={onDetails}>{staffPremiumAccess ? "担当相談へ" : "詳細を確認する"}</button>
           </section>
         </div>
       )}
@@ -4740,7 +4742,7 @@ export default function Home() {
       {userRole === "admin" && <p className="owner-admin-premium-note">運営アカウント：有料会員向け機能をご利用いただけます。チャット・オンライン診断は担当コーチの確定後に利用できます。</p>}
       {!coachingApplication || coachingApplication.status === "closed" ? (
         <>
-          <LockedCoachingPreview tab={ownerCoachTab} onTabChange={navigateCoachTab} onDetails={openCoachingDetails} />
+          <LockedCoachingPreview tab={ownerCoachTab} onTabChange={navigateCoachTab} staffPremiumAccess={userRole === "admin"} onDetails={userRole === "admin" ? () => document.getElementById("owner-coaching-start")?.scrollIntoView({ behavior: "smooth", block: "start" }) : openCoachingDetails} />
           <section className="coaching-intro">
             <div className="coaching-intro-icon"><NavGlyph name="coach" /></div>
             <p className="card-label">WAN TONE COACHING</p>
@@ -4752,8 +4754,8 @@ export default function Home() {
               <span><b>03</b><strong>迷いを減らす</strong><small>次にやることを相談</small></span>
             </div>
           </section>
-          <form className="coaching-application-form" onSubmit={submitCoachingApplication}>
-            <div><p className="card-label">FIRST STEP</p><h2>コーチングについて相談する</h2><p>申込み後、担当候補のコーチとチャットで初回相談を行います。相談後に内容と料金をご案内します。</p></div>
+          <form id="owner-coaching-start" className="coaching-application-form" onSubmit={submitCoachingApplication}>
+            <div><p className="card-label">FIRST STEP</p><h2>コーチングについて相談する</h2><p>{userRole === "admin" ? "運営アカウントは課金不要です。担当コーチの申込み・確定を行うと、チャットとオンライン診断を利用できます。" : "申込み後、担当候補のコーチとチャットで初回相談を行います。相談後に内容と料金をご案内します。"}</p></div>
             <fieldset>
               <legend>相談したいこと <small>3つまで</small></legend>
               <div className="coaching-concerns">{COACHING_CONCERNS.map((concern) => <button type="button" key={concern.id} className={coachingConcerns.includes(concern.id) ? "is-selected" : ""} onClick={() => toggleCoachingConcern(concern.id)}>{concern.label}{coachingConcerns.includes(concern.id) && <span>✓</span>}</button>)}</div>
@@ -4761,7 +4763,7 @@ export default function Home() {
             <label>どうなれたら嬉しいですか？<textarea rows={3} value={coachingOutcome} onChange={(event) => setCoachingOutcome(event.target.value)} placeholder="例：来客時に落ち着いて過ごせるようになりたい" maxLength={300} required /></label>
             <label>補足・気になっていること <small>任意</small><textarea rows={3} value={coachingNote} onChange={(event) => setCoachingNote(event.target.value)} placeholder="試したこと、生活環境など" maxLength={500} /></label>
             <button className="primary-button" disabled={saving || !coachingConcerns.length || !coachingOutcome.trim()}>{saving ? "送信中…" : "相談を申し込む"}<span>→</span></button>
-            <p className="coaching-form-note">この時点では料金は発生しません。初回相談後にご判断いただけます。</p>
+            <p className="coaching-form-note">{userRole === "admin" ? "運営アカウントのご利用に月額料金は発生しません。" : "この時点では料金は発生しません。初回相談後にご判断いただけます。"}</p>
           </form>
         </>
       ) : coachingApplication.status === "submitted" || coachingApplication.status === "offered" ? (
