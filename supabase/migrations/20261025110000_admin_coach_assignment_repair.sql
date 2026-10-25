@@ -68,7 +68,7 @@ set search_path = ''
 as $wt_reconcile_assignment$
 declare
   a public.wt_coaching_applications%rowtype;
-  current_role text;
+  coach_user_role text;
   inserted_id uuid;
 begin
   if not public.wt_is_admin() then
@@ -99,8 +99,8 @@ begin
     raise exception 'owner role mismatch';
   end if;
 
-  select r.role into current_role from public.wt_user_roles r where r.user_id=a.assigned_coach_id;
-  if current_role is null or current_role not in ('admin','coach')
+  select r.role into coach_user_role from public.wt_user_roles r where r.user_id=a.assigned_coach_id;
+  if coach_user_role is null or coach_user_role not in ('admin','coach')
      or not exists(select 1 from public.wt_coach_profiles c where c.coach_id=a.assigned_coach_id) then
     raise exception 'confirmed coach has no valid staff role or coach profile';
   end if;
