@@ -24,8 +24,8 @@ test("all supported membership states are mapped consistently", () => {
     ["active_member", "active", true, "月額会員"],
     ["past_due", "payment_attention", false, "お支払いの確認が必要"],
     ["canceled", "ended", false, "契約終了"],
-    ["inactive", "standard", false, "一般会員"],
-    ["something-new", "standard", false, "一般会員"],
+    ["inactive", "standard", false, "無料会員"],
+    ["something-new", "standard", false, "無料会員"],
   ];
   for (const [input, state, entitled, label] of statuses) {
     const result = membership.membershipSummary({
@@ -110,5 +110,6 @@ test("owner my page displays read-only membership and no payment actions", () =>
   assert.match(page, /<MembershipOverview\s*\/>/);
   assert.match(component, /\/api\/membership/);
   assert.doesNotMatch(component, /stripe|checkout|billingPortal/i);
-  assert.match(component, /契約管理・解約機能は準備中/);
+  assert.match(component, /href="\/membership"/);
+  assert.doesNotMatch(component, /更新\s*<\/button>/);
 });
