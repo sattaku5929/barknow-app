@@ -15,6 +15,10 @@ export async function GET(request: NextRequest) {
   const headers = { "Cache-Control": "private, no-store" };
   const user = await authenticatedUser(request);
   if (!user) return NextResponse.json({ error: "ログインしてください" }, { status: 401, headers });
+  const dogId = request.nextUrl.searchParams.get("dogId");
+  if (!dogId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dogId)) {
+    return NextResponse.json({ error: "対象の愛犬を指定してください" }, { status: 400, headers });
+  }
 
   try {
     const admin = serviceSupabase();
@@ -22,7 +26,7 @@ export async function GET(request: NextRequest) {
       admin.from("wt_subscriptions").select("plan_status,activated_at,updated_at").eq("user_id", user.id).maybeSingle(),
       admin.from("wt_coaching_applications")
         .select("status,dog_id,assigned_coach_id,owner_confirmed_at")
-        .eq("owner_id", user.id).order("submitted_at", { ascending: false }).limit(1).maybeSingle(),
+        .eq("owner_id", user.id).eq("dog_id", dogId).order("submitted_at", { ascending: false }).limit(1).maybeSingle(),
       admin.from("wt_coaching_access_control").select("enforce_paid").eq("singleton", true).maybeSingle(),
     ]);
     if (subscription.error || application.error) throw subscription.error || application.error;
@@ -36,11 +40,11 @@ export async function GET(request: NextRequest) {
     const enforcementActive = migrationNotApplied ? false : Boolean(control.data?.enforce_paid);
     const membership = membershipSummary(subscription.data);
     const coachId = application.data?.assigned_coach_id;
-    const dogId = application.data?.dog_id;
+    const confirmedDogId = application.data?.dog_id;
     let hasMatchingAssignment = false;
-    if (application.data?.owner_confirmed_at && coachId && dogId) {
+    if (application.data?.owner_confirmed_at && coachId && confirmedDogId) {
       const assignment = await admin.from("wt_coach_assignments")
-        .select("id").eq("owner_id", user.id).eq("dog_id", dogId).eq("coach_id", coachId).maybeSingle();
+        .select("id").eq("owner_id", user.id).eq("dog_id", confirmedDogId).eq("coach_id", coachId).maybeSingle();
       if (assignment.error) throw assignment.error;
       hasMatchingAssignment = Boolean(assignment.data);
     }
