@@ -508,6 +508,12 @@ type AdminCoachingApplication = CoachingApplication & {
   ownerEmail: string;
   coachEmail: string | null;
 };
+type AdminAssignmentIssue = {
+  applicationId: string;
+  coachRole: string;
+  coachProfileExists: boolean;
+  bookedSessions: number;
+};
 
 type CoachProfile = {
   displayName: string;
@@ -1154,6 +1160,9 @@ export default function Home() {
   const [adminApplications, setAdminApplications] = useState<AdminCoachingApplication[]>([]);
   const [adminApplicationsError, setAdminApplicationsError] = useState("");
   const [assignmentErrors, setAssignmentErrors] = useState<Record<string, string>>({});
+  const [adminAssignmentIssues, setAdminAssignmentIssues] = useState<Record<string, AdminAssignmentIssue>>({});
+  const [repairReasons, setRepairReasons] = useState<Record<string, string>>({});
+  const [repairConfirmed, setRepairConfirmed] = useState<Record<string, boolean>>({});
   const [adminTab, setAdminTab] = useState<AdminTab>("applications");
   const [lastAdminRefresh, setLastAdminRefresh] = useState<Date | null>(null);
   const [selectedAdminCustomer, setSelectedAdminCustomer] = useState<AdminCustomer | null>(null);
@@ -2006,11 +2015,26 @@ export default function Home() {
           : "前の7日間と同じ";
 
   async function loadAdminWorkspace() {
-    const [customerResult, accountResult, applicationResult] = await Promise.all([
+    const [customerResult, accountResult, applicationResult, issueResult] = await Promise.all([
       supabase.rpc("wt_admin_customer_overview"),
       supabase.rpc("wt_admin_accounts"),
       supabase.rpc("wt_admin_coaching_applications"),
+      userRole === "admin"
+        ? supabase.rpc("wt_admin_coaching_assignment_issues")
+        : Promise.resolve({ data: [], error: null }),
     ]);
+    if (!issueResult.error && issueResult.data) {
+      const issues = (issueResult.data as Record<string, unknown>[]).map((issue) => ({
+        applicationId: String(issue.application_id),
+        coachRole: String(issue.coach_role ?? "none"),
+        coachProfileExists: Boolean(issue.coach_profile_exists),
+        bookedSessions: Number(issue.booked_sessions ?? 0),
+      })) as AdminAssignmentIssue[];
+      setAdminAssignmentIssues(Object.fromEntries(issues.map((issue) => [issue.applicationId, issue])));
+    } else {
+      // The migration may not be deployed yet. Never allow speculative repairs.
+      setAdminAssignmentIssues({});
+    }
     if (!customerResult.error && customerResult.data) {
       const customers = customerResult.data.map((item: Record<string, unknown>) => ({
         assignmentId: String(item.assignment_id),
@@ -2938,6 +2962,29 @@ export default function Home() {
         return next;
       });
       showNotice(`${application.dogName}の担当候補へ確認を依頼しました`);
+      await loadAdminWorkspace();
+    }
+    setSaving(false);
+  }
+
+  async function repairConfirmedCoachingAssignment(application: AdminCoachingApplication) {
+    const issue = adminAssignmentIssues[application.id];
+    const justification = (repairReasons[application.id] ?? "").trim();
+    if (!issue || !issue.coachProfileExists || !repairConfirmed[application.id] || justification.length < 15) return;
+    setSaving(true);
+    setAssignmentErrors((current) => ({ ...current, [application.id]: "" }));
+    const { data, error } = await supabase.rpc("wt_admin_reconcile_confirmed_assignment", {
+      target_application_id: application.id,
+      justification,
+    });
+    if (error || !data?.repaired) {
+      const message = error?.message ?? "担当割当を復旧できませんでした";
+      setAssignmentErrors((current) => ({ ...current, [application.id]: message }));
+      showNotice("担当割当を復旧できませんでした。状況を再確認してください。");
+    } else {
+      showNotice(`${application.dogName}の担当割当を復旧しました。履歴は変更されていません。`);
+      setRepairConfirmed((current) => ({ ...current, [application.id]: false }));
+      setRepairReasons((current) => ({ ...current, [application.id]: "" }));
       await loadAdminWorkspace();
     }
     setSaving(false);
@@ -5325,6 +5372,37 @@ export default function Home() {
                     <label>担当コーチ<select value={application.assignedCoachId ?? ""} onChange={(event) => void assignCoachingApplication(application, event.target.value)} disabled={saving}><option value="">選択してください</option>{coaches.map((coach) => <option value={coach.userId} key={coach.userId}>{coach.displayName ? `${coach.displayName}（${coach.email}）` : `名前未設定（${coach.email}）`}</option>)}</select></label>
                     <label>進行状況<select value={application.status} onChange={(event) => void updateCoachingStatus(application, event.target.value as CoachingStatus)} disabled={saving}><option value="submitted">受付中</option><option value="offered" disabled>コーチ確認中</option><option value="assigned" disabled>担当決定</option><option value="consulting" disabled={!application.assignedCoachId}>初回相談中</option><option value="payment_pending" disabled={!application.assignedCoachId}>お支払い待ち</option><option value="active" disabled={!application.assignedCoachId}>利用中</option><option value="closed">終了</option></select></label>
                   </div>
+                  {userRole === "admin" && adminAssignmentIssues[application.id] && (
+                    <section className="application-error" aria-label="担当コーチ割当の要確認">
+                      <strong>担当コーチの割当データに不整合があります</strong>
+                      <p>担当確定済みですが、対応する割当が見つかりません。担当者の権限：{adminAssignmentIssues[application.id].coachRole === "admin" ? "管理者" : adminAssignmentIssues[application.id].coachRole === "coach" ? "コーチ" : "確認できません"}。過去のオンライン予約：{adminAssignmentIssues[application.id].bookedSessions}件。</p>
+                      <details>
+                        <summary>担当者を確認して割当を復旧</summary>
+                        <p>現在も表示中の担当者がこの愛犬を継続担当することを確認してください。操作履歴を残し、担当者のロール・チャット・過去予約は変更しません。</p>
+                        {!adminAssignmentIssues[application.id].coachProfileExists && <p role="alert">担当者のコーチプロフィールがないため、復旧できません。</p>}
+                        <label>確認した内容・復旧理由（15文字以上）
+                          <textarea
+                            value={repairReasons[application.id] ?? ""}
+                            onChange={(event) => setRepairReasons((current) => ({ ...current, [application.id]: event.target.value }))}
+                            rows={3} maxLength={500}
+                            placeholder="例：担当者本人と確認し、現在も継続担当中のため割当を復旧"
+                            disabled={saving}
+                          />
+                        </label>
+                        <label>
+                          <input type="checkbox" checked={Boolean(repairConfirmed[application.id])}
+                            onChange={(event) => setRepairConfirmed((current) => ({ ...current, [application.id]: event.target.checked }))}
+                            disabled={saving} />
+                          現在もこの担当者が正しいことを確認しました
+                        </label>
+                        <button type="button" className="primary-button"
+                          disabled={saving || !adminAssignmentIssues[application.id].coachProfileExists || !repairConfirmed[application.id] || (repairReasons[application.id] ?? "").trim().length < 15}
+                          onClick={() => void repairConfirmedCoachingAssignment(application)}>
+                          {saving ? "確認中…" : "確認して割当を復旧する"}
+                        </button>
+                      </details>
+                    </section>
+                  )}
                   {assignmentErrors[application.id] && <p className="application-error">担当設定エラー：{assignmentErrors[application.id]}</p>}
                   <time>{new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(application.submittedAt))} 申込み</time>
                 </article>
