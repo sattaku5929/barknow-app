@@ -4418,7 +4418,7 @@ export default function Home() {
     <section className="report-screen">
       <SectionTitle eyebrow="PROGRESS" title={`${dogName}の変化`} />
       <p className="lead">できごとの傾向を確認しましょう。詳しいデータは必要なときに開けます。</p>
-      <RecentObservationTrends key={profile.id} dogId={profile.id} online={connection === "online"} selectedThemes={eventThemesSelected} />
+      <RecentObservationTrends key={profile.id} dogId={profile.id} online={connection === "online"} selectedThemes={eventThemesSelected} compact />
 
       <details className="report-deep-dive">
         <summary>
@@ -4476,11 +4476,6 @@ export default function Home() {
 
         </div>
       </details>
-
-      <section className="report-coaching-cta">
-        <div><p className="card-label">FROM DATA TO ACTION</p><h2>この変化、どう見ればいい？</h2><p>回数だけでは分からない背景もあります。記録をコーチと一緒に読み、次に試すことを整理できます。</p></div>
-        <button onClick={() => navigateOwnerView("coach")}>{coachingApplication ? "担当状況を確認する" : "コーチングについて相談する"}<span>→</span></button>
-      </section>
 
       <p className="report-note">表示しているのは記録回数の変化です。記録漏れや生活リズムも影響するため、実際の発生回数や因果関係を断定するものではありません。</p>
     </section>
