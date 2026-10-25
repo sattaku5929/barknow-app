@@ -33,6 +33,7 @@ jobs:
           node --test tests/adminMenuNavigation.test.cjs
           node --test tests/ownerCoachChatUi.test.cjs
           node --test tests/ownerUxPhase1.test.cjs
+          node --test tests/ownerChangesHome.test.cjs
           node --test tests/providerNeutralMembership.test.cjs
           node --test tests/membershipEntitlements.test.cjs
           node --test tests/coachingPaidAccess.sql.test.mjs
