@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 
 const migration = await readFile(new URL("../supabase/migrations/20261025093000_coaching_paid_enforcement_foundation.sql", import.meta.url), "utf8");
+const adminPremiumMigration = await readFile(new URL("../supabase/migrations/20261025170000_admin_owner_premium.sql", import.meta.url), "utf8");
 const owner = "11111111-1111-4111-8111-111111111111";
 const other = "22222222-2222-4222-8222-222222222222";
 const coach = "33333333-3333-4333-8333-333333333333";
@@ -71,6 +72,7 @@ insert into public.wt_coaching_applications values ('dddddddd-dddd-4ddd-8ddd-ddd
 insert into public.wt_coach_assignments(owner_id,dog_id,coach_id) values ('${owner}','${dog}','${coach}');
 `);
 await db.exec(migration);
+await db.exec(adminPremiumMigration);
 async function actor(id) {
   await db.exec("reset role");
   await db.query("select set_config('app.user_id',$1,false)", [id]);
@@ -150,4 +152,22 @@ test("non-admin owners cannot toggle enforcement or grant own trial", async () =
   await assert.rejects(db.query("insert into public.wt_coaching_trial_grants(owner_id,expires_at,reason) values($1,now()+interval '1 day','self')",[other]), /permission denied/);
   const original = await root("select enforce_paid from public.wt_coaching_access_control where singleton=true");
   assert.equal(original.rows[0].enforce_paid,true);
+});
+
+test("Admin with own dog and confirmed assignment can use paid coaching without a subscription", async () => {
+  const adminDog="aaaaaaaa-aaaa-4aaa-8aaa-aaaabbbbbbbb";
+  const adminApp="eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+  await root("insert into public.wt_dogs(id,owner_id) values($1,$2)",[adminDog,admin]);
+  await root("insert into public.wt_coaching_applications(id,owner_id,dog_id,assigned_coach_id,owner_confirmed_at,status) values($1,$2,$3,$4,now(),'assigned')",[adminApp,admin,adminDog,coach]);
+  assert.equal((await root("select public.wt_coaching_contract_ready($1,$2) as ready",[admin,adminDog])).rows[0].ready,false);
+  await root("insert into public.wt_coach_assignments(owner_id,dog_id,coach_id) values($1,$2,$3)",[admin,adminDog,coach]);
+  assert.equal((await root("select public.wt_coaching_contract_ready($1,$2) as ready",[admin,adminDog])).rows[0].ready,true);
+  assert.equal((await send(admin,admin,adminDog,"owner")).rows.length,1);
+  assert.equal((await book(admin,admin,adminDog)).rows.length,1);
+  await assert.rejects(send(admin,owner,dog,"owner"),/row-level security|violates row-level/);
+  assert.equal((await root("select public.wt_coaching_contract_ready($1,$2) as ready",[admin,dog])).rows[0].ready,false);
+  await root("update public.wt_user_roles set role='owner' where user_id=$1",[admin]);
+  assert.equal((await root("select public.wt_coaching_contract_ready($1,$2) as ready",[admin,adminDog])).rows[0].ready,false);
+  await assert.rejects(send(admin,admin,adminDog,"owner"),/row-level security|violates row-level/);
+  await root("update public.wt_user_roles set role='admin' where user_id=$1",[admin]);
 });
