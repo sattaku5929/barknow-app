@@ -11,6 +11,8 @@ export type MembershipSummary = {
   hasActiveMembership: boolean;
   activatedAt: string | null;
   updatedAt: string | null;
+  /** Admin-only feature entitlement, independent from the real billing state. */
+  staffPremiumAccess?: boolean;
 };
 
 type MembershipRow = {
