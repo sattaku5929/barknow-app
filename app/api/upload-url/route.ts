@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticatedStaffRole, authenticatedSupabase } from "@/lib/server/supabase";
 import { canWriteCoaching } from "@/lib/server/coachingAuthorization";
 import { assertR2Configuration, R2ConfigurationError, r2BucketName, r2Client } from "@/lib/r2";
+import { ensureR2Budget } from "@/lib/r2-usage";
 
 export const runtime = "nodejs";
 
@@ -97,6 +98,7 @@ export async function POST(request: NextRequest) {
 
   try {
     assertR2Configuration();
+    await ensureR2Budget(fileSize);
     const date = new Date().toISOString().slice(0, 10);
     const key = `chat/${user.id}/${date}/${crypto.randomUUID()}-${safeFileName(fileName)}`;
     const command = new PutObjectCommand({
@@ -111,6 +113,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ uploadUrl, publicUrl, key });
   } catch (error) {
     console.error("R2 presigned URL error", error);
+    if (error instanceof Error && error.message.startsWith("保存容量")) {
+      return NextResponse.json({ code:"r2_budget_exceeded", error:error.message }, { status:413 });
+    }
     if (error instanceof R2ConfigurationError) {
       return NextResponse.json({
         code: "r2_not_configured",
