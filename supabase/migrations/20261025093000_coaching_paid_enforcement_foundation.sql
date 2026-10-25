@@ -175,5 +175,39 @@ create trigger wt_gate_paid_online_session_insert
 before insert on public.wt_online_sessions
 for each row execute function public.wt_gate_paid_online_session_insert();
 
+-- Guard against accidental enablement while legacy confirmed applications
+-- have no matching coach-assignment row. Admin/staff data repair must happen
+-- explicitly through an audited operation; do not infer assignment from status.
+create or replace function public.wt_check_paid_activation_ready()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $
+begin
+  if new.enforce_paid and not old.enforce_paid and exists (
+    select 1 from public.wt_coaching_applications a
+    where a.owner_confirmed_at is not null
+      and a.assigned_coach_id is not null
+      and a.status in ('assigned', 'consulting', 'payment_pending', 'active')
+      and not exists (
+        select 1 from public.wt_coach_assignments assignment
+        where assignment.owner_id = a.owner_id
+          and assignment.dog_id = a.dog_id
+          and assignment.coach_id = a.assigned_coach_id
+      )
+  ) then
+    raise exception 'Cannot enable paid coaching: confirmed coach assignments require reconciliation';
+  end if;
+  return new;
+end;
+$;
+
+revoke all on function public.wt_check_paid_activation_ready() from public;
+drop trigger if exists wt_check_paid_activation_ready on public.wt_coaching_access_control;
+create trigger wt_check_paid_activation_ready
+before update of enforce_paid on public.wt_coaching_access_control
+for each row execute function public.wt_check_paid_activation_ready();
+
 -- NO UPDATE to enforce_paid=true in this migration. Explicitly review pilot
 -- grants and Stripe/provider lifecycle before switching this on in a later PR.
