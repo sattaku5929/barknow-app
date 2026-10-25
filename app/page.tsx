@@ -2,6 +2,8 @@
 
 import AdminMfaGate from "@/components/admin/AdminMfaGate";
 import AdminUsageDashboard from "@/components/admin/AdminUsageDashboard";
+import ContentWorkspace from "@/components/content/ContentWorkspace";
+import { ContentAttachment, ChatMediaLibrary } from "@/components/content/ChatContent";
 import AdminMenuNavigation from "@/components/admin/AdminMenuNavigation";
 import NotificationPreferences from "@/components/owner/NotificationPreferences";
 import MembershipOverview from "@/components/owner/MembershipOverview";
@@ -48,7 +50,7 @@ type GoalPeriod = "day" | "week" | "month";
 type UserRole = "owner" | "coach" | "admin";
 type AuthMode = "login" | "signup";
 type CoachingStatus = "submitted" | "offered" | "assigned" | "consulting" | "payment_pending" | "active" | "closed";
-type AdminTab = "applications" | "customers" | "accounts" | "schedule" | "coachProfile" | "announcements" | "analytics";
+type AdminTab = "applications" | "customers" | "accounts" | "schedule" | "coachProfile" | "announcements" | "analytics" | "content";
 type SettingsPanel = "menu" | "profile" | "profile-edit" | "owner" | "household" | "notifications" | "disclaimer" | "terms" | "privacy";
 
 type DogProfile = {
@@ -115,6 +117,7 @@ type CoachMessage = {
   mediaUrl: string;
   mediaType: "image" | "video" | "";
   mediaName: string;
+  contentId?: string;
   createdAt: string;
   replyToId: string;
   replyToBody: string;
@@ -130,6 +133,7 @@ function mapCoachMessage(item: Record<string, unknown>): CoachMessage {
     mediaUrl: String(item.media_url ?? ""),
     mediaType: item.media_type === "image" || item.media_type === "video" ? item.media_type : "",
     mediaName: String(item.media_name ?? ""),
+    contentId: String(item.content_id ?? ""),
     createdAt: String(item.created_at),
     replyToId: String(item.reply_to_message_id ?? ""),
     replyToBody: String(item.reply_to_body ?? ""),
@@ -313,6 +317,7 @@ function ChatMessageRow({
 
   return (
     <div
+      id={"chat-msg-" + message.id}
       className={`chat-message-row ${isSelf ? "is-self" : "is-received"} ${replyMenuOpen ? "is-reply-menu-open" : ""} ${swipeOffset < 0 ? "is-swiping" : ""} ${swipeOffset <= -52 ? "is-swipe-ready" : ""}`}
       onPointerDown={startLongPress}
       onPointerMove={moveSwipe}
@@ -340,6 +345,7 @@ function ChatMessageRow({
             </div>
           )}
           <MessageMedia message={message} onOpen={onOpenMedia} />
+          {message.contentId && <ContentAttachment messageId={message.id} />}
           {message.body && <MessageBody body={message.body} />}
         </article>
         {!isSelf && metadata}
@@ -1261,6 +1267,7 @@ export default function Home() {
     if (list) list.scrollTo({ top: list.scrollHeight, behavior: "instant" });
   }, []);
   const [mediaGalleryOpen, setMediaGalleryOpen] = useState(false);
+  const [staffMediaOpen, setStaffMediaOpen] = useState(false);
   const [selectedMediaId, setSelectedMediaId] = useState("");
   const [assignedCoachProfile, setAssignedCoachProfile] = useState<CoachProfile | null>(null);
   const [coachProfile, setCoachProfile] = useState<CoachProfile>({ displayName: "", headline: "", bio: "", credentials: "", avatarUrl: "", avatarPreset: "paw-green", meetUrl: "" });
@@ -4712,8 +4719,7 @@ export default function Home() {
   const ownerBookedSessions = onlineSessions.filter((session) => session.status === "booked").sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
   const ownerCompletedSessions = onlineSessions.filter((session) => session.status === "completed").sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
   const chronologicalMessages = [...messages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  const mediaMessages = chronologicalMessages.filter((message) => message.mediaUrl && message.mediaType);
-  const selectedMedia = mediaMessages.find((message) => message.id === selectedMediaId) ?? mediaMessages[mediaMessages.length - 1];
+
   const openMediaGallery = (message: CoachMessage) => {
     pushAppHistory({ kind: "media-gallery", messageId: message.id });
     setSelectedMediaId(message.id);
@@ -4841,6 +4847,10 @@ export default function Home() {
                       <button type="button" disabled={pushBusy} onClick={() => void enablePushNotifications()}>{pushBusy ? "設定中…" : "新着メッセージの通知をONにする"}</button>
                     </section>
                   )}
+                  <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}>
+                    <button type="button" style={{border:"1px solid #cee3d6",borderRadius:12,padding:"8px 12px",background:"#f4faf5",color:"#008661",fontWeight:700}}
+                      onClick={()=>{pushAppHistory({kind:"media-gallery",messageId:""});setMediaGalleryOpen(true);}}>写真・動画・記事を探す</button>
+                  </div>
                   <div className="message-list" aria-live="polite" ref={attachOwnerMessageList}>
                     {chronologicalMessages.length
                       ? <ChatMessageTimeline messages={chronologicalMessages} selfSender="owner" onReply={setOwnerReplyTo} onOpenMedia={openMediaGallery} />
@@ -4860,26 +4870,8 @@ export default function Home() {
               {assignedCoachCard}
             </>
           )}
-          {mediaGalleryOpen && selectedMedia && (
-            <div className="media-gallery-backdrop" role="dialog" aria-modal="true" aria-label="共有メディアギャラリー" onClick={closeMediaGallery}>
-              <section className="media-gallery" onClick={(event) => event.stopPropagation()}>
-                <header><div><small>SHARED MEDIA</small><h2>画像・動画</h2><p>{mediaMessages.length}件</p></div><button type="button" onClick={closeMediaGallery} aria-label="ギャラリーを閉じる">×</button></header>
-                <div className="media-gallery-stage">
-                  {selectedMedia.mediaType === "image"
-                    ? <PrivateChatMedia messageId={selectedMedia.id} type="image" alt={selectedMedia.mediaName || "共有された画像"} />
-                    : <PrivateChatMedia messageId={selectedMedia.id} type="video" controls autoPlay />}
-                </div>
-                <div className="media-gallery-meta"><strong>{selectedMedia.mediaName || (selectedMedia.mediaType === "image" ? "共有された画像" : "共有された動画")}</strong><time>{new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(selectedMedia.createdAt))}</time></div>
-                <div className="media-gallery-grid" aria-label="共有メディア一覧">
-                  {mediaMessages.map((message) => (
-                    <button type="button" key={message.id} className={message.id === selectedMedia.id ? "is-selected" : ""} onClick={() => setSelectedMediaId(message.id)} aria-label={`${message.mediaName || (message.mediaType === "image" ? "画像" : "動画")}を表示`}>
-                      {message.mediaType === "image" ? <PrivateChatMedia messageId={message.id} type="image" /> : <><PrivateChatMedia messageId={message.id} type="video" /><span aria-hidden="true">▶</span></>}
-                    </button>
-                  ))}
-                </div>
-              </section>
-            </div>
-          )}
+          {mediaGalleryOpen && <ChatMediaLibrary messages={chronologicalMessages} onClose={closeMediaGallery}
+            onJump={id=>{closeMediaGallery();window.setTimeout(()=>document.getElementById("chat-msg-"+id)?.scrollIntoView({behavior:"smooth",block:"center"}),100);}}/>}
         </>
       )}
     </section>
@@ -5219,6 +5211,7 @@ export default function Home() {
     accounts: { title: "ユーザー管理", description: "権限と担当コーチを、この画面で設定できます。", count: adminAccounts.length },
     announcements: { title: "運営からのお知らせ", description: "公開期間と配信対象を指定してお知らせを管理します。", count: 0 },
     analytics: { title: "利用状況", description: "会員・訪問・Daily Check・申込の動きを把握します。", count: 0 },
+    content: { title: "コンテンツ管理", description: "悩み別の動画や画像・記事を整理します。", count: 0 },
   };
 
   const pullRefreshIndicator = (
@@ -5320,6 +5313,8 @@ export default function Home() {
                 <section id="coach-customer-chat" className="admin-panel admin-chat-panel">
                   <div className="admin-panel-heading"><div><p className="card-label">CHAT</p><h2>飼い主との会話</h2></div><span>{adminDetailMessages.length}件</span></div>
                   {coachChatContext && <p className="coach-chat-context">{coachChatContext.theme}の記録について確認する <small>記録ID: {coachChatContext.id}</small><button type="button" onClick={() => setCoachChatContext(null)}>解除</button></p>}
+                  <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}><button type="button" onClick={()=>setStaffMediaOpen(true)} style={{border:"1px solid #cee3d6",background:"#f4faf5",color:"#008661",borderRadius:11,padding:"8px 12px"}}>写真・動画・記事を探す</button></div>
+                  {staffMediaOpen&&<ChatMediaLibrary messages={adminDetailMessages} onClose={()=>setStaffMediaOpen(false)} onJump={id=>{setStaffMediaOpen(false);window.setTimeout(()=>document.getElementById("chat-msg-"+id)?.scrollIntoView({behavior:"smooth",block:"center"}),100);}}/>}
                   <div className="admin-chat-history" ref={attachAdminMessageList}>{adminDetailMessages.length ? <ChatMessageTimeline messages={adminDetailMessages} selfSender="coach" onReply={setAdminReplyTo} showReadReceipt /> : <p className="admin-muted">まだ相談はありません。コーチから声をかけることもできます。</p>}</div>
                   <ChatInput ownerId={selectedAdminCustomer.ownerId} dogId={selectedAdminCustomer.dogId} sender="coach" placeholder={`${selectedAdminCustomer.dogName}の飼い主へメッセージ`} onSent={addAdminMessage} replyTo={adminReplyTo} onCancelReply={() => setAdminReplyTo(null)} />
                 </section>
@@ -5344,9 +5339,10 @@ export default function Home() {
             ))}</div>
           </section>
         )}
-        {userRole === "admin" ? <AdminMenuNavigation active={adminTab === "coachProfile" ? "customers" : adminTab} onSelect={setAdminTab} pendingApplications={pendingApplicationCount} /> : <nav className="admin-tabs has-three" aria-label="コーチメニュー"><button type="button" aria-current={adminTab === "customers" ? "page" : undefined} className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button type="button" aria-current={adminTab === "schedule" ? "page" : undefined} className={adminTab === "schedule" ? "is-selected" : ""} onClick={() => setAdminTab("schedule")}>予約・空き枠</button><button type="button" aria-current={adminTab === "coachProfile" ? "page" : undefined} className={adminTab === "coachProfile" ? "is-selected" : ""} onClick={() => setAdminTab("coachProfile")}>プロフィール</button></nav>}
+        {userRole === "admin" ? <AdminMenuNavigation active={adminTab === "coachProfile" ? "customers" : adminTab} onSelect={setAdminTab} pendingApplications={pendingApplicationCount} /> : <nav className="admin-tabs has-three" aria-label="コーチメニュー"><button type="button" aria-current={adminTab === "customers" ? "page" : undefined} className={adminTab === "customers" ? "is-selected" : ""} onClick={() => setAdminTab("customers")}>担当顧客</button><button type="button" aria-current={adminTab === "schedule" ? "page" : undefined} className={adminTab === "schedule" ? "is-selected" : ""} onClick={() => setAdminTab("schedule")}>予約・空き枠</button><button type="button" aria-current={adminTab === "coachProfile" ? "page" : undefined} className={adminTab === "coachProfile" ? "is-selected" : ""} onClick={() => setAdminTab("coachProfile")}>プロフィール</button><button type="button" aria-current={adminTab === "content" ? "page" : undefined} className={adminTab === "content" ? "is-selected" : ""} onClick={() => setAdminTab("content")}>マイ動画</button></nav>}
         {userRole === "admin" && adminTab === "announcements" && currentUserId && <OperationAnnouncements role="admin" userId={currentUserId} management />}
         {userRole === "admin" && adminTab === "analytics" && <AdminUsageDashboard />}
+        {adminTab === "content" && <ContentWorkspace role={userRole === "admin" ? "admin" : "coach"} />}
         {adminTab === "applications" && <div className="admin-inbox-status"><span><i className={pendingApplicationCount ? "has-new" : ""}></i>{adminApplicationsError ? "申込みを取得できませんでした" : pendingApplicationCount ? `未対応の申込みが${pendingApplicationCount}件あります` : "未対応の申込みはありません"}<small>{adminApplicationsError ? adminApplicationsError : lastAdminRefresh ? `${lastAdminRefresh.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}更新 · 30秒ごとに自動確認` : "確認中"}</small></span><button onClick={() => void loadAdminWorkspace()}>今すぐ更新</button></div>}
         {adminTab === "applications" && (adminApplications.length ? (
           <div className="application-list">
