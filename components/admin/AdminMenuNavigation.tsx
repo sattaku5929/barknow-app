@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import styles from "./AdminMenuNavigation.module.css";
 
-export type AdminSection = "applications" | "customers" | "schedule" | "accounts" | "announcements" | "analytics";
+export type AdminSection = "applications" | "customers" | "schedule" | "accounts" | "announcements" | "analytics" | "content";
 
 const items: { id: AdminSection; title: string; help: string; icon: string }[] = [
   { id: "applications", title: "相談申込み", help: "新しい相談・対応状況", icon: "inbox" },
@@ -12,6 +12,7 @@ const items: { id: AdminSection; title: string; help: string; icon: string }[] =
   { id: "accounts", title: "ユーザー管理", help: "会員・権限の設定", icon: "user" },
   { id: "announcements", title: "お知らせ", help: "運営からの配信", icon: "bell" },
   { id: "analytics", title: "利用状況", help: "利用データを分析", icon: "chart" },
+  { id: "content", title: "コンテンツ管理", help: "動画・画像・解説記事", icon: "book" },
 ];
 
 function MenuIcon({ name }: { name: string }) {
@@ -22,6 +23,7 @@ function MenuIcon({ name }: { name: string }) {
     user: <><circle cx="10" cy="8" r="3" /><path d="M4 20v-2a6 6 0 0 1 12 0v2M18 13v6M15 16h6" /></>,
     bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></>,
     chart: <><path d="M4 20h16M7 17v-5M12 17V6M17 17v-8" /></>,
+    book: <><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H21v17H5.5A2.5 2.5 0 0 1 3 17.5Zm0 12A2.5 2.5 0 0 1 5.5 15H21" /></>,
   };
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={styles.icon}>{paths[name]}</svg>;
 }
