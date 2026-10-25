@@ -364,3 +364,11 @@ body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメ�
 body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record.active > span:last-child {
   color: #008661;
 }
+
+/* Record is a normal tab: pressing it must not revive the raised-button motion. */
+body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon,
+body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record:active .nav-icon {
+  transform: none;
+  transition: background-color .16s ease, color .16s ease;
+  box-shadow: none;
+}
