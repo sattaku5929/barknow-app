@@ -26,3 +26,15 @@ test("customer UI does not offer test push notifications", () => {
   assert.match(notification, /onDeviceToggle/);
   assert.match(notification, /通知の種類/);
 });
+
+test("Admin membership preview displays staff access without claiming a paid billing record", () => {
+  const card=read("components/owner/MembershipOverview.tsx");
+  const page=read("app/membership/page.tsx");
+  const api=read("app/api/membership/route.ts");
+  const owner=read("app/page.tsx");
+  assert.match(card,/staffPremiumAccess \? "運営アカウント"/);
+  assert.match(page,/staffPremiumAccess \? "運営アカウント"/);
+  assert.match(api,/requireStaffRole\(user.id\)/);
+  assert.match(owner,/userRole !== "owner" && userRole !== "admin"/);
+  assert.doesNotMatch(api,/\.update\(|\.upsert\(|\.insert\(/);
+});
