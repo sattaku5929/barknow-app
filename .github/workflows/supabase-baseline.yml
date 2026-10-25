@@ -46,7 +46,7 @@ jobs:
           node --test tests/signupPasswordConfirmation.test.cjs
           npm run test:insights
           npm run test:observations
-          npm run build
+          npm run build -- --webpack
           git diff --check
       - name: Restore tracked config
         if: always()
