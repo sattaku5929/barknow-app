@@ -183,7 +183,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $wt_paid_activation$
 begin
   if new.enforce_paid and not old.enforce_paid and exists (
     select 1 from public.wt_coaching_applications a
@@ -201,7 +201,7 @@ begin
   end if;
   return new;
 end;
-$;
+$wt_paid_activation$;
 
 revoke all on function public.wt_check_paid_activation_ready() from public;
 drop trigger if exists wt_check_paid_activation_ready on public.wt_coaching_access_control;
