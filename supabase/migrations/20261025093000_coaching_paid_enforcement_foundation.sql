@@ -25,6 +25,10 @@ create table if not exists public.wt_coaching_trial_grants (
 
 alter table public.wt_coaching_trial_grants enable row level security;
 revoke all on public.wt_coaching_trial_grants from public, anon, authenticated;
+-- Server-only read access is required for the signed-in entitlement API.
+-- Never expose either control table to browser-facing authenticated clients.
+grant select on public.wt_coaching_access_control to service_role;
+grant select on public.wt_coaching_trial_grants to service_role;
 
 -- Preserve currently CONFIRMED coaching test users; do not seed from merely
 -- submitted/offered/closed applications. Time-limited, admin review required
