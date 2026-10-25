@@ -7186,3 +7186,59 @@ body { font-size: 16px; }
     height:90px; max-height:90px;
   }
 }
+
+/* Owner navigation refinement: one place to review, one place to record. */
+.app-stage .owner-view-home .home-v3-insights {
+  min-width: 0;
+  scroll-margin-top: 18px;
+}
+.app-stage .owner-view-home .home-v3-insights .report-screen {
+  display: grid;
+  gap: 12px;
+  max-width: none;
+  margin: 0;
+  padding: 16px 14px;
+  border: 1px solid #e3ede5;
+  border-radius: 20px;
+  background: #fff;
+}
+.app-stage .owner-view-home .home-v3-insights .report-screen > .lead {
+  margin: -2px 0 0;
+  color: #62766a;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.app-stage .owner-view-home .home-v3-insights .report-screen .recent-observation-trends {
+  margin: 0;
+  padding: 13px 12px;
+  border-radius: 15px;
+}
+.app-stage .owner-view-home .home-v3-insights .report-screen .recent-observation-trends h2 {
+  font-size: clamp(18px, 4.5vw, 22px);
+}
+.app-stage .owner-view-home .home-v3-insights .report-deep-dive { margin: 0; }
+.app-stage .owner-view-home .home-v3-insights .report-coaching-cta {
+  margin-top: 4px;
+  padding: 14px;
+  border-radius: 15px;
+}
+.app-stage .owner-view-home .home-v3-insights .report-coaching-cta h2 { font-size: 16px; }
+.app-stage .owner-view-record .owner-record-hub {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  max-width: 620px;
+  margin: 0 auto;
+}
+.app-stage .owner-view-record .owner-record-hub > .section-title { margin-bottom: 0; }
+.app-stage .owner-view-record .owner-record-hub > .owner-record-lead { margin: 0; }
+.app-stage .owner-view-record .owner-record-events,
+.app-stage .owner-view-record .owner-record-care { min-width: 0; scroll-margin-top: 20px; }
+.app-stage .owner-view-record .owner-record-events { padding: 2px 0; }
+.app-stage .owner-view-record .owner-record-care { margin-top: 2px; }
+.app-stage .owner-view-home .home-v3-summary > button { min-height: 88px; }
+@media (max-width: 375px) {
+  .app-stage .owner-view-home .home-v3-insights .report-screen { padding: 13px 10px; }
+  .app-stage .owner-view-home .home-v3-insights .report-screen .recent-observation-trends { padding: 10px; }
+  .app-stage .owner-view-record .owner-record-hub { gap: 12px; }
+}
