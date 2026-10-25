@@ -1,7 +1,8 @@
 -- WanTone content library: private by default, service API controls access.
 create table if not exists public.wt_content_items (
   id uuid primary key default gen_random_uuid(),
-  author_id uuid not null references auth.users(id) on delete cascade,
+  author_id uuid references auth.users(id) on delete set null,
+  author_label text not null default '',
   origin text not null check (origin in ('coach','admin')),
   format text not null check (format in ('video','image','article')),
   sharing text not null default 'private' check (sharing in ('private','coaches','team')),
