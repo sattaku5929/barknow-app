@@ -30,11 +30,15 @@ revoke all on public.wt_coaching_trial_grants from public, anon, authenticated;
 -- submitted/offered/closed applications. Time-limited, admin review required
 -- before enabling paid enforcement.
 insert into public.wt_coaching_trial_grants (owner_id, expires_at, reason)
-select distinct owner_id, now() + interval '180 days', 'pre-launch confirmed coaching cohort'
-from public.wt_coaching_applications
-where assigned_coach_id is not null
-  and owner_confirmed_at is not null
-  and status in ('assigned', 'consulting', 'payment_pending', 'active')
+select distinct a.owner_id, now() + interval '180 days', 'pre-launch confirmed coaching cohort'
+from public.wt_coaching_applications a
+join public.wt_coach_assignments assignment
+  on assignment.owner_id = a.owner_id
+ and assignment.dog_id = a.dog_id
+ and assignment.coach_id = a.assigned_coach_id
+where a.assigned_coach_id is not null
+  and a.owner_confirmed_at is not null
+  and a.status in ('assigned', 'consulting', 'payment_pending', 'active')
 on conflict (owner_id) do nothing;
 
 create or replace function public.wt_coaching_paid_enforcement_enabled()
