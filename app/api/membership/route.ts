@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authenticatedUser, serviceSupabase } from "@/lib/server/supabase";
+import { authenticatedUser, requireStaffRole, serviceSupabase } from "@/lib/server/supabase";
 import { membershipSummary } from "@/lib/membership";
 
 export const runtime = "nodejs";
@@ -25,7 +25,10 @@ export async function GET(request: NextRequest) {
       .eq("user_id", user.id)
       .maybeSingle();
     if (error) throw error;
-    return json(membershipSummary(data));
+    // The billing record remains untouched. Admin owner mode gets premium
+    // functionality without representing a paid Stripe subscription.
+    const staffPremiumAccess = await requireStaffRole(user.id) === "admin";
+    return json({ ...membershipSummary(data), staffPremiumAccess });
   } catch (error) {
     console.error("[Membership] status lookup failed", { userId: user.id, error });
     return json({ error: "会員情報を確認できませんでした。再度お試しください。" }, 503);
