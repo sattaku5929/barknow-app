@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { PGlite } from "@electric-sql/pglite";
 
 const migration = await readFile(new URL("../supabase/migrations/20261025093000_coaching_paid_enforcement_foundation.sql", import.meta.url), "utf8");
+const additionalGuard = await readFile(new URL("../supabase/migrations/20261025112000_paid_activation_entitlement_guard.sql", import.meta.url), "utf8");
 const owner = "11111111-1111-4111-8111-111111111111";
 const other = "22222222-2222-4222-8222-222222222222";
 const coach = "33333333-3333-4333-8333-333333333333";
@@ -71,6 +72,7 @@ insert into public.wt_coaching_applications values ('dddddddd-dddd-4ddd-8ddd-ddd
 insert into public.wt_coach_assignments(owner_id,dog_id,coach_id) values ('${owner}','${dog}','${coach}');
 `);
 await db.exec(migration);
+await db.exec(additionalGuard);
 async function actor(id) {
   await db.exec("reset role");
   await db.query("select set_config('app.user_id',$1,false)", [id]);
@@ -114,6 +116,17 @@ test("activation is blocked until missing confirmed assignments are reconciled",
   // Resolve an inconsistent test-only application by closing it; the migration
   // never fixes or alters existing production applications automatically.
   await root("update public.wt_coaching_applications set status='closed' where owner_id=$1", [other]);
+});
+
+test("a repaired assignment is not enough if the existing owner has no subscription or valid trial grant", async () => {
+  await root("update public.wt_coaching_trial_grants set expires_at = now() - interval '1 day' where owner_id=$1", [owner]);
+  await assert.rejects(
+    root("update public.wt_coaching_access_control set enforce_paid=true where singleton=true"),
+    /active subscription or approved non-expired pilot grant/,
+  );
+  const check = await root("select enforce_paid from public.wt_coaching_access_control");
+  assert.equal(check.rows[0].enforce_paid, false);
+  await root("update public.wt_coaching_trial_grants set expires_at = now() + interval '180 days' where owner_id=$1", [owner]);
 });
 
 test("active enforcement blocks unpaid writes, but preserves existing trial", async () => {
