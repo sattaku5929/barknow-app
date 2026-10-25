@@ -38,3 +38,10 @@ test("Admin membership preview displays staff access without claiming a paid bil
   assert.match(owner,/userRole !== "owner" && userRole !== "admin"/);
   assert.doesNotMatch(api,/\.update\(|\.upsert\(|\.insert\(/);
 });
+
+test("operational Admin account is never sent to Stripe checkout", () => {
+  const checkout=read("app/api/stripe/checkout/route.ts");
+  assert.match(checkout,/requireStaffRole\(user.id\) === "admin"/);
+  assert.match(checkout,/運営アカウントは有料機能を課金なしで利用できます/);
+  assert.match(checkout,/status: 409/);
+});
