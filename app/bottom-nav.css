@@ -227,3 +227,111 @@
     translate: 0 0;
   }
 }
+
+
+/*
+ * Four clear destinations: Home / Record / Chat / My Page.
+ * Record is a destination rather than a raised, floating action button.
+ * This final block has the full nav scope and intentionally overrides legacy
+ * 5-item/raised-record styles without touching Coach/Admin navigation.
+ */
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-height: calc(70px + env(safe-area-inset-bottom));
+  padding: 0 9px env(safe-area-inset-bottom);
+}
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 70px;
+  padding: 8px 0 6px;
+  gap: 3px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #75837a;
+  transform: none;
+  box-shadow: none;
+}
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button .nav-icon,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon {
+  position: static;
+  display: grid;
+  flex: 0 0 36px;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  transform: none;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #77887e;
+  box-shadow: none;
+}
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button .nav-icon svg,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button .nav-icon .flat-icon-svg,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon svg,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon .flat-icon-svg {
+  width: 23px;
+  height: 23px;
+}
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon {
+  background: #e9f5ed;
+  color: #008661;
+}
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon svg,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon .flat-icon-svg,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon .flat-icon-svg > *,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon .record-square-pen {
+  fill: none !important;
+  stroke: #008661 !important;
+}
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button > span:last-child,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record > span:last-child {
+  position: static;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #75837a;
+  transform: none;
+}
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.active > span:last-child,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record.active > span:last-child {
+  color: #006d4e;
+}
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record.active .nav-icon,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.active .nav-icon {
+  background: #e0f3e7;
+  color: #008661;
+  box-shadow: none;
+}
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record.active .nav-icon svg,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record.active .nav-icon .flat-icon-svg,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record.active .nav-icon .flat-icon-svg > * {
+  fill: none !important;
+  stroke: #008661 !important;
+}
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:active,
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record:active {
+  transform: none;
+  background: #f3f9f5;
+}
+.app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button:focus-visible {
+  outline: 2px solid #008661;
+  outline-offset: -3px;
+}
+@media(max-width:375px) {
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] {
+    min-height: calc(68px + env(safe-area-inset-bottom));
+    padding-inline: 4px;
+  }
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button,
+  .app-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record {
+    min-height: 68px;
+  }
+}
