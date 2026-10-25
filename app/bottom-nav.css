@@ -335,3 +335,31 @@
     min-height: 68px;
   }
 }
+
+
+/* Owner's four-tab navigation: reset the old raised Record button completely.
+   Later design-system files still target the old button with greater specificity. */
+body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon {
+  background: transparent;
+  color: #68736d;
+  box-shadow: none;
+}
+body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record.active .nav-icon {
+  background: #ddeee8;
+  color: #008661;
+}
+body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon svg,
+body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record .nav-icon svg > * {
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 1.8 !important;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record > span:last-child {
+  color: #68736d;
+  font-weight: 400;
+}
+body .app-stage.owner-stage .app-shell nav.bottom-nav[aria-label="メインメニュー"] > button.bottom-nav-record.active > span:last-child {
+  color: #008661;
+}

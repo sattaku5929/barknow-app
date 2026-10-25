@@ -1,0 +1,63 @@
+/* Keep card dimensions independent of historical chip/Quick Log rules. */
+:global(.app-stage) .hub .grid.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+:global(.app-stage) .hub .grid.grid > .card {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  width: 100%;
+  height: 154px;
+  min-height: 154px;
+  padding: 12px 8px 10px;
+  gap: 6px;
+  border: 1px solid #e2eae5;
+  border-radius: 18px;
+  background: #fff;
+  color: #294a3c;
+  text-align: center;
+  box-shadow: none;
+}
+:global(.app-stage) .hub .card .art {
+  display: block;
+  flex: 0 0 66px;
+  width: 88px;
+  height: 66px;
+}
+:global(.app-stage) .hub .card .label,
+:global(.app-stage) .hub .card :global(.quick-log-theme-label) {
+  display: block;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+:global(.app-stage) .hub .card :global(.quick-log-theme-label) small {
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #748379;
+}
+:global(.app-stage) .hub .card :global(.quick-log-theme-add) {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 17px;
+  line-height: 1;
+  color: #008661;
+}
+:global(.app-stage) .hub .grid > .card:hover { background: #f4f9f6; border-color: #98c7b2; }
+:global(.app-stage) .hub .grid > .card:focus-visible { outline: 2px solid #008661; outline-offset: 3px; }
+:global(.app-stage) .hub .grid > .card:disabled { opacity: .5; cursor: not-allowed; }
+@media (prefers-reduced-motion: no-preference) {
+  .card { transition: background .15s ease, border-color .15s ease; }
+}

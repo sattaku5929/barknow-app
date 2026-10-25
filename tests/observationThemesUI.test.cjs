@@ -22,7 +22,7 @@ const supabase = { from(table) {
 function load(relative, react=React) {
   const code=ts.transpileModule(fs.readFileSync(path.join(root,relative),"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText;
   const module={exports:{}};
-  const localRequire=name=>name==="react"?react:name==="@/app/supabase"?{supabase}:name.startsWith("@/")?load(`${name.slice(2)}.ts`,react):require(name);
+  const localRequire=name=>name.endsWith(".module.css")?{default:new Proxy({},{get:(_,key)=>key})}:name.startsWith("./")?load(path.join(path.dirname(relative),`${name}.tsx`),react):name==="react"?react:name==="@/app/supabase"?{supabase}:name.startsWith("@/")?load(`${name.slice(2)}.ts`,react):require(name);
   new Function("require","module","exports",code)(localRequire,module,module.exports);return module.exports;
 }
 const {eventThemes,loadEventThemes}=load("lib/observations/observationEvent.ts");
