@@ -27,6 +27,7 @@ import CoachAssignedDogStats from "@/components/insights/CoachAssignedDogStats";
 import CoachObservationSummary from "@/components/insights/CoachObservationSummary";
 import CoachOfferObservation from "@/components/insights/CoachOfferObservation";
 import HomeCalendar from "@/components/owner/HomeCalendar";
+import RecordQuickActions from "@/components/owner/RecordQuickActions";
 import HomeCareGroups, { carePeriods } from "@/components/owner/HomeCareGroups";
 import { careDate, careProgress, careUndoEntries, subscribeCareDate } from "@/lib/care/clock";
 import type { CareGoal as EditableCareGoal, CareTemplate, CareGoalType } from "@/lib/care/model";
@@ -34,7 +35,6 @@ import { useScrollNavigation } from "@/lib/ui/useScrollNavigation";
 import { archiveCareGoal, changeCareCount, changeCareIcon, createCareGoal, undoCareCompletions } from "@/lib/care/mutations";
 import OwnerAppBackdrop from "@/components/owner/OwnerAppBackdrop";
 import OwnerHomeScene from "@/components/owner/illustrations/OwnerHomeScene";
-import OwnerRecordScene from "@/components/owner/illustrations/OwnerRecordScene";
 import OwnerReportScene from "@/components/owner/illustrations/OwnerReportScene";
 import { deviceLocalDate, deviceLocalTime, loadDailyCheck } from "@/lib/observations/dailyCheck";
 import { eventThemes, loadEventThemes, loadEvents } from "@/lib/observations/observationEvent";
@@ -1181,6 +1181,9 @@ export default function Home() {
   const [adminDetailLoading, setAdminDetailLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState("");
   const [view, setView] = useState<View>("home");
+  const [recordQuickOpen, setRecordQuickOpen] = useState(false);
+  const quickEventScrollPendingRef = useRef(false);
+  const closeRecordQuick = useCallback(() => setRecordQuickOpen(false), []);
   const [appVisitStats, setAppVisitStats] = useState<{ totalDays: number; currentStreak: number } | null>(null);
   const [connection, setConnection] = useState<Connection>("checking");
   const [profile, setProfile] = useState<DogProfile>(initialProfile);
@@ -1364,6 +1367,32 @@ export default function Home() {
   }, []);
 
   const bottomNavigation = useScrollNavigation(view);
+  // Scroll to the single home recording hub after History navigation completes.
+  useEffect(() => {
+    if (view !== "home" || !quickEventScrollPendingRef.current) return;
+    quickEventScrollPendingRef.current = false;
+    const frame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.getElementById("home-event-log")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [view]);
+
+  function openQuickEventLog() {
+    setRecordQuickOpen(false);
+    setEventTheme(null);
+    setEditingEvent(null);
+    quickEventScrollPendingRef.current = true;
+    if (view !== "home") {
+      navigateOwnerView("home");
+    } else {
+      window.requestAnimationFrame(() => {
+        quickEventScrollPendingRef.current = false;
+        document.getElementById("home-event-log")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }
 
   const scrollOwnerPageToTop = useCallback(() => {
     window.requestAnimationFrame(() => {
@@ -3300,6 +3329,9 @@ export default function Home() {
   }
 
   function openNewRecord(category: RecordCategory | null = null) {
+    // The record button is an action, not a second destination beside Home.
+    if (!category) { setRecordQuickOpen(true); return; }
+    setRecordQuickOpen(false);
     setEventTheme(null);
     setEditingEvent(null);
     setEditingRecordId(null);
@@ -4462,29 +4494,17 @@ export default function Home() {
 
   const recordView = eventTheme ? (
     <ObservationEventForm key={editingEvent?.id ?? eventTheme} dogId={profile.id} theme={eventTheme} editing={editingEvent}
-      online={connection === "online"} onBack={() => { setEventTheme(null); setEditingEvent(null); }}
+      online={connection === "online"} onBack={() => { setEventTheme(null); setEditingEvent(null); returnToOwnerHome(); }}
       onSaved={() => { setEventRefresh((current) => current + 1); setEventTheme(null); setEditingEvent(null); showNotice("記録しました"); returnToOwnerHome(); }} />
   ) : !selectedCategory ? (
-    <section className="topic-screen">
-      <SectionTitle eyebrow="DAILY LOG" title="今日を記録" />
-      <p className="lead owner-record-lead">今日の調子をチェックするか、気になったできごとを残しましょう。</p>
-      <button type="button" className="owner-record-daily-action" onClick={() => openNewRecord("daily")}
-        disabled={connection !== "online" || !profile.id || todayCheckStatus === "loading"}
-        aria-label={todayCheckStatus === "recorded" ? "今日のDaily Checkを確認する" : "Daily Checkで今日の状態を記録する"}>
-        <span className="owner-record-daily-icon" aria-hidden="true"><NavGlyph name="record" /></span>
-        <span className="owner-record-daily-copy"><strong>{todayCheckStatus === "recorded" ? "今日の状態を確認" : "今日の状態を記録"}</strong>
-          <small>Daily Check · 気分・食欲・活動・睡眠・トイレ</small></span>
-        <span className="owner-record-daily-arrow" aria-hidden="true">→</span>
-      </button>
-      <div className="owner-record-event-intro"><h2>できごとを記録</h2><p>観察テーマから選ぶだけ。気づいたことを気軽に残せます。</p></div>
-      {eventStatus === "unavailable" && <p className="observation-error" role="alert">できごとを読み込めませんでした。画面を開き直してください。</p>}
-      <ObservationEventHub selectedThemes={eventThemesSelected} events={todayEvents} onSelect={startEvent} onEdit={editEvent}
-        disabled={connection !== "online" || !profile.id || eventStatus !== "ready"} />
-      <div className="owner-scene-panel owner-scene-panel--record" aria-hidden="true"><OwnerRecordScene /></div>
+    <section className="topic-screen owner-record-return">
+      <SectionTitle eyebrow="DAILY LOG" title="ホームで記録する" />
+      <p className="lead">Daily Checkとできごとの記録はホームにまとめました。</p>
+      <button type="button" className="primary-button" onClick={returnToOwnerHome}>ホームに戻る →</button>
     </section>
   ) : recordCategory === "daily" ? (
     <DailyCheckForm key={`${profile.id ?? ""}:${recordDate}`} dogId={profile.id} initialDate={recordDate}
-      online={connection === "online"} onBack={() => setRecordCategory(null)}
+      online={connection === "online"} onBack={() => { setRecordCategory(null); returnToOwnerHome(); }}
       onSaved={(savedDate) => { if (savedDate === deviceLocalDate()) setTodayCheckStatus("recorded"); setCheckRefresh((value) => value + 1); showNotice("チェックを保存しました"); setRecordCategory(null); returnToOwnerHome(); }} />
   ) : (
     <form className="screen-form" onSubmit={saveRecord}>
@@ -5563,10 +5583,19 @@ export default function Home() {
         <nav ref={bottomNavigation.navRef} style={{ "--bottom-nav-hide": bottomNavigation.progress } as CSSProperties} className={`bottom-nav ${bottomNavigation.hidden ? "bottom-nav-hidden" : ""}`} aria-label="メインメニュー" inert={bottomNavigation.hidden} onFocusCapture={bottomNavigation.show}>
           <button className={view === "home" ? "active" : ""} data-nav="home" aria-current={view === "home" ? "page" : undefined} onClick={() => runBottomNavAction("home", returnToOwnerHome)}><Icon><NavGlyph name="home" /></Icon><span>ホーム</span></button>
           <button className={view === "report" ? "active" : ""} data-nav="report" aria-current={view === "report" ? "page" : undefined} onClick={() => runBottomNavAction("report", () => navigateOwnerView("report"))}><Icon><NavGlyph name="report" /></Icon><span>変化</span></button>
-          <button className={`bottom-nav-record ${view === "record" ? "active" : ""}`} data-nav="record" aria-current={view === "record" ? "page" : undefined} onClick={() => runBottomNavAction("record", () => openNewRecord())}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>
+          <button type="button" className={`bottom-nav-record ${view === "record" || recordQuickOpen ? "active" : ""}`} data-nav="record" aria-label="記録する（種類を選ぶ）" aria-haspopup="dialog" aria-expanded={recordQuickOpen} onClick={() => { bottomNavigation.show(); setRecordQuickOpen(true); }}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>
           <button className={view === "coach" ? "active" : ""} data-nav="coach" aria-current={view === "coach" ? "page" : undefined} onClick={() => runBottomNavAction("coach", () => navigateOwnerView("coach"))}><Icon><NavGlyph name="coach" /></Icon><span>チャット</span></button>
           <button className={view === "profile" ? "active" : ""} data-nav="profile" aria-current={view === "profile" ? "page" : undefined} onClick={() => runBottomNavAction("profile", openSettingsMenu)}><Icon><NavGlyph name="profile" /></Icon><span>マイページ</span></button>
         </nav>
+        {recordQuickOpen && (
+          <RecordQuickActions
+            onClose={closeRecordQuick}
+            onDaily={() => openNewRecord("daily")}
+            onEvent={openQuickEventLog}
+            dailyCompleted={todayCheckStatus === "recorded"}
+            eventCount={eventStatus === "ready" ? todayEvents.length : null}
+          />
+        )}
         {celebration && (
           <div className="celebration-backdrop" role="dialog" aria-modal="true" aria-labelledby="celebration-title" onClick={closeCelebration}>
             <div className="celebration-card" onClick={(event) => event.stopPropagation()}>

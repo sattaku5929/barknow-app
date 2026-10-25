@@ -47,3 +47,17 @@ Design north star: **"3 seconds to know what's next, 1–2 taps to act"**, 375px
 - "Find trend": immediately visible before decorative image.
 - Keyboard-only discoverability, 200% zoom, touch target size, scroll restoration, media gallery return-to-message.
 - Measure actual first-action time and scroll depth in testing rather than fabricate quantitative improvements.
+
+
+## Revised Owner information architecture — Phase 1-B
+
+After the first audit, the product direction changed: **a separate Record destination duplicates what the active Home already offers**. The Phase 1-A recommendations above document the initial implementation, not the final desired navigation.
+
+**New navigation contract:**
+- **Home** is the single recording hub. It contains the Daily Check action, today's Event Log topics, care routines and the calendar.
+- The **raised central 記録 button** remains to preserve one-tap access anywhere, but is **an action, not another destination**. It opens a compact, accessible chooser: 今日の状態を記録 → original Daily Check form; できごとを記録 → the existing Event Hub on Home.
+- **Changes** remains for trends, **Chat** for coach support, and **My Page** for profile/settings. The underlying recordView remains only for existing recording forms and legacy navigation recovery, not as a competing record-selection screen.
+
+**Quality boundaries:** never rewrite Daily Check/Event Log saving, date logic, permissions, RLS, owner/coach messaging, scheduling, calendar storage or the raised recording navigation's visual geometry. Preserve existing historical records.
+
+**Automated acceptance:** central nav opens a dialog rather than the old record route; both choices work, Home retains the original Event Hub and Daily Check, keyboard Escape/Tab supported; the old duplicate record-selection UI is absent. Run TypeScript, lint, baseline regression tests and a Vercel preview. Real-device usability remains to be verified separately.
