@@ -19,15 +19,13 @@ test("today's care summary scrolls to the current in-page care group",()=>{
   assert.match(care,/id=\{\x60home-care-\$\{period\.key\}\x60\}/);
   assert.doesNotMatch(home,/onClick=\{\(\) => navigateOwnerView\("goals"\)\}/);
 });
-test("record menu clearly offers both Daily Check and Event Log",()=>{
-  assert.match(record,/title="今日を記録"/);
-  assert.match(record,/className="owner-record-daily-action"/);
-  assert.match(record,/onClick=\{\(\) => openNewRecord\("daily"\)\}/);
-  assert.match(record,/今日の状態を記録/);
-  assert.match(record,/できごとを記録/);
-  assert.ok(record.indexOf('className="owner-record-daily-action"') < record.indexOf('<ObservationEventHub'));
-  assert.ok(record.indexOf('<ObservationEventHub') < record.indexOf('<OwnerRecordScene'));
-  assert.match(record,/disabled=\{connection !== "online" \|\| !profile\.id \|\| todayCheckStatus === "loading"\}/);
+test("Home alone contains Daily Check and Event Hub; separate record-menu page is gone",()=>{
+  assert.match(home,/className="home-v3-daily"/);
+  assert.match(home,/id="home-event-log"/);
+  assert.match(home,/<ObservationEventHub/);
+  assert.match(record,/title="ホームで記録する"/);
+  assert.doesNotMatch(record,/className="owner-record-daily-action"/);
+  assert.doesNotMatch(record,/<ObservationEventHub/);
 });
 test("changes screen prioritizes observation trends over illustration",()=>{
   assert.ok(report.indexOf("<RecentObservationTrends") > -1);
@@ -39,4 +37,19 @@ test("compact home summary retains legibility and keyboard focus",()=>{
   assert.match(styles,/\.home-v3-summary small \{[^}]*font-size:11px/);
   assert.match(styles,/\.home-v3 button:focus-visible/);
   assert.match(styles,/#home-care-day \{ scroll-margin-top:24px; \}/);
+});
+
+test("center Record is an action sheet instead of a second page",()=>{
+  const picker=fs.readFileSync("components/owner/RecordQuickActions.tsx","utf8");
+  assert.match(page,/data-nav="record" aria-label="記録する（種類を選ぶ）" aria-haspopup="dialog"/);
+  assert.match(page,/setRecordQuickOpen\(true\)/);
+  assert.doesNotMatch(page,/runBottomNavAction\("record"/);
+  assert.match(page,/const \[recordQuickOpen, setRecordQuickOpen\] = useState\(false\)/);
+  assert.match(page,/<RecordQuickActions/);
+  assert.match(picker,/role="dialog" aria-modal="true"/);
+  assert.match(picker,/今日の状態を記録/);
+  assert.match(picker,/できごとを記録/);
+  assert.match(page,/onEvent=\{openQuickEventLog\}/);
+  assert.match(page,/onDaily=\{\(\) => openNewRecord\("daily"\)\}/);
+  assert.match(page,/document\.getElementById\("home-event-log"\)\?\.scrollIntoView/);
 });
