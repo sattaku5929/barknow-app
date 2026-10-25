@@ -27,10 +27,18 @@ test("Home alone contains Daily Check and Event Hub; separate record-menu page i
   assert.doesNotMatch(record,/className="owner-record-daily-action"/);
   assert.doesNotMatch(record,/<ObservationEventHub/);
 });
-test("changes screen prioritizes observation trends over illustration",()=>{
-  assert.ok(report.indexOf("<RecentObservationTrends") > -1);
-  assert.ok(report.indexOf("<RecentObservationTrends") < report.indexOf("<OwnerReportScene"));
+test("Changes lives in Home, and details stay accessible without a separate nav destination",()=>{
+  assert.match(home,/id="home-changes"/);
+  assert.match(home,/<RecentObservationTrends[\s\S]*?compact \/>/);
+  assert.match(home,/\{reportView\}/);
   assert.match(report,/className="report-deep-dive"/);
+  const nav=page.slice(page.indexOf('<nav ref={bottomNavigation.navRef}'),page.indexOf('{recordQuickOpen && ('));
+  assert.doesNotMatch(nav,/data-nav="report"/);
+  assert.match(nav,/bottom-nav-four/);
+  assert.match(nav,/data-nav="home"/);
+  assert.match(nav,/data-nav="record"/);
+  assert.match(nav,/data-nav="coach"/);
+  assert.match(nav,/data-nav="profile"/);
 });
 test("compact home summary retains legibility and keyboard focus",()=>{
   assert.match(styles,/\.home-v3-summary > button \{[\s\S]*?min-height:88px/);
