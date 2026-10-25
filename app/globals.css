@@ -7242,3 +7242,31 @@ body { font-size: 16px; }
   .app-stage .owner-view-home .home-v3-insights .report-screen .recent-observation-trends { padding: 10px; }
   .app-stage .owner-view-record .owner-record-hub { gap: 12px; }
 }
+
+
+/* Record is the sole edit surface: visible Daily Check action plus distinct event input. */
+.app-stage .owner-view-record .owner-record-lead {
+  margin: 4px 0 14px; color: #5a7265; font-size: 13px; line-height: 1.65;
+}
+.app-stage .owner-view-record .owner-record-daily-action {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 78px;
+  padding: 13px 14px; border: 1px solid #bddfd0; border-radius: 16px;
+  background: #f2faf5; color: #19513c; text-align: left; cursor: pointer;
+  box-shadow: 0 3px 14px rgba(0,70,42,.04);
+}
+.app-stage .owner-view-record .owner-record-daily-icon {
+  display: grid; flex: 0 0 38px; width: 38px; height: 38px; place-items: center;
+  border-radius: 11px; background: #e0f1e7; color: #008661;
+}
+.app-stage .owner-view-record .owner-record-daily-icon svg { width: 22px; height: 22px; }
+.app-stage .owner-view-record .owner-record-daily-copy { display: grid; flex: 1; min-width: 0; gap: 4px; }
+.app-stage .owner-view-record .owner-record-daily-copy strong { font-size: 14px; font-weight: 700; line-height: 1.4; }
+.app-stage .owner-view-record .owner-record-daily-copy small {
+  color: #60776b; font-size: 11px; line-height: 1.5; overflow-wrap: anywhere;
+}
+.app-stage .owner-view-record .owner-record-daily-arrow { flex-shrink: 0; color: #008661; font-size: 20px; }
+.app-stage .owner-view-record .owner-record-daily-action:focus-visible { outline: 2px solid #008661; outline-offset: 3px; }
+.app-stage .owner-view-record .owner-record-daily-action:disabled { opacity: .55; cursor: not-allowed; }
+.app-stage .owner-view-record .owner-record-event-intro { margin: 12px 0 10px; }
+.app-stage .owner-view-record .owner-record-event-intro h2 { margin: 0; color: #263930; font-size: 18px; line-height: 1.4; }
+.app-stage .owner-view-record .owner-record-event-intro p { margin: 6px 0 0; color: #647a6e; font-size: 12px; line-height: 1.6; }
