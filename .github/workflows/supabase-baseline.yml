@@ -33,6 +33,8 @@ jobs:
           node --test tests/adminMenuNavigation.test.cjs
           node --test tests/providerNeutralMembership.test.cjs
           node --test tests/membershipEntitlements.test.cjs
+          node --test tests/coachingPaidAccess.sql.test.mjs
+          node --test tests/coachingAccessApi.test.cjs
           node --test tests/membershipMyPageUX.test.cjs
           node --test tests/adminUsageDashboard.sql.test.mjs
           node --test tests/announcementPreviewUi.test.cjs

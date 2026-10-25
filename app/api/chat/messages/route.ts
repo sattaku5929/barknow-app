@@ -2,6 +2,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { sendPushNotification } from "@/lib/pushSender";
 import { authenticatedSupabase, authenticatedUser, serviceSupabase } from "@/lib/server/supabase";
 import { validChatMediaKey } from "@/lib/media-security";
+import { canWriteCoaching } from "@/lib/server/coachingAuthorization";
 import { HeadObjectCommand } from "@aws-sdk/client-s3";
 import { r2BucketName, r2Client } from "@/lib/r2";
 
@@ -32,6 +33,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   if (input.sender !== "owner" && input.sender !== "coach") return NextResponse.json({ error: "Invalid sender" }, { status: 400 });
+  // Until the database switch is enabled this preserves existing chats.
+  // Once enabled, require paid (or approved trial) owner access before a
+  // message/upload is processed. Coaches are enforced by RLS, with admin support
+  // retaining its existing exemption.
+  if (input.sender === "owner") {
+    try {
+      if (!await canWriteCoaching(user.id, input.dog_id)) {
+        return NextResponse.json({ error: "チャットの利用には有効な月額契約と担当コーチの確定が必要です", code: "coaching_membership_required" }, { status: 403 });
+      }
+    } catch (error) {
+      console.error("[Chat] owner access check failed", { userId: user.id, error });
+      return NextResponse.json({ error: "チャットの利用権限を確認できませんでした" }, { status: 503 });
+    }
+  }
+
   if (input.media_url || input.media_key) {
     if (!validChatMediaKey(input.media_key) || !input.media_key.startsWith(`chat/${user.id}/`)
       || input.media_url !== `r2://${input.media_key}` || !["image", "video"].includes(input.media_type ?? "")) {
