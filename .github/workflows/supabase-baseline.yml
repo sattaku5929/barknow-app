@@ -34,6 +34,8 @@ jobs:
           node --test tests/providerNeutralMembership.test.cjs
           node --test tests/membershipEntitlements.test.cjs
           node --test tests/coachingPaidAccess.sql.test.mjs
+          node --test tests/adminCoachAssignmentRepair.sql.test.mjs
+          node --test tests/adminCoachAssignmentRepairUi.test.cjs
           node --test tests/coachingAccessApi.test.cjs
           node --test tests/membershipMyPageUX.test.cjs
           node --test tests/adminUsageDashboard.sql.test.mjs
