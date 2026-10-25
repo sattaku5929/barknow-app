@@ -104,6 +104,18 @@ test("before activation normal chat and booking remain unchanged", async () => {
   await assert.rejects(send(other, owner, dog, "owner"), /row-level security|violates row-level/);
 });
 
+test("activation is blocked until missing confirmed assignments are reconciled", async () => {
+  await assert.rejects(
+    root("update public.wt_coaching_access_control set enforce_paid=true where singleton=true"),
+    /confirmed coach assignments require reconciliation/,
+  );
+  const check = await root("select enforce_paid from public.wt_coaching_access_control");
+  assert.equal(check.rows[0].enforce_paid, false);
+  // Resolve an inconsistent test-only application by closing it; the migration
+  // never fixes or alters existing production applications automatically.
+  await root("update public.wt_coaching_applications set status='closed' where owner_id=$1", [other]);
+});
+
 test("active enforcement blocks unpaid writes, but preserves existing trial", async () => {
   await root("update public.wt_coaching_access_control set enforce_paid=true,changed_at=now() where singleton=true");
   await assert.rejects(send(other, other, otherDog, "owner"), /row-level security|violates row-level/);
