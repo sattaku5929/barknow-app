@@ -2,6 +2,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { NextRequest, NextResponse } from "next/server";
 import { authenticatedStaffRole, authenticatedSupabase } from "@/lib/server/supabase";
+import { canWriteCoaching } from "@/lib/server/coachingAuthorization";
 import { assertR2Configuration, R2ConfigurationError, r2BucketName, r2Client } from "@/lib/r2";
 
 export const runtime = "nodejs";
@@ -77,6 +78,19 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Media conversation authorization error", error);
     return NextResponse.json({ code: "conversation_check_failed", error: "会話の権限を確認できませんでした" }, { status: 500 });
+  }
+
+  // Do not issue writable object URLs for non-entitled owners, including
+  // media-only chat messages. The message DB policy remains the final guard.
+  if (user.id === ownerId) {
+    try {
+      if (!await canWriteCoaching(ownerId, dogId)) {
+        return NextResponse.json({ error: "画像・動画の共有には有効な月額契約と担当コーチの確定が必要です", code: "coaching_membership_required" }, { status: 403 });
+      }
+    } catch (error) {
+      console.error("Media coaching access check failed", { userId: user.id, error });
+      return NextResponse.json({ code: "coaching_access_unavailable", error: "利用権限を確認できませんでした" }, { status: 503 });
+    }
   }
 
   try {
