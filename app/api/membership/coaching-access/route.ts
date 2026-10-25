@@ -22,14 +22,16 @@ export async function GET(request: NextRequest) {
 
   try {
     const admin = serviceSupabase();
-    const [subscription, application, control] = await Promise.all([
+    const [subscription, application, control, role] = await Promise.all([
       admin.from("wt_subscriptions").select("plan_status,activated_at,updated_at").eq("user_id", user.id).maybeSingle(),
       admin.from("wt_coaching_applications")
         .select("status,dog_id,assigned_coach_id,owner_confirmed_at")
         .eq("owner_id", user.id).eq("dog_id", dogId).order("submitted_at", { ascending: false }).limit(1).maybeSingle(),
       admin.from("wt_coaching_access_control").select("enforce_paid").eq("singleton", true).maybeSingle(),
+      admin.from("wt_user_roles").select("role").eq("user_id", user.id).maybeSingle(),
     ]);
-    if (subscription.error || application.error) throw subscription.error || application.error;
+    if (subscription.error || application.error || role.error) throw subscription.error || application.error || role.error;
+    const staffPremiumAccess = role.data?.role === "admin";
 
     // Rolling upgrade: until the migration exists in production we must
     // preserve existing coaching routes. Other DB errors fail closed.
@@ -50,6 +52,7 @@ export async function GET(request: NextRequest) {
     }
     const policy = resolveOwnerEntitlements({
       membershipState: membership.state,
+      staffPremiumAccess,
       coachingStatus: (application.data?.status ?? null) as OwnerCoachingStatus | null,
       assignedCoachId: hasMatchingAssignment ? coachId : null,
       ownerConfirmedAt: application.data?.owner_confirmed_at,
@@ -73,6 +76,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       enforcementActive,
       tier: policy.tier,
+      staffPremiumAccess,
       availability: policy.availability,
       eligibleForChat: policy.features.coachChat || temporaryAccess,
       eligibleForBooking: policy.features.onlineCoachingBooking || temporaryAccess,
