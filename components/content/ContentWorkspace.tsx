@@ -91,6 +91,7 @@ export default function ContentWorkspace({role}:{role:"coach"|"admin"}){
   const [clipEnd,setClipEnd]=useState(0);
   const [q,setQ]=useState("");
   const [category,setCategory]=useState("すべて");
+  const [coachFilter,setCoachFilter]=useState("all");
   const [editing,setEditing]=useState<string|null>(null);
   async function refresh(){
     const [result,auth]=await Promise.all([call<{items:ContentItem[];authors:Record<string,string>}>("/api/content/items"),supabase.auth.getUser()]);
@@ -146,7 +147,7 @@ export default function ContentWorkspace({role}:{role:"coach"|"admin"}){
     try {await call("/api/content/items","PATCH",{id,...changes});await refresh();setNotice("変更を保存しました");}
     catch(e){setError(e instanceof Error?e.message:"更新できませんでした");}finally{setSaving(false);}
   }
-  const visible=useMemo(()=>items.filter(i=>match(i,q,category,"all","all",uid)),[items,q,category,uid]);
+  const visible=useMemo(()=>items.filter(i=>match(i,q,category,"all","all",uid)&&(role!=="admin"||coachFilter==="all"||i.authorId===coachFilter)),[items,q,category,uid,role,coachFilter]);
   const active=items.filter(i=>!i.archived&&!i.blocked);
   return <section className={styles.workspace} aria-label="コンテンツ管理">
     <div className={styles.title}><div><small>{role==="admin"?"WAN TONE / CONTENT OPERATIONS":"WAN TONE / MY CONTENT"}</small>
@@ -195,6 +196,10 @@ export default function ContentWorkspace({role}:{role:"coach"|"admin"}){
       <div className={styles.filters}>
         <input aria-label="コンテンツ検索" placeholder="タイトル・タグで検索" value={q} onChange={e=>setQ(e.target.value)}/>
         <select aria-label="カテゴリー絞り込み" value={category} onChange={e=>setCategory(e.target.value)}><option>すべて</option>{categories.map(c=><option key={c}>{c}</option>)}</select>
+        {role==="admin"&&<select aria-label="投稿者で絞り込み" value={coachFilter} onChange={e=>setCoachFilter(e.target.value)}>
+          <option value="all">すべての投稿者</option>
+          {[...new Set(items.map(item=>item.authorId).filter(Boolean))].map(id=><option value={id} key={id}>{authors[id]||"コーチ・運営"} · {items.filter(x=>x.authorId===id).length}件</option>)}
+        </select>}
       </div>
       {loading?<p>読み込み中…</p>:visible.length===0?<p className={styles.helper}>まだコンテンツがありません。</p>:<div className={styles.resultList}>
         {visible.map(item=><article className={styles.row} key={item.id}>
