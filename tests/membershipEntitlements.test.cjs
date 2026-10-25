@@ -39,7 +39,7 @@ test("paid users without a confirmed coach enter assignment waiting state", () =
     { coachingStatus: "submitted", assignedCoachId: "coach-test-id", ownerConfirmedAt: "2026-10-25" },
     { coachingStatus: "assigned", assignedCoachId: "coach-test-id" },
     { coachingStatus: "offered", assignedCoachId: "coach-test-id", ownerConfirmedAt: "2026-10-25" },
-    { coachingStatus: "closed", ...linkedCoach },
+    { ...linkedCoach, coachingStatus: "closed" },
   ]) {
     const result = resolveOwnerEntitlements({ membershipState: "active", ...data });
     assert.equal(result.tier, "paid");
