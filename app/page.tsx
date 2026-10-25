@@ -1234,10 +1234,11 @@ export default function Home() {
     eligibleForBooking: boolean;
     availability: "upgrade_required" | "payment_attention" | "awaiting_coach" | "ready";
     temporaryAccess: boolean;
+    staffPremiumAccess?: boolean;
   } | null>(null);
   useEffect(() => {
     const selectedDogId = profile.id;
-    if (!authenticated || !currentUserId || !selectedDogId || userRole !== "owner") return;
+    if (!authenticated || !currentUserId || !selectedDogId || (userRole !== "owner" && userRole !== "admin")) return;
     let mounted = true;
     const timer = window.setTimeout(() => {
       void supabase.auth.getSession().then(async ({ data }) => {
@@ -3235,9 +3236,9 @@ export default function Home() {
   }
 
   async function bookOnlineSession(slot: AvailabilitySlot) {
-    if (coachingAccess?.enforcementActive && !coachingAccess.eligibleForBooking && userRole === "owner") {
-      showNotice("オンライン予約は月額プラン登録と担当コーチの確定後に利用できます");
-      router.push("/membership");
+    if (coachingAccess?.enforcementActive && !coachingAccess.eligibleForBooking) {
+      showNotice(coachingAccess?.availability === "awaiting_coach" ? "オンライン予約には担当コーチの確定が必要です" : "オンライン予約は月額プラン登録と担当コーチの確定後に利用できます");
+      if (coachingAccess?.availability !== "awaiting_coach") router.push("/membership");
       return;
     }
     if (!coachingApplication || saving) return;
@@ -4714,7 +4715,7 @@ export default function Home() {
     </section>
   );
 
-  const coachingFeaturesLocked = userRole === "owner" && coachingAccess?.enforcementActive === true && !coachingAccess.eligibleForChat;
+  const coachingFeaturesLocked = coachingAccess?.enforcementActive === true && !coachingAccess.eligibleForChat;
   const coachingChatOpen = Boolean(coachingApplication?.ownerConfirmedAt) && Boolean(coachingApplication && ["assigned", "consulting", "payment_pending", "active"].includes(coachingApplication.status)) && !coachingFeaturesLocked;
   const ownerBookedSessions = onlineSessions.filter((session) => session.status === "booked").sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
   const ownerCompletedSessions = onlineSessions.filter((session) => session.status === "completed").sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
@@ -4736,6 +4737,7 @@ export default function Home() {
   const coachView = (
     <section className="coach-screen">
       <SectionTitle eyebrow="COACHING" title={coachingChatOpen ? "担当コーチに相談" : "記録を、変化につなげる"} />
+      {userRole === "admin" && <p className="owner-admin-premium-note">運営アカウント：有料会員向け機能をご利用いただけます。チャット・オンライン診断は担当コーチの確定後に利用できます。</p>}
       {!coachingApplication || coachingApplication.status === "closed" ? (
         <>
           <LockedCoachingPreview tab={ownerCoachTab} onTabChange={navigateCoachTab} onDetails={openCoachingDetails} />
@@ -4875,8 +4877,8 @@ export default function Home() {
                   </div>
                   {coachingFeaturesLocked ? (
                     <section className="coaching-locked-notice" aria-label="月額コーチングのご案内">
-                      <p>{coachingAccess?.availability === "payment_attention" ? "お支払い状況の確認が必要です。" : "コーチとの新しいメッセージ・オンライン予約は月額プラン限定です。"}</p>
-                      <button type="button" className="primary-button" onClick={() => router.push("/membership")}>プラン内容を見る →</button>
+                      <p>{coachingAccess?.availability === "awaiting_coach" ? "担当コーチの確定後にチャット・オンライン診断をご利用いただけます。" : coachingAccess?.availability === "payment_attention" ? "お支払い状況の確認が必要です。" : "コーチとの新しいメッセージ・オンライン予約は月額プラン限定です。"}</p>
+                      {coachingAccess?.availability !== "awaiting_coach" && <button type="button" className="primary-button" onClick={() => router.push("/membership")}>プラン内容を見る →</button>}
                       <small>これまでのチャット履歴は引き続き確認できます。</small>
                     </section>
                   ) : connection === "online" && currentUserId && profile.id
