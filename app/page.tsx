@@ -1222,6 +1222,33 @@ export default function Home() {
   const [behaviorNote, setBehaviorNote] = useState("");
   const [goodMoment, setGoodMoment] = useState("");
   const [coachingApplication, setCoachingApplication] = useState<CoachingApplication | null>(null);
+  const [coachingAccess, setCoachingAccess] = useState<{
+    enforcementActive: boolean;
+    eligibleForChat: boolean;
+    eligibleForBooking: boolean;
+    availability: "upgrade_required" | "payment_attention" | "awaiting_coach" | "ready";
+    temporaryAccess: boolean;
+  } | null>(null);
+  useEffect(() => {
+    if (!authenticated || !currentUserId || userRole !== "owner") return;
+    let mounted = true;
+    const timer = window.setTimeout(() => {
+      void supabase.auth.getSession().then(async ({ data }) => {
+        if (!data.session?.access_token) return;
+        const response = await fetch("/api/membership/coaching-access", {
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error("Could not load coaching access");
+        const access = await response.json();
+        if (mounted) setCoachingAccess(access);
+      }).catch((error) => {
+        console.error("[Coaching access] could not refresh", error);
+        if (mounted) setCoachingAccess(null);
+      });
+    }, 0);
+    return () => { mounted = false; window.clearTimeout(timer); };
+  }, [authenticated, currentUserId, userRole, coachingApplication?.status, coachingApplication?.ownerConfirmedAt, coachingApplication?.assignedCoachId]);
   const [coachingConcerns, setCoachingConcerns] = useState<string[]>([]);
   const [coachingOutcome, setCoachingOutcome] = useState("");
   const [coachingNote, setCoachingNote] = useState("");
@@ -3200,6 +3227,11 @@ export default function Home() {
   }
 
   async function bookOnlineSession(slot: AvailabilitySlot) {
+    if (coachingAccess?.enforcementActive && !coachingAccess.eligibleForBooking && userRole === "owner") {
+      showNotice("オンライン予約は月額プラン登録と担当コーチの確定後に利用できます");
+      router.push("/membership");
+      return;
+    }
     if (!coachingApplication || saving) return;
     const hasInitial = onlineSessions.some((session) => session.sessionType === "initial" && session.status !== "cancelled");
     const sessionType = hasInitial ? "followup" : "initial";
@@ -4674,7 +4706,8 @@ export default function Home() {
     </section>
   );
 
-  const coachingChatOpen = Boolean(coachingApplication?.ownerConfirmedAt) && Boolean(coachingApplication && ["assigned", "consulting", "payment_pending", "active"].includes(coachingApplication.status));
+  const coachingFeaturesLocked = userRole === "owner" && coachingAccess?.enforcementActive === true && !coachingAccess.eligibleForChat;
+  const coachingChatOpen = Boolean(coachingApplication?.ownerConfirmedAt) && Boolean(coachingApplication && ["assigned", "consulting", "payment_pending", "active"].includes(coachingApplication.status)) && !coachingFeaturesLocked;
   const ownerBookedSessions = onlineSessions.filter((session) => session.status === "booked").sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
   const ownerCompletedSessions = onlineSessions.filter((session) => session.status === "completed").sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
   const chronologicalMessages = [...messages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -4812,7 +4845,13 @@ export default function Home() {
                       ? <ChatMessageTimeline messages={chronologicalMessages} selfSender="owner" onReply={setOwnerReplyTo} onOpenMedia={openMediaGallery} />
                       : <div className="coach-empty"><div className="coach-avatar"><NavGlyph name="coach" /></div><h3>担当コーチへ、最初のメッセージを。</h3><p>例：いちばん困っているのは散歩中の引っ張りです。記録のどこを見ればよいですか？</p></div>}
                   </div>
-                  {connection === "online" && currentUserId && profile.id
+                  {coachingFeaturesLocked ? (
+                    <section className="coaching-locked-notice" aria-label="月額コーチングのご案内">
+                      <p>{coachingAccess?.availability === "payment_attention" ? "お支払い状況の確認が必要です。" : "コーチとの新しいメッセージ・オンライン予約は月額プラン限定です。"}</p>
+                      <button type="button" className="primary-button" onClick={() => router.push("/membership")}>プラン内容を見る →</button>
+                      <small>これまでのチャット履歴は引き続き確認できます。</small>
+                    </section>
+                  ) : connection === "online" && currentUserId && profile.id
                     ? <ChatInput ownerId={currentUserId} dogId={profile.id} sender="owner" placeholder="困っている場面や、写真・動画を共有してください" onSent={addOwnerMessage} replyTo={ownerReplyTo} onCancelReply={() => setOwnerReplyTo(null)} />
                     : <p className="media-chat-unavailable">オンライン接続後にメッセージや画像・動画を送信できます。</p>}
                 </div>
