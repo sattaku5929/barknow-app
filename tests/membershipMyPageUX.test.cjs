@@ -45,3 +45,11 @@ test("operational Admin account is never sent to Stripe checkout", () => {
   assert.match(checkout,/運営アカウントは有料機能を課金なしで利用できます/);
   assert.match(checkout,/status: 409/);
 });
+
+test("Admin owner sees coach assignment setup instead of a paid-plan upsell", () => {
+  const app=read("app/page.tsx");
+  assert.match(app,/staffPremiumAccess=\{userRole === "admin"\}/);
+  assert.match(app,/owner-coaching-start/);
+  assert.match(app,/staffPremiumAccess \? "担当コーチ確定後に利用可能"/);
+  assert.match(app,/運営アカウントのご利用に月額料金は発生しません/);
+});
