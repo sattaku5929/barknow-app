@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `ファイルは${limit / 1024 / 1024}MB以下にしてください` }, { status: 400 });
   }
 
+  let bypassForSupportAdmin = false;
   try {
     const { data: dog, error: dogError } = await userClient.from("wt_dogs").select("id,owner_id").eq("id", dogId).eq("owner_id", ownerId).maybeSingle();
     if (dogError) throw dogError;
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
       if (roleError) throw roleError;
       if (assignmentError) throw assignmentError;
       const adminAllowed = role?.role === "admin" && (await authenticatedStaffRole(request))?.role === "admin";
+      bypassForSupportAdmin = adminAllowed;
       if (!adminAllowed && !(role?.role === "coach" && assignment)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
@@ -82,7 +84,7 @@ export async function POST(request: NextRequest) {
 
   // Do not issue writable object URLs for non-entitled owners, including
   // media-only chat messages. The message DB policy remains the final guard.
-  if (user.id === ownerId) {
+  if (!bypassForSupportAdmin) {
     try {
       if (!await canWriteCoaching(ownerId, dogId)) {
         return NextResponse.json({ error: "画像・動画の共有には有効な月額契約と担当コーチの確定が必要です", code: "coaching_membership_required" }, { status: 403 });
