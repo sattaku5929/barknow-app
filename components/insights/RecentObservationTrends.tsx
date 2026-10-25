@@ -14,10 +14,12 @@ import styles from "./RecentObservationTrends.module.css";
 
 type RecordSelection = { title: string; filter: InsightFilter; daily?: boolean };
 
-export default function RecentObservationTrends({ dogId, online, selectedThemes }: {
+export default function RecentObservationTrends({ dogId, online, selectedThemes, compact = false }: {
   dogId?: string;
   online: boolean;
   selectedThemes: EventTheme[];
+  /** Home shows the weekly summary first; graphs remain available on demand. */
+  compact?: boolean;
 }) {
   const [trends, setTrends] = useState<ObservationTrends | null>(null);
   const [dailyDays, setDailyDays] = useState<DailyCheckDay[]>([]);
@@ -65,16 +67,28 @@ export default function RecentObservationTrends({ dogId, online, selectedThemes 
         <InsightDashboardSummary trends={trends} dailyDays={dailyDays}
           onEventRecords={() => showRecords("最近のできごと", { period: "current" })} />
 
-        <DailyCheckHistoryChart days={dailyDays}
-          startDate={trends.current_start} endDate={trends.as_of_local_date} />
-
         {selection && dogId && <div ref={recordsRef}><InsightRecordList key={JSON.stringify(selection)} dogId={dogId} trends={trends} {...selection} onClose={() => setSelection(null)} /></div>}
 
-        <section className="insight-section insight-theme-section" aria-labelledby="theme-trends-title">
-          <div className="insight-section-heading"><div><span className="card-label">EVENT LOG / 直近7日間</span><h3 id="theme-trends-title">できごとの傾向</h3></div></div>
-          {themes.length > 0 ? <ThemeTrendTable trends={themes}>{moreButton}</ThemeTrendTable>
-            : <div className={styles.emptyPanel}><p>直近7日間のできごとはまだありません。記録するとここに内訳が表示されます。</p>{moreButton}</div>}
-        </section>
+        {compact ? <details className={styles.homeDisclosure}>
+          <summary><span><strong>グラフ・できごとの傾向</strong><small>Daily Checkの推移と、悩み別の記録</small></span><span aria-hidden="true">⌄</span></summary>
+          <div className={styles.homeDisclosureBody}>
+            <DailyCheckHistoryChart days={dailyDays}
+              startDate={trends.current_start} endDate={trends.as_of_local_date} />
+            <section className="insight-section insight-theme-section" aria-labelledby="theme-trends-home-title">
+              <div className="insight-section-heading"><div><span className="card-label">EVENT LOG / 直近7日間</span><h3 id="theme-trends-home-title">できごとの傾向</h3></div></div>
+              {themes.length > 0 ? <ThemeTrendTable trends={themes}>{moreButton}</ThemeTrendTable>
+                : <div className={styles.emptyPanel}><p>直近7日間のできごとはまだありません。記録するとここに内訳が表示されます。</p>{moreButton}</div>}
+            </section>
+          </div>
+        </details> : <>
+          <DailyCheckHistoryChart days={dailyDays}
+            startDate={trends.current_start} endDate={trends.as_of_local_date} />
+          <section className="insight-section insight-theme-section" aria-labelledby="theme-trends-title">
+            <div className="insight-section-heading"><div><span className="card-label">EVENT LOG / 直近7日間</span><h3 id="theme-trends-title">できごとの傾向</h3></div></div>
+            {themes.length > 0 ? <ThemeTrendTable trends={themes}>{moreButton}</ThemeTrendTable>
+              : <div className={styles.emptyPanel}><p>直近7日間のできごとはまだありません。記録するとここに内訳が表示されます。</p>{moreButton}</div>}
+          </section>
+        </>}
 
       </>}
   </section>;
