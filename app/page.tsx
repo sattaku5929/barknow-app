@@ -1230,12 +1230,13 @@ export default function Home() {
     temporaryAccess: boolean;
   } | null>(null);
   useEffect(() => {
-    if (!authenticated || !currentUserId || !profile.id || userRole !== "owner") return;
+    const selectedDogId = profile.id;
+    if (!authenticated || !currentUserId || !selectedDogId || userRole !== "owner") return;
     let mounted = true;
     const timer = window.setTimeout(() => {
       void supabase.auth.getSession().then(async ({ data }) => {
         if (!data.session?.access_token) return;
-        const response = await fetch(`/api/membership/coaching-access?dogId=${encodeURIComponent(profile.id)}`, {
+        const response = await fetch(`/api/membership/coaching-access?dogId=${encodeURIComponent(selectedDogId)}`, {
           headers: { Authorization: `Bearer ${data.session.access_token}` },
           cache: "no-store",
         });
