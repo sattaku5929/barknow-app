@@ -223,12 +223,16 @@ function ContentItemEditor({item,save,cancel,saving}:{item:ContentItem;save:(cha
   const [sharing,setSharing]=useState(item.sharing);
   const [category,setCategory]=useState(item.category);
   const [body,setBody]=useState(item.body);
+  const [description,setDescription]=useState(item.description);
+  const [tags,setTags]=useState(item.tags.join(","));
   return <div className={styles.editor}>
     <label>タイトル<input value={title} onChange={e=>setTitle(e.target.value)}/></label>
     <label>カテゴリー<select value={category} onChange={e=>setCategory(e.target.value)}>{categories.map(x=><option key={x}>{x}</option>)}</select></label>
     {item.origin==="coach"&&<label>共有範囲<select value={sharing} onChange={e=>setSharing(e.target.value as ContentItem["sharing"])}><option value="private">自分専用</option><option value="coaches">他コーチ共有</option></select></label>}
+    <label>説明<textarea rows={2} value={description} maxLength={2000} onChange={e=>setDescription(e.target.value)}/></label>
+    <label>検索タグ（カンマ区切り）<input value={tags} onChange={e=>setTags(e.target.value)}/></label>
     {item.format==="article"&&<label>記事<textarea rows={5} value={body} onChange={e=>setBody(e.target.value)}/></label>}
-    <button type="button" disabled={saving} onClick={()=>save({title,category,sharing,body})}>変更を保存</button>
+    <button type="button" disabled={saving} onClick={()=>save({title,category,sharing,body,description,tags:tags.split(",")})}>変更を保存</button>
     <button type="button" onClick={cancel}>キャンセル</button>
   </div>;
 }
