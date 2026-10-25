@@ -35,7 +35,6 @@ import { useScrollNavigation } from "@/lib/ui/useScrollNavigation";
 import { archiveCareGoal, changeCareCount, changeCareIcon, createCareGoal, undoCareCompletions } from "@/lib/care/mutations";
 import OwnerAppBackdrop from "@/components/owner/OwnerAppBackdrop";
 import OwnerHomeScene from "@/components/owner/illustrations/OwnerHomeScene";
-import OwnerReportScene from "@/components/owner/illustrations/OwnerReportScene";
 import { deviceLocalDate, deviceLocalTime, loadDailyCheck } from "@/lib/observations/dailyCheck";
 import { eventThemes, loadEventThemes, loadEvents } from "@/lib/observations/observationEvent";
 import type { EventTheme, ObservationEvent } from "@/lib/observations/observationEvent";
@@ -4409,6 +4408,68 @@ export default function Home() {
               ? "2日連続。いいスタートです。"
               : "今日も来てくれてありがとう。";
 
+  const reportView = (
+    <section className="report-screen">      <details className="report-deep-dive">
+        <summary>
+          <span><strong>詳細データを見る</strong><small>困りごとの推移</small></span>
+          <i aria-hidden="true">⌄</i>
+        </summary>
+        <div className="report-deep-dive-body">
+      <div className="report-section-heading"><p className="card-label">BEHAVIOR TREND</p><h2>困りごとの変化</h2></div>
+      <div className="report-filter" aria-label="困りごとの種類">
+        {BEHAVIOR_TYPES.map((item) => (
+          <button key={item.id} className={reportBehaviorType === item.id ? "is-selected" : ""} onClick={() => setReportBehaviorType(item.id)}>{item.label}</button>
+        ))}
+      </div>
+
+      <section className="trend-card">
+        <div className="trend-summary">
+          <div><p>直近7日間</p><strong>{currentBehaviorTotal}<span>件</span></strong></div>
+          <div className={currentBehaviorTotal < previousBehaviorTotal ? "is-improving" : currentBehaviorTotal > previousBehaviorTotal ? "is-watching" : ""}>
+            <small>その前の7日間 {previousBehaviorTotal}件</small>
+            <b>{behaviorTrend}</b>
+          </div>
+        </div>
+        <div className="behavior-chart" role="img" aria-label={`${behaviorInfo(reportBehaviorType).label}の直近7日間の記録回数`}>
+          {behaviorSeries.map((day) => (
+            <div key={day.value}>
+              <span><i style={{ height: `${day.count ? Math.max(16, (day.count / maxBehaviorCount) * 100) : 3}%` }}><b>{day.count || ""}</b></i></span>
+              <small>{day.label}</small>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {currentBehaviorTotal > 0 ? (
+        <section className="report-detail">
+          <div>
+            <p className="card-label">WHEN IT HAPPENS</p>
+            <h2>起きやすい時間帯</h2>
+            <div className="behavior-periods">
+              <span><b>{behaviorPeriods.morning}</b>朝</span>
+              <span><b>{behaviorPeriods.daytime}</b>昼</span>
+              <span><b>{behaviorPeriods.evening}</b>夕・夜</span>
+            </div>
+          </div>
+          <p className="report-observation">
+            {Math.max(behaviorPeriods.morning, behaviorPeriods.daytime, behaviorPeriods.evening) === behaviorPeriods.evening
+              ? "夕方以降の記録が多めです。散歩や来客など、直前の出来事も一緒に残すと理由を探しやすくなります。"
+              : Math.max(behaviorPeriods.morning, behaviorPeriods.daytime, behaviorPeriods.evening) === behaviorPeriods.morning
+                ? "朝の記録が多めです。起床後や食事前後の様子も一緒に見てみましょう。"
+                : "日中の記録が多めです。留守番や周囲の音など、そのときの環境も手がかりになります。"}
+          </p>
+        </section>
+      ) : (
+        <div className="report-empty"><strong>{behaviorInfo(reportBehaviorType).label}の記録はまだありません</strong><p>起きたときに、時刻と程度を残してみましょう。</p></div>
+      )}
+
+        </div>
+      </details>
+
+      <p className="report-note">表示しているのは記録回数の変化です。記録漏れや生活リズムも影響するため、実際の発生回数や因果関係を断定するものではありません。</p>
+    </section>
+  );
+
   const focusedHomeView = (
     <div className="home-v3">
       <section className="home-v3-lifestyle" aria-label="愛犬との今日">
@@ -4441,7 +4502,7 @@ export default function Home() {
           <span><small>お世話</small><strong>{completedDailyGoalCount}<em>/{dailyGoals.length || "–"}</em></strong></span>
           <b aria-hidden="true">›</b>
         </button>
-        <button type="button" aria-label="記録した日の推移を確認" onClick={() => navigateOwnerView("report")}>
+        <button type="button" aria-label="最近の変化をホームで確認" onClick={() => document.getElementById("home-changes")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
           <span className="home-v3-summary-icon is-week"><NavGlyph name="report" /></span>
           <RecordedDaysSummary key={`recorded-days:${profile.id ?? "no-dog"}`} dogId={profile.id} online={connection === "online"} revision={`${checkRefresh}:${eventRefresh}`} legacyRecords={records} />
           <b aria-hidden="true">›</b>
@@ -4478,6 +4539,16 @@ export default function Home() {
       </section>
 
       <HomeCareGroups key={`home-care:${profile.id ?? "no-dog"}`} goals={careGoals} templates={CARE_GOAL_TEMPLATES} editable={connection === "online" && !!profile.id} progress={goalProgress} onComplete={async (goal) => { await completeCareGoal(goal); setCalendarRefresh(value => value + 1); }} onUndo={undoHomeCareGoal} onCreate={createHomeCareGoal} onCountChange={changeHomeCareCount} onIconChange={changeHomeCareIcon} onRemove={removeHomeCareGoal} icon={(goal) => <CareIcon name={goal.goalType} />} />
+      <section id="home-changes" className="home-v3-changes owner-view-report" aria-labelledby="home-v3-changes-title">
+        <header className="home-v3-changes-header">
+          <span className="card-label">PROGRESS / LAST 7 DAYS</span>
+          <h2 id="home-v3-changes-title">最近の変化</h2>
+          <p>日々の記録から、今週の様子を振り返れます。</p>
+        </header>
+        <RecentObservationTrends key={`home-changes:${profile.id ?? "no-dog"}`} dogId={profile.id}
+          online={connection === "online"} selectedThemes={eventThemesSelected} compact />
+        {reportView}
+      </section>
       <HomeCalendar key={`home-calendar:${profile.id ?? "no-dog"}`} dogId={profile.id} dogName={dogName} birthday={profile.birthday} online={connection === "online"} today={today()} refreshToken={`${eventRefresh}:${checkRefresh}:${calendarRefresh}:${records.length}`} onRecord={(date, kind, note) => { openNewRecord(kind); setRecordDate(date); if (kind === "win") setGoodMoment(note ?? ""); }} />
 
       {appVisitStats && (
@@ -4669,79 +4740,6 @@ export default function Home() {
         </div>
         <button className="primary-button" type="submit">この目標を追加する<span>→</span></button>
       </form>
-    </section>
-  );
-
-  const reportView = (
-    <section className="report-screen">
-      <SectionTitle eyebrow="PROGRESS" title={`${dogName}の変化`} />
-      <p className="lead">できごとの傾向を確認しましょう。詳しいデータは必要なときに開けます。</p>
-      <RecentObservationTrends key={profile.id} dogId={profile.id} online={connection === "online"} selectedThemes={eventThemesSelected} />
-      <div className="owner-scene-panel owner-scene-panel--report" aria-hidden="true"><OwnerReportScene /></div>
-
-      <details className="report-deep-dive">
-        <summary>
-          <span><strong>詳細データを見る</strong><small>困りごとの推移</small></span>
-          <i aria-hidden="true">⌄</i>
-        </summary>
-        <div className="report-deep-dive-body">
-      <div className="report-section-heading"><p className="card-label">BEHAVIOR TREND</p><h2>困りごとの変化</h2></div>
-      <div className="report-filter" aria-label="困りごとの種類">
-        {BEHAVIOR_TYPES.map((item) => (
-          <button key={item.id} className={reportBehaviorType === item.id ? "is-selected" : ""} onClick={() => setReportBehaviorType(item.id)}>{item.label}</button>
-        ))}
-      </div>
-
-      <section className="trend-card">
-        <div className="trend-summary">
-          <div><p>直近7日間</p><strong>{currentBehaviorTotal}<span>件</span></strong></div>
-          <div className={currentBehaviorTotal < previousBehaviorTotal ? "is-improving" : currentBehaviorTotal > previousBehaviorTotal ? "is-watching" : ""}>
-            <small>その前の7日間 {previousBehaviorTotal}件</small>
-            <b>{behaviorTrend}</b>
-          </div>
-        </div>
-        <div className="behavior-chart" role="img" aria-label={`${behaviorInfo(reportBehaviorType).label}の直近7日間の記録回数`}>
-          {behaviorSeries.map((day) => (
-            <div key={day.value}>
-              <span><i style={{ height: `${day.count ? Math.max(16, (day.count / maxBehaviorCount) * 100) : 3}%` }}><b>{day.count || ""}</b></i></span>
-              <small>{day.label}</small>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {currentBehaviorTotal > 0 ? (
-        <section className="report-detail">
-          <div>
-            <p className="card-label">WHEN IT HAPPENS</p>
-            <h2>起きやすい時間帯</h2>
-            <div className="behavior-periods">
-              <span><b>{behaviorPeriods.morning}</b>朝</span>
-              <span><b>{behaviorPeriods.daytime}</b>昼</span>
-              <span><b>{behaviorPeriods.evening}</b>夕・夜</span>
-            </div>
-          </div>
-          <p className="report-observation">
-            {Math.max(behaviorPeriods.morning, behaviorPeriods.daytime, behaviorPeriods.evening) === behaviorPeriods.evening
-              ? "夕方以降の記録が多めです。散歩や来客など、直前の出来事も一緒に残すと理由を探しやすくなります。"
-              : Math.max(behaviorPeriods.morning, behaviorPeriods.daytime, behaviorPeriods.evening) === behaviorPeriods.morning
-                ? "朝の記録が多めです。起床後や食事前後の様子も一緒に見てみましょう。"
-                : "日中の記録が多めです。留守番や周囲の音など、そのときの環境も手がかりになります。"}
-          </p>
-        </section>
-      ) : (
-        <div className="report-empty"><strong>{behaviorInfo(reportBehaviorType).label}の記録はまだありません</strong><p>起きたときに、時刻と程度を残してみましょう。</p></div>
-      )}
-
-        </div>
-      </details>
-
-      <section className="report-coaching-cta">
-        <div><p className="card-label">FROM DATA TO ACTION</p><h2>この変化、どう見ればいい？</h2><p>回数だけでは分からない背景もあります。記録をコーチと一緒に読み、次に試すことを整理できます。</p></div>
-        <button onClick={() => navigateOwnerView("coach")}>{coachingApplication ? "担当状況を確認する" : "コーチングについて相談する"}<span>→</span></button>
-      </section>
-
-      <p className="report-note">表示しているのは記録回数の変化です。記録漏れや生活リズムも影響するため、実際の発生回数や因果関係を断定するものではありません。</p>
     </section>
   );
 
@@ -5576,13 +5574,15 @@ export default function Home() {
           {view === "home" && focusedHomeView}
           {view === "goals" && goalsView}
           {view === "record" && recordView}
-          {view === "report" && reportView}
+          {view === "report" && <section className="report-screen-legacy">
+            <button type="button" className="primary-button" onClick={() => navigateOwnerView("home")}>ホームで変化を見る →</button>
+            {reportView}
+          </section>}
           {view === "coach" && coachView}
           {view === "profile" && profileView}
         </main>
-        <nav ref={bottomNavigation.navRef} style={{ "--bottom-nav-hide": bottomNavigation.progress } as CSSProperties} className={`bottom-nav ${bottomNavigation.hidden ? "bottom-nav-hidden" : ""}`} aria-label="メインメニュー" inert={bottomNavigation.hidden} onFocusCapture={bottomNavigation.show}>
+        <nav ref={bottomNavigation.navRef} style={{ "--bottom-nav-hide": bottomNavigation.progress } as CSSProperties} className={`bottom-nav bottom-nav-four ${bottomNavigation.hidden ? "bottom-nav-hidden" : ""}`} aria-label="メインメニュー" inert={bottomNavigation.hidden} onFocusCapture={bottomNavigation.show}>
           <button className={view === "home" ? "active" : ""} data-nav="home" aria-current={view === "home" ? "page" : undefined} onClick={() => runBottomNavAction("home", returnToOwnerHome)}><Icon><NavGlyph name="home" /></Icon><span>ホーム</span></button>
-          <button className={view === "report" ? "active" : ""} data-nav="report" aria-current={view === "report" ? "page" : undefined} onClick={() => runBottomNavAction("report", () => navigateOwnerView("report"))}><Icon><NavGlyph name="report" /></Icon><span>変化</span></button>
           <button type="button" className={`bottom-nav-record ${view === "record" || recordQuickOpen ? "active" : ""}`} data-nav="record" aria-label="記録する（種類を選ぶ）" aria-haspopup="dialog" aria-expanded={recordQuickOpen} onClick={() => { bottomNavigation.show(); setRecordQuickOpen(true); }}><Icon><NavGlyph name="record" /></Icon><span>記録</span></button>
           <button className={view === "coach" ? "active" : ""} data-nav="coach" aria-current={view === "coach" ? "page" : undefined} onClick={() => runBottomNavAction("coach", () => navigateOwnerView("coach"))}><Icon><NavGlyph name="coach" /></Icon><span>チャット</span></button>
           <button className={view === "profile" ? "active" : ""} data-nav="profile" aria-current={view === "profile" ? "page" : undefined} onClick={() => runBottomNavAction("profile", openSettingsMenu)}><Icon><NavGlyph name="profile" /></Icon><span>マイページ</span></button>
