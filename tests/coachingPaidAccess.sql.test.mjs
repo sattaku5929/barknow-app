@@ -51,6 +51,10 @@ with check (sender = 'coach' and (
  select 1 from public.wt_coach_assignments a where a.coach_id=auth.uid() and a.dog_id=wt_coach_messages.dog_id and a.owner_id=wt_coach_messages.owner_id))));
 create policy "Owners read their messages" on public.wt_coach_messages for select to authenticated
 using (owner_id=auth.uid());
+create policy "assigned staff read messages" on public.wt_coach_messages for select to authenticated
+using (public.wt_is_admin() or (public.wt_is_coach() and exists(
+  select 1 from public.wt_coach_assignments a where a.coach_id=auth.uid() and a.dog_id=wt_coach_messages.dog_id)));
+
 grant usage on schema auth,public to authenticated;
 grant select on public.wt_coach_assignments, public.wt_coach_messages to authenticated;
 grant insert on public.wt_coach_messages to authenticated;
