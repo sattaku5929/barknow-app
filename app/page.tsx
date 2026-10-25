@@ -4409,7 +4409,8 @@ export default function Home() {
               : "今日も来てくれてありがとう。";
 
   const reportView = (
-    <section className="report-screen">      <details className="report-deep-dive">
+    <section className="report-screen">
+      <details className="report-deep-dive">
         <summary>
           <span><strong>詳細データを見る</strong><small>困りごとの推移</small></span>
           <i aria-hidden="true">⌄</i>
