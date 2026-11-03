@@ -1,0 +1,88 @@
+/* Scope the imported visual plan to the owner's Home only. */
+body .app-stage.owner-stage.home-image-plan,
+body .app-stage.owner-stage.home-image-plan::before { background:#fcf9f2; }
+body .home-image-plan .owner-app-backdrop { display:none; }
+body .app-stage.owner-stage.home-image-plan .app-shell { background:transparent; }
+body .app-stage.owner-stage.home-image-plan .app-header { min-height:83px; background:transparent; border:0; padding:19px 20px 9px; }
+body .home-image-plan .wordmark strong { color:#007b60; font-size:29px; font-weight:700; letter-spacing:-1.3px; }
+body .home-image-plan .wordmark span { font-size:9px; font-weight:600; letter-spacing:.24em; color:#8a9891; }
+body .home-image-plan .owner-admin-switch { border-radius:25px; background:#fff; color:#007b60; }
+body .app-stage.owner-stage.home-image-plan .app-main.owner-view-home { padding-top:0; }
+body .app-stage.owner-stage.home-image-plan .home-v3 { max-width:800px; margin:0 auto; padding:0 13px 24px; gap:12px; }
+.home-plan-sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+body .app-stage.owner-stage.home-image-plan .home-plan-landscape { display:block; position:relative; padding:0; min-height:0; overflow:visible; margin:-3px -13px 0; }
+.home-image-plan .home-plan-hero { width:100%; aspect-ratio:853/263; }
+body .home-image-plan .home-v3-profile { width:34px; height:34px; top:3px; right:14px; opacity:.95; }
+body .home-image-plan .home-v3-profile svg { width:20px; height:20px; }
+body .app-stage.owner-stage.home-image-plan .home-v3-summary { gap:6px; padding:0; border:0; }
+body .app-stage.owner-stage.home-image-plan .home-v3-summary > button { display:flex; flex-direction:row; align-items:center; justify-content:flex-start; gap:7px; min-height:64px; padding:10px 7px; background:#fff; border:0; border-radius:14px; }
+body .app-stage.owner-stage.home-image-plan .home-v3-summary > button + button { border:0; }
+body .app-stage.owner-stage.home-image-plan .home-v3-summary-icon { position:static; flex:0 0 auto; width:31px; height:31px; border-radius:50%; color:#008661; background:#edf7f1; }
+body .home-image-plan .home-v3-summary-icon.is-care { color:#e68a78; background:#fff0eb; }
+body .home-image-plan .home-v3-summary-icon.is-week { color:#2087b1; background:#eaf7ff; }
+body .home-image-plan .home-v3-summary-icon svg { width:20px; height:20px; }
+body .app-stage.owner-stage.home-image-plan .home-v3-summary > button > span:nth-child(2) { display:block; width:auto; flex:1; }
+body .app-stage.owner-stage.home-image-plan .home-v3-summary small { padding:0; margin-bottom:4px; font-size:8px; line-height:1.5; color:#738780; white-space:nowrap; }
+body .app-stage.owner-stage.home-image-plan .home-v3-summary strong { padding:0; font-size:26px; font-weight:600; letter-spacing:-.5px; color:#294340; }
+body .app-stage.owner-stage.home-image-plan .home-v3-summary strong em { margin-left:3px; font-size:9px; font-weight:500; color:#294340; }
+body .home-image-plan .home-v3-summary > button > b { position:static; font-size:17px; color:#526c60; margin-left:auto; }
+.home-plan-daily { position:relative; display:flex; align-items:center; min-height:147px; background:#e8f2e8; overflow:hidden; border-radius:19px; }
+.home-plan-daily-copy { position:relative; z-index:1; padding:21px 16px; pointer-events:none; width:100%; }
+.home-plan-daily-copy > span { font-size:8px; color:#7e9288; font-weight:700; letter-spacing:.16em; }
+.home-plan-daily h2 { margin:8px 0; font-size:17px; font-weight:600; line-height:1.5; color:#294340; letter-spacing:0; }
+.home-plan-daily p { margin:0 0 12px; font-size:9px; line-height:1.7; color:#70877b; max-width:72%; }
+.home-plan-daily button { display:inline-flex; align-items:center; justify-content:center; gap:12px; pointer-events:auto; min-width:144px; min-height:42px; padding:9px 20px; border:0; border-radius:24px; color:#fff; background:#008661; font-size:13px; font-weight:600; }
+.home-plan-daily button:disabled { opacity:.5; }
+.home-plan-daily button span { font-size:18px; line-height:1; }
+.home-image-plan .home-plan-daily-art { position:absolute; right:0; bottom:0; width:47%; height:100%; }
+.home-plan-links { display:grid; grid-template-columns:1.2fr 1fr; gap:8px; }
+.home-plan-links > button { position:relative; display:flex; align-items:flex-start; gap:8px; min-height:106px; min-width:0; padding:14px 10px; border:0; border-radius:18px; background:#fff; color:#294340; text-align:left; overflow:hidden; }
+.home-plan-link-icon { display:grid; place-items:center; width:28px; height:28px; flex-shrink:0; color:#008661; border-radius:50%; background:#edf7f1; }
+.home-plan-link-icon svg { width:17px; height:17px; }
+.home-plan-link-copy { position:relative; z-index:1; min-width:0; }
+.home-plan-link-copy small { display:block; color:#7d8e85; font-size:7px; letter-spacing:.15em; margin:1px 0 8px; }
+.home-plan-link-copy strong { display:block; font-size:11px; line-height:1.5; font-weight:600; letter-spacing:0; overflow-wrap:anywhere; }
+.home-plan-link-copy em { display:block; margin-top:5px; color:#7c8e83; font-size:8px; font-style:normal; line-height:1.6; }
+.home-plan-links > button > b { position:absolute; right:10px; top:10px; font-weight:400; font-size:17px; }
+.home-image-plan .home-plan-link-art { position:absolute; right:1px; bottom:0; width:40%; height:53%; }
+body .home-image-plan .home-v3-insights { scroll-margin-top:25px; }
+.home-image-plan .home-plan-links > button:focus-visible,.home-image-plan .home-plan-daily button:focus-visible { outline:3px solid #008661; outline-offset:3px; }
+@media(max-width:360px) {
+  body .app-stage.owner-stage.home-image-plan .home-v3 { padding-inline:10px; }
+  body .app-stage.owner-stage.home-image-plan .home-v3-summary > button { gap:5px; padding-inline:5px; }
+  body .app-stage.owner-stage.home-image-plan .home-v3-summary-icon { width:25px; height:25px; }
+  body .app-stage.owner-stage.home-image-plan .home-v3-summary small { font-size:7px; }
+  body .home-image-plan .home-v3-summary > button > b { display:none; }
+  .home-plan-daily h2 { font-size:16px; }
+  .home-plan-links { grid-template-columns:1fr 1fr; gap:6px; }
+  .home-plan-links > button { gap:5px; padding-inline:8px; }
+  .home-plan-link-icon { width:22px; height:22px; }
+  .home-plan-link-copy strong { font-size:10px; }
+}
+@media(min-width:600px) {
+  body .app-stage.owner-stage.home-image-plan .app-header { max-width:826px; min-height:103px; margin:0 auto; padding-inline:25px; }
+  body .home-image-plan .wordmark strong { font-size:38px; }
+  body .home-image-plan .wordmark span { font-size:11px; }
+  body .app-stage.owner-stage.home-image-plan .home-v3 { padding-inline:20px; gap:20px; }
+  body .app-stage.owner-stage.home-image-plan .home-v3-summary { gap:14px; }
+  body .app-stage.owner-stage.home-image-plan .home-v3-summary > button { min-height:90px; padding:17px 18px; gap:14px; border-radius:18px; }
+  body .app-stage.owner-stage.home-image-plan .home-v3-summary-icon { width:46px; height:46px; }
+  body .home-image-plan .home-v3-summary-icon svg { width:25px; height:25px; }
+  body .app-stage.owner-stage.home-image-plan .home-v3-summary small { font-size:12px; }
+  body .app-stage.owner-stage.home-image-plan .home-v3-summary strong { font-size:34px; }
+  body .app-stage.owner-stage.home-image-plan .home-v3-summary strong em { font-size:12px; }
+  .home-plan-daily { min-height:222px; border-radius:24px; }
+  .home-plan-daily-copy { padding:30px; }
+  .home-plan-daily-copy > span { font-size:11px; }
+  .home-plan-daily h2 { font-size:27px; margin:11px 0; }
+  .home-plan-daily p { font-size:13px; max-width:70%; }
+  .home-plan-daily button { min-width:234px; min-height:50px; font-size:17px; }
+  .home-image-plan .home-plan-daily-art { width:43%; }
+  .home-plan-links { gap:16px; }
+  .home-plan-links > button { min-height:155px; padding:22px 19px; gap:12px; border-radius:22px; }
+  .home-plan-link-icon { width:40px; height:40px; }
+  .home-plan-link-icon svg { width:24px; height:24px; }
+  .home-plan-link-copy small { font-size:10px; margin-bottom:10px; }
+  .home-plan-link-copy strong { font-size:17px; }
+  .home-plan-link-copy em { font-size:11px; }
+}

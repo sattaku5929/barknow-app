@@ -33,7 +33,7 @@ import type { CareGoal as EditableCareGoal, CareTemplate, CareGoalType } from "@
 import { useScrollNavigation } from "@/lib/ui/useScrollNavigation";
 import { archiveCareGoal, changeCareCount, changeCareIcon, createCareGoal, undoCareCompletions } from "@/lib/care/mutations";
 import OwnerAppBackdrop from "@/components/owner/OwnerAppBackdrop";
-import OwnerHomeScene from "@/components/owner/illustrations/OwnerHomeScene";
+import HomePlanImage from "@/components/owner/HomePlanImage";
 import { deviceLocalDate, deviceLocalTime, loadDailyCheck } from "@/lib/observations/dailyCheck";
 import { eventThemes, loadEventThemes, loadEvents } from "@/lib/observations/observationEvent";
 import type { EventTheme, ObservationEvent } from "@/lib/observations/observationEvent";
@@ -4483,12 +4483,9 @@ export default function Home() {
 
   const focusedHomeView = (
     <div className="home-v3">
-      <section className="home-v3-lifestyle" aria-label="愛犬との今日">
-        <div className="home-v3-lifestyle-copy">
-          <span>{todayLabel}</span>
-          <h1>{profile.name || "愛犬"}との、今日。</h1>
-          <p>いつもの毎日を、少しずつ。</p>
-        </div>
+      <section className="home-v3-lifestyle home-plan-landscape" aria-label="愛犬との今日">
+        <h1 className="home-plan-sr-only">{profile.name || "愛犬"}との、今日。{todayLabel}</h1>
+        <HomePlanImage slot="hero" className="home-plan-hero" sizes="(max-width: 800px) 100vw, 800px" />
         <button className={`home-v3-profile ${profile.avatarUrl ? "has-image" : ""}`} onClick={() => navigateOwnerView("profile")} aria-label="愛犬プロフィールを開く">
           {profile.avatarUrl ? <PrivateDogImage src={profile.avatarUrl} alt="" /> : <CareIcon name="paws" />}
         </button>
@@ -4505,18 +4502,48 @@ export default function Home() {
       <section className="home-v3-summary" aria-label="今日のサマリー">
         <button type="button" aria-label="今日のできごとの記録に移動" onClick={() => goToRecordSection("events")}>
           <span className="home-v3-summary-icon is-log"><NavGlyph name="record" /></span>
-          <span><small>できごと</small><strong>{eventStatus === "ready" ? todayEvents.length : "—"}<em>件</em></strong></span>
+          <span><small>今日のできごと</small><strong>{eventStatus === "ready" ? todayEvents.length : "—"}<em>LOG</em></strong></span>
           <b aria-hidden="true">›</b>
         </button>
         <button type="button" aria-label="今日のお世話へ移動" onClick={() => goToRecordSection("care")}>
           <span className="home-v3-summary-icon is-care"><NavGlyph name="goals" /></span>
-          <span><small>お世話</small><strong>{completedDailyGoalCount}<em>/{dailyGoals.length || "–"}</em></strong></span>
+          <span><small>今日のお世話</small><strong>{completedDailyGoalCount}<em>/{dailyGoals.length || "–"}</em></strong></span>
           <b aria-hidden="true">›</b>
         </button>
         <button type="button" aria-label="ホームで愛犬の変化と記録日数を確認" onClick={() => document.getElementById("home-insights")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
           <span className="home-v3-summary-icon is-week"><NavGlyph name="report" /></span>
           <RecordedDaysSummary key={`recorded-days:${profile.id ?? "no-dog"}`} dogId={profile.id} online={connection === "online"} revision={`${checkRefresh}:${eventRefresh}`} legacyRecords={records} />
           <b aria-hidden="true">›</b>
+        </button>
+      </section>
+
+      <section className="home-plan-daily" aria-labelledby="home-daily-title">
+        <div className="home-plan-daily-copy"><span>TODAY</span>
+          <h2 id="home-daily-title">{todayCheckStatus === "recorded" ? "今日の状態を確認しよう" : "今日の状態を記録しよう"}</h2>
+          <p>今日の{dogName}の様子を残してみましょう。</p>
+          <button type="button" onClick={() => openNewRecord("daily")} disabled={connection !== "online" || !profile.id || todayCheckStatus === "loading"}>
+            {todayCheckStatus === "recorded" ? "記録をみる" : "記録する"}<span aria-hidden="true">→</span>
+          </button>
+        </div>
+        <HomePlanImage slot="care" decorative className="home-plan-daily-art" sizes="(max-width: 600px) 46vw, 340px" />
+      </section>
+
+      <HomeCareGroups key={`home-care:${profile.id ?? "no-dog"}`} goals={careGoals} templates={CARE_GOAL_TEMPLATES} illustrated
+        editable={connection === "online" && !!profile.id} progress={goalProgress}
+        onComplete={async (goal) => { await completeCareGoal(goal); setCalendarRefresh(value => value + 1); }}
+        onUndo={undoHomeCareGoal} onCreate={createHomeCareGoal} onCountChange={changeHomeCareCount}
+        onIconChange={changeHomeCareIcon} onRemove={removeHomeCareGoal} icon={(goal) => <CareIcon name={goal.goalType} />} />
+
+      <section className="home-plan-links" aria-label="記録と振り返り">
+        <button type="button" onClick={() => goToRecordSection("events")}>
+          <span className="home-plan-link-icon"><NavGlyph name="record" /></span>
+          <span className="home-plan-link-copy"><small>QUICK LOG</small><strong>今日のできごとを残す</strong><em>散歩・食事・トイレ・睡眠 など</em></span>
+          <b aria-hidden="true">›</b><HomePlanImage slot="quick" decorative className="home-plan-link-art" />
+        </button>
+        <button type="button" onClick={() => document.getElementById("home-insights")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+          <span className="home-plan-link-icon"><NavGlyph name="report" /></span>
+          <span className="home-plan-link-copy"><small>INSIGHTS</small><strong>愛犬の変化をみる</strong><em>毎日の記録から<br />小さな気づきを</em></span>
+          <b aria-hidden="true">›</b><HomePlanImage slot="insight" decorative className="home-plan-link-art" />
         </button>
       </section>
 
@@ -5556,7 +5583,7 @@ export default function Home() {
   if ((userRole === "coach" || userRole === "admin") && staffMode === "staff") return userRole === "admin" ? <AdminMfaGate onVerified={() => { setAdminMfaReady(true); void loadAdminWorkspace(); }}>{adminView}</AdminMfaGate> : adminView;
 
   return (
-    <div className="app-stage owner-stage">
+    <div className={`app-stage owner-stage ${view === "home" ? "home-image-plan" : ""}`}>
       {pullRefreshIndicator}
       <OwnerAppBackdrop />
       <div className="app-shell">

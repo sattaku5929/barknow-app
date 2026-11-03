@@ -19,12 +19,15 @@ test("exactly four bottom destinations: Home, Record, Chat, My Page",()=>{
   assert.match(nav,/aria-current=\{view === "record" \? "page" : undefined\}/);
 });
 
-test("Home includes trends and calendar but has no data entry",()=>{
+test("Home includes the selected image plan and existing care actions above trends and calendar",()=>{
   assert.match(home,/className="home-v3"/);
   assert.match(home,/<section id="home-insights"/);
   assert.match(home,/\{reportView\}/);
   assert.match(home,/<HomeCalendar/);
-  assert.doesNotMatch(home,/<DailyCheckForm|<ObservationEventForm|<ObservationEventHub|<HomeCareGroups|className="home-v3-daily"/);
+  assert.match(home,/<HomeCareGroups[^>]+illustrated/);
+  assert.match(home,/openNewRecord\("daily"\)/);
+  assert.match(home,/<HomePlanImage slot="hero"/);
+  assert.doesNotMatch(home,/<DailyCheckForm|<ObservationEventForm|<ObservationEventHub/);
   assert.ok(home.indexOf('id="home-insights"')<home.indexOf("<HomeCalendar"));
   assert.match(report,/<RecentObservationTrends/);
   assert.match(report,/className="report-deep-dive"/);

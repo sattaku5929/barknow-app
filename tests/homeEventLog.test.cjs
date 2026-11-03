@@ -3,10 +3,11 @@ const fs = require("node:fs");
 const ts = require("typescript");
 const text = fs.readFileSync(require("node:path").join(__dirname, "../app/page.tsx"), "utf8");
 const source = ts.createSourceFile("page.tsx", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-let home;
+let home, record;
 const functions = {};
 function visit(node) {
   if (ts.isVariableDeclaration(node) && node.name.getText(source) === "focusedHomeView") home = node.initializer;
+  if (ts.isVariableDeclaration(node) && node.name.getText(source) === "recordView") record = node.initializer;
   if (ts.isFunctionDeclaration(node) && ["startEvent", "editEvent"].includes(node.name?.text)) functions[node.name.text] = node;
   ts.forEachChild(node, visit);
 }
@@ -16,10 +17,10 @@ function collect(node) {
   if (ts.isJsxSelfClosingElement(node)) elements.push(node);
   ts.forEachChild(node, collect);
 }
-collect(home);
+collect(record);
 const hub = elements.find(node => node.tagName.getText(source) === "ObservationEventHub");
 const form = elements.find(node => node.tagName.getText(source) === "ObservationEventForm");
-assert.ok(hub); assert.ok(form, "home renders the existing event form inline");
+assert.ok(hub); assert.ok(form, "Record renders the existing event form");
 const attribute = (node, name) => node.attributes.properties.find(p => p.name?.getText(source) === name);
 assert.ok(attribute(hub, "compact"));
 assert.ok(attribute(hub, "personalized"));
@@ -43,20 +44,20 @@ function handler(node, name) {
   return new Function(...Object.keys(context), `return (${callback});`)(...Object.values(context));
 }
 handler(hub, "onSelect")("walk");
-assert.equal(state.theme, "walk"); assert.equal(state.editing, null); assert.equal(navigations.at(-1), "home");
+assert.equal(state.theme, "walk"); assert.equal(state.editing, null); assert.equal(navigations.at(-1), "record");
 const entry = {id:"existing",themeKey:"barking"};
 handler(hub, "onEdit")(entry);
-assert.equal(state.editing, entry); assert.equal(state.theme, "barking"); assert.equal(navigations.at(-1), "home");
+assert.equal(state.editing, entry); assert.equal(state.theme, "barking"); assert.equal(navigations.at(-1), "record");
 handler(hub, "onConfigureThemes")();
 assert.equal(state.settings, "profile"); assert.equal(navigations.at(-1), "profile");
 const before = navigations.length;
 handler(form, "onSaved")();
 assert.equal(state.refresh, 1); assert.equal(state.theme, null); assert.equal(state.editing, null);
-assert.equal(state.notice, "記録しました"); assert.equal(navigations.length, before, "saving inline stays on home");
+assert.equal(state.notice, "記録しました"); assert.equal(navigations.length, before, "saving stays on Record");
 handler(form, "onBack")(); assert.equal(state.theme, null);
 context.startEvent("walk"); assert.equal(navigations.at(-1), "record", "existing record tab remains usable");
 const homeText = home.getText(source);
 assert.doesNotMatch(homeText, /コーチに相談する|navigateOwnerView\("coach"\)/);
-assert.match(homeText, /home-event-log/); assert.match(text, /bottom-nav-record/);
-assert.match(homeText, /home-v3-daily/); assert.match(homeText, /HomeCalendar/);
-console.log("Home event log: existing hub/form, create/edit on home, save refresh without navigation, offline guard, coach card removed, record tab and other home cards preserved.");
+assert.match(homeText, /goToRecordSection\("events"\)/); assert.match(text, /bottom-nav-record/);
+assert.match(homeText, /home-plan-daily/); assert.match(homeText, /HomeCalendar/);
+console.log("Home Quick Log routes to the existing Record hub/form; create/edit, save refresh, offline guard and existing navigation preserved.");

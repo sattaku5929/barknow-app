@@ -5,6 +5,7 @@ import "./bottom-nav.css";
 import "./report-dashboard.css";
 import "./owner-action-colors.css";
 import "./design-system.css";
+import "./home-image-plan.css";
 
 const notoSansJP = Noto_Sans_JP({
   subsets: ["latin"],
