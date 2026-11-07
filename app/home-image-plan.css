@@ -86,3 +86,29 @@ body .home-image-plan .home-v3-insights { scroll-margin-top:25px; }
   .home-plan-link-copy strong { font-size:17px; }
   .home-plan-link-copy em { font-size:11px; }
 }
+
+/* Give the Quick Log illustration its own row so longer copy cannot overlap it. */
+.home-plan-links > button.home-plan-quick {
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  grid-template-rows:auto 52px;
+  align-content:start;
+  align-items:start;
+  row-gap:6px;
+}
+.home-plan-quick > .home-plan-link-icon { grid-column:1; grid-row:1; }
+.home-plan-quick > .home-plan-link-copy { grid-column:2; grid-row:1; padding-right:12px; }
+.home-image-plan .home-plan-quick > .home-plan-link-art {
+  position:relative;
+  grid-column:2;
+  grid-row:2;
+  justify-self:end;
+  right:auto;
+  bottom:auto;
+  width:min(100%,96px);
+  height:52px;
+}
+@media(min-width:600px) {
+  .home-plan-links > button.home-plan-quick { grid-template-rows:auto 64px; row-gap:10px; }
+  .home-image-plan .home-plan-quick > .home-plan-link-art { width:min(100%,120px); height:64px; }
+}

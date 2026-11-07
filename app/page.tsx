@@ -4535,7 +4535,7 @@ export default function Home() {
         onIconChange={changeHomeCareIcon} onRemove={removeHomeCareGoal} icon={(goal) => <CareIcon name={goal.goalType} />} />
 
       <section className="home-plan-links" aria-label="記録と振り返り">
-        <button type="button" onClick={() => goToRecordSection("events")}>
+        <button type="button" className="home-plan-quick" onClick={() => goToRecordSection("events")}>
           <span className="home-plan-link-icon"><NavGlyph name="record" /></span>
           <span className="home-plan-link-copy"><small>QUICK LOG</small><strong>今日のできごとを残す</strong><em>散歩・食事・トイレ・睡眠 など</em></span>
           <b aria-hidden="true">›</b><HomePlanImage slot="quick" decorative className="home-plan-link-art" />
