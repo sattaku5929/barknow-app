@@ -7,12 +7,12 @@ export const homeImagePlan = {
     "alt": "散歩風景",
     "reference": true,
     "desktop": {
-      "fit": "contain",
+      "fit": "cover",
       "x": 50,
-      "y": 46
+      "y": 50
     },
     "mobile": {
-      "fit": "contain",
+      "fit": "cover",
       "x": 50,
       "y": 50
     }
